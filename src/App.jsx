@@ -766,7 +766,21 @@ const handleSaveSheetsUrl = async (url) => {
       {/* CONSTANTS BAR */}
 
 
-<div id="const-bar" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, paddingRight: 12 }}>
+    <div id="const-bar" style={{
+      display:"flex",
+      alignItems:"center",
+      background:"linear-gradient(135deg,#1E1B4B,#312E81)",
+      color:"#C7D2FE",
+      flexShrink:0,
+      padding:0,
+      minHeight:42,
+      width:"100%",
+      position:"relative",
+      zIndex:100,
+      overflowX:"auto",
+      overflowY:"hidden",
+    }}>
+  
   {/* Sync status indicator */}
   {syncStatus && (
     <span style={{
