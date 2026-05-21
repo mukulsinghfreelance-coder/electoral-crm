@@ -466,17 +466,6 @@ function Toast({msg,type}) {
   return <div style={{position:"fixed",bottom:24,right:24,background:bg,color:"#fff",padding:"12px 20px",borderRadius:12,fontSize:13,fontWeight:600,zIndex:9999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",maxWidth:320}}>{msg}</div>;
 }
 
-// for Mobile
-const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-const [showMobileDetail, setShowMobileDetail] = useState(false);
-
-useEffect(() => {
-  const handleResize = () => setIsMobile(window.innerWidth <= 768);
-  window.addEventListener('resize', handleResize);
-  return () => window.removeEventListener('resize', handleResize);
-}, []);
-// end for mobile
-
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [settings,  setSettingsState] = useState(DEFAULT_SETTINGS);
@@ -493,6 +482,16 @@ export default function App() {
   const [showSheets,  setShowSheets]  = useState(false);
   const [syncStatus,  setSyncStatus]  = useState("");   // "syncing" | "ok" | "error" | ""
 
+  // for Mobile
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [showMobileDetail, setShowMobileDetail] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+// end for mobile
 
   // ── Load all data from Supabase on mount ──────────────────────────────────
   const loadAll = useCallback(async()=>{
