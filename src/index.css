@@ -29,31 +29,88 @@ html, body, #root {
 button { font-family: inherit; }
 input, select, textarea { font-family: inherit; outline: none; }
 
-/* ── SCROLLBARS — more prominent ─────────────────────────────────────────── */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #F3F4F6; border-radius: 10px; }
-::-webkit-scrollbar-thumb { background: #9CA3AF; border-radius: 10px; border: 2px solid #F3F4F6; }
-::-webkit-scrollbar-thumb:hover { background: #6B7280; }
+/* ── SCROLLBARS — prominent on desktop ───────────────────────────────────── */
+*::-webkit-scrollbar        { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track  { background: #E5E7EB; border-radius: 10px; }
+*::-webkit-scrollbar-thumb  { background: #6B7280; border-radius: 10px; border: 2px solid #E5E7EB; }
+*::-webkit-scrollbar-thumb:hover { background: #374151; }
+*::-webkit-scrollbar-corner { background: #E5E7EB; }
+*                           { scrollbar-width: thin; scrollbar-color: #6B7280 #E5E7EB; }
 
-/* Firefox scrollbars */
-* { scrollbar-width: thin; scrollbar-color: #9CA3AF #F3F4F6; }
+/* ── CONSTANTS BAR — always visible, never squeezed ─────────────────────── */
+#const-bar {
+  display: flex !important;
+  align-items: center;
+  flex-shrink: 0 !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  width: 100% !important;
+  position: relative;
+  z-index: 100;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: linear-gradient(135deg, #1E1B4B, #312E81);
+}
+#const-bar > div {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+#const-bar::-webkit-scrollbar        { height: 3px; }
+#const-bar::-webkit-scrollbar-track  { background: #312E81; }
+#const-bar::-webkit-scrollbar-thumb  { background: #4338CA; border: none; }
 
-/* ── BOTTOM NAV — desktop hidden ─────────────────────────────────────────── */
-#bottom-nav { display: none; }
+/* ── DESKTOP LAYOUT ──────────────────────────────────────────────────────── */
+#app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+#app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+#main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
 
-/* ── DESKTOP FIXES ───────────────────────────────────────────────────────── */
-
-/* Fix 2: Booth table — prevent header overlap */
-#booth-table { table-layout: auto !important; min-width: 700px; }
-#booth-table th,
-#booth-table td { white-space: nowrap; padding: 8px 12px !important; }
-
-/* Fix 3: Contact table — Booth column wider */
-#contact-table { table-layout: auto !important; min-width: 520px; }
+/* ── TABLE FIXES ─────────────────────────────────────────────────────────── */
+#contact-table {
+  table-layout: auto !important;
+  min-width: 520px;
+}
 #contact-table th,
-#contact-table td { white-space: nowrap; padding: 8px 10px !important; }
+#contact-table td {
+  white-space: nowrap;
+  padding: 8px 12px !important;
+}
+#booth-table {
+  table-layout: auto !important;
+  min-width: 700px;
+}
+#booth-table th,
+#booth-table td {
+  white-space: nowrap;
+  padding: 8px 12px !important;
+}
 
-/* Fix 4: Election history section full background */
+/* ── TABLE WRAP ──────────────────────────────────────────────────────────── */
+#table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── ELECTION HISTORY SECTION ────────────────────────────────────────────── */
 .election-history-section {
   background: #CCFBF1;
   border-radius: 10px;
@@ -61,53 +118,58 @@ input, select, textarea { font-family: inherit; outline: none; }
   margin-bottom: 12px;
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .election-history-section table {
   width: 100%;
   min-width: 400px;
 }
 
-/* ── MOBILE ──────────────────────────────────────────────────────────────── */
+/* ── BOTTOM NAV — hidden on desktop ─────────────────────────────────────── */
+#bottom-nav { display: none; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE — portrait
+   ════════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
 
-  html, body, #root {
-    height: 100dvh;
-    overflow: hidden;
-  }
+  html, body, #root { height: 100dvh; overflow: hidden; }
 
-  /* App root */
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-thumb { border: 1px solid #E5E7EB; }
+
   #app-root {
-    display: flex !important;
-    flex-direction: column !important;
     height: 100dvh !important;
     overflow: hidden !important;
   }
 
-  /* Body row */
+  #const-bar {
+    min-height: 40px !important;
+    max-height: 40px !important;
+    font-size: 10px;
+  }
+  #const-bar > div { padding: 0 10px !important; }
+
   #app-body {
     flex: 1 !important;
-    display: flex !important;
     overflow: hidden !important;
     min-height: 0 !important;
   }
 
-  /* Hide sidebar and detail */
+  /* Hide sidebar + detail on mobile */
   #sidebar-desktop      { display: none !important; }
   #detail-panel-desktop { display: none !important; }
 
-  /* Main content */
   #main-content {
     flex: 1 !important;
     min-width: 0 !important;
     width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
     overflow: hidden !important;
     min-height: 0 !important;
     padding-bottom: 64px !important;
   }
 
-  /* ── CONTACTS HERO BAR ───────────────────────────────────────────────── */
+  /* ── Contacts hero bar ── */
   #hero-bar {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -115,45 +177,34 @@ input, select, textarea { font-family: inherit; outline: none; }
     gap: 6px !important;
     flex-shrink: 0 !important;
   }
-
-  /* Row 1: title + action buttons */
   #hero-bar > div:first-child {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     width: 100% !important;
   }
-
-  /* Search bar — full width, properly sized */
   #hero-bar input {
     width: 100% !important;
     flex: unset !important;
     font-size: 14px !important;
     padding: 10px 14px !important;
-    order: 10 !important;
   }
 
-  /* Action buttons row — don't hide any button */
-  #hero-bar .hero-buttons {
-    display: flex !important;
-    gap: 6px !important;
-    flex-shrink: 0 !important;
-  }
-  #hero-bar .hero-buttons button {
-    padding: 8px 12px !important;
-    font-size: 12px !important;
-    white-space: nowrap !important;
-  }
-
-  /* Metrics — 2 columns */
+  /* ── Metrics ── */
   #metrics-row {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 5px !important;
     padding: 6px 10px !important;
     flex-shrink: 0 !important;
   }
+  #booth-metrics {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5px !important;
+    padding: 6px 10px !important;
+    flex-shrink: 0 !important;
+  }
 
-  /* Filter bar — horizontal scroll */
+  /* ── Filter bar ── */
   #filter-bar {
     flex-wrap: nowrap !important;
     overflow-x: auto !important;
@@ -170,7 +221,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     min-width: 100px !important;
   }
 
-  /* ── TABLE — key fix for vertical scroll ────────────────────────────── */
+  /* ── Table ── */
   #table-wrap {
     flex: 1 !important;
     overflow-y: auto !important;
@@ -181,34 +232,13 @@ input, select, textarea { font-family: inherit; outline: none; }
   #contact-table { min-width: 500px !important; }
   #booth-table   { min-width: 650px !important; }
 
-  /* Pagination bar */
-  #pgbar { flex-shrink: 0 !important; }
-
-  /* ── BOOTH HERO ──────────────────────────────────────────────────────── */
+  /* ── Booth hero ── */
   #booth-hero {
     flex-shrink: 0 !important;
     padding: 8px 10px !important;
   }
 
-  /* Booth metrics */
-  #booth-metrics {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 5px !important;
-    padding: 6px 10px !important;
-    flex-shrink: 0 !important;
-  }
-
-  /* ── ELECTION HISTORY in Add Booth form ──────────────────────────────── */
-  .election-history-section {
-    width: 100% !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  .election-history-section table {
-    min-width: 380px !important;
-  }
-
-  /* ── MODALS ──────────────────────────────────────────────────────────── */
+  /* ── Modals ── */
   .modal-backdrop {
     align-items: flex-end !important;
     padding: 0 !important;
@@ -223,7 +253,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     overflow-y: auto !important;
   }
 
-  /* ── BOTTOM NAV ──────────────────────────────────────────────────────── */
+  /* ── Bottom nav ── */
   #bottom-nav {
     display: flex !important;
     position: fixed !important;
@@ -239,20 +269,20 @@ input, select, textarea { font-family: inherit; outline: none; }
   }
 }
 
-/* ── LANDSCAPE PHONE ─────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE — landscape
+   ════════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) and (orientation: landscape) {
 
-  /* Allow full page scroll in landscape */
   #main-content {
     overflow-y: auto !important;
     padding-bottom: 52px !important;
   }
 
-  /* Table wrap in landscape — must still scroll */
   #table-wrap {
     overflow-y: auto !important;
     min-height: 0 !important;
-    max-height: calc(100dvh - 200px) !important;
+    max-height: calc(100dvh - 180px) !important;
   }
 
   /* Hero bar — single row in landscape */
@@ -269,126 +299,25 @@ input, select, textarea { font-family: inherit; outline: none; }
     width: auto !important;
     font-size: 12px !important;
     padding: 7px 10px !important;
-    order: 0 !important;
   }
 
-  /* Smaller metrics in landscape */
+  /* 4-col metrics in landscape */
   #metrics-row {
     grid-template-columns: repeat(4, 1fr) !important;
     padding: 4px 10px !important;
     gap: 4px !important;
   }
-  #metrics-row > div { padding: 5px 8px !important; }
+  #metrics-row > div             { padding: 5px 8px !important; }
   #metrics-row > div > div:nth-child(2) { font-size: 16px !important; }
 
-  /* Booth metrics in landscape */
   #booth-metrics {
     grid-template-columns: repeat(4, 1fr) !important;
     padding: 4px 10px !important;
     gap: 4px !important;
   }
 
-  /* Smaller bottom nav */
+  /* Smaller const bar + bottom nav in landscape */
+  #const-bar  { min-height: 34px !important; max-height: 34px !important; }
   #bottom-nav { height: 50px !important; }
   #main-content { padding-bottom: 50px !important; }
-
-}
-
-/* ── PROMINENT SCROLLBARS — override everything ───────────────────────────── */
-
-/* All scrollbars — webkit (Chrome, Safari, Edge, mobile) */
-*::-webkit-scrollbar {
-  width: 10px !important;
-  height: 10px !important;
-}
-*::-webkit-scrollbar-track {
-  background: #E5E7EB !important;
-  border-radius: 10px !important;
-}
-*::-webkit-scrollbar-thumb {
-  background: #6B7280 !important;
-  border-radius: 10px !important;
-  border: 2px solid #E5E7EB !important;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: #374151 !important;
-}
-*::-webkit-scrollbar-corner {
-  background: #E5E7EB !important;
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thick !important;
-  scrollbar-color: #6B7280 #E5E7EB !important;
-}
-
-/* Specific elements that scroll horizontally */
-#table-wrap,
-#filter-bar,
-#const-bar,
-#booth-hero,
-.election-history-section,
-.modal-inner {
-  scrollbar-width: thick !important;
-  scrollbar-color: #6B7280 #E5E7EB !important;
-}
-
-#table-wrap::-webkit-scrollbar,
-#filter-bar::-webkit-scrollbar,
-#const-bar::-webkit-scrollbar,
-#booth-hero::-webkit-scrollbar,
-.election-history-section::-webkit-scrollbar,
-.modal-inner::-webkit-scrollbar {
-  width: 10px !important;
-  height: 10px !important;
-}
-#table-wrap::-webkit-scrollbar-track,
-#filter-bar::-webkit-scrollbar-track,
-#const-bar::-webkit-scrollbar-track,
-#booth-hero::-webkit-scrollbar-track,
-.election-history-section::-webkit-scrollbar-track,
-.modal-inner::-webkit-scrollbar-track {
-  background: #E5E7EB !important;
-  border-radius: 10px !important;
-}
-#table-wrap::-webkit-scrollbar-thumb,
-#filter-bar::-webkit-scrollbar-thumb,
-#const-bar::-webkit-scrollbar-thumb,
-#booth-hero::-webkit-scrollbar-thumb,
-.election-history-section::-webkit-scrollbar-thumb,
-.modal-inner::-webkit-scrollbar-thumb {
-  background: #6B7280 !important;
-  border-radius: 10px !important;
-  border: 2px solid #E5E7EB !important;
-}
-
-/* ── CONSTANTS BAR ALWAYS VISIBLE ─────────────────────────────────────────── */
-#const-bar {
-  display: flex !important;
-  flex-shrink: 0 !important;
-  min-height: 42px !important;
-  max-height: 42px !important;
-  width: 100% !important;
-  position: relative !important;
-  z-index: 100 !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-}
-
-/* Each item in constants bar — prevent shrinking */
-#const-bar > div {
-  flex-shrink: 0 !important;
-  white-space: nowrap !important;
-}
-
-/* Hide the tiny scrollbar on constants bar itself */
-#const-bar::-webkit-scrollbar { height: 3px !important; }
-#const-bar::-webkit-scrollbar-track { background: #312E81 !important; }
-#const-bar::-webkit-scrollbar-thumb { background: #4338CA !important; border: none !important; }
-
-@media (max-width: 900px) {
-  /* On mobile, scrollbars can be thinner to save space */
-  *::-webkit-scrollbar { width: 6px !important; height: 6px !important; }
-  *::-webkit-scrollbar-thumb { border: 1px solid #E5E7EB !important; }
 }
