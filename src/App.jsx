@@ -466,6 +466,17 @@ function Toast({msg,type}) {
   return <div style={{position:"fixed",bottom:24,right:24,background:bg,color:"#fff",padding:"12px 20px",borderRadius:12,fontSize:13,fontWeight:600,zIndex:9999,boxShadow:"0 8px 24px rgba(0,0,0,.2)",maxWidth:320}}>{msg}</div>;
 }
 
+// for Mobile
+const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+const [showMobileDetail, setShowMobileDetail] = useState(false);
+
+useEffect(() => {
+  const handleResize = () => setIsMobile(window.innerWidth <= 768);
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
+}, []);
+// end for mobile
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [settings,  setSettingsState] = useState(DEFAULT_SETTINGS);
@@ -759,7 +770,40 @@ const handleSaveSheetsUrl = async (url) => {
 //      
 
 
-      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+      <div id="app-body" style={{ display:"flex", flex:1, overflow:"hidden" }}>
+
+      // Find sidebar div opening tag and add id:
+      <div id="sidebar-desktop" style={{ width:200, minWidth:200, ... }}>
+      
+      // Find main content div and add id:
+      <div id="main-content" style={{ flex:1, display:"flex", ... }}>
+      
+      // Find detail panel div and add id:
+      <div id="detail-panel-desktop" style={{ width:248, minWidth:248, ... }}>
+      
+      // Find constants bar div and add id:
+      <div id="const-bar" style={{ display:"flex", alignItems:"center", background:"linear-gradient(...)", ... }}>
+      
+      // Find hero bar div and add id:
+      <div id="hero-bar" style={{ background:`linear-gradient(...)`, padding:"12px 16px", ... }}>
+      
+      // Find metrics row div and add id:
+      <div id="metrics-row" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", ... }}>
+      
+      // Find filter bar div and add id:
+      <div id="filter-bar" style={{ display:"flex", alignItems:"center", ... }}>
+      
+      // Find table wrapper div and add id:
+      <div id="table-wrap" style={{ flex:1, overflowY:"auto" }}>
+      
+      // Find contact table and add id:
+      <table id="contact-table" style={{ width:"100%", ... }}>
+      
+      // Find booth table and add id:
+      <table id="booth-table" style={{ width:"100%", ... }}>
+      
+      // Find modal inner divs (the white box inside modals) and add className:
+      <div className="modal-inner" style={{ background:C.white, borderRadius:18, ... }}>
 
         {/* SIDEBAR */}
         <div style={{width:200,minWidth:200,borderRight:`1px solid ${C.gray200}`,background:C.gray50,display:"flex",flexDirection:"column",overflowY:"auto"}}>
@@ -823,7 +867,11 @@ const handleSaveSheetsUrl = async (url) => {
             <div style={{flex:1,overflowY:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
                 <thead><tr>{[["name","Name",106],["phone","Phone",88],["caste","Caste",64],["mandal","Mandal",72],["panchayat","Panchayat",76],["bno","Booth",42],["tag","Tag",86]].map(([col,label,w])=>(<th key={col} style={{...thS,width:w}}>{label}<SortArrow col={col} sort={sort} onSort={col=>setSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})}/></th>))}</tr></thead>
-                <tbody>{slice.map(c=>(<tr key={c.id} onClick={()=>setSelC(c)} style={{background:selC?.id===c.id?C.primaryLight:"transparent",cursor:"pointer",transition:"background .1s"}}>
+                <tbody>{slice.map(c=>(<tr key={c.id} onClick={()=> { 
+			setSelC(c);
+			if (isMobile) setShowMobileDetail(true);
+                     }
+	           } style={{background:selC?.id===c.id?C.primaryLight:"transparent",cursor:"pointer",transition:"background .1s"}}>
                   <td style={{...tdS,fontWeight:700,color:C.gray900}}>{c.name}</td>
                   <td style={{...tdS,color:C.gray600}}>{c.phone}</td>
                   <td style={tdS}>{c.caste}</td>
@@ -874,7 +922,11 @@ const handleSaveSheetsUrl = async (url) => {
                   ))}
                 </tr></thead>
                 <tbody>{filteredB.map(b=>{const last=b.elec[2]||{votes:[]};return(
-                  <tr key={b.id} onClick={()=>setSelB(b)} style={{background:selB?.id===b.id?C.tealLight:"transparent",cursor:"pointer",transition:"background .1s",borderBottom:`1px solid ${C.teal}11`}}>
+                  <tr key={b.id} onClick={()=> {
+			setSelB(b);
+			if (isMobile) setShowMobileDetail(true);
+                        }
+		      } style={{background:selB?.id===b.id?C.tealLight:"transparent",cursor:"pointer",transition:"background .1s",borderBottom:`1px solid ${C.teal}11`}}>
                     <td style={{...tdS,textAlign:"center",fontWeight:800,color:C.teal,fontSize:14}}>{b.bno}</td>
                     <td style={{...tdS,fontWeight:700,color:C.gray900}}>{b.bnm||"—"}</td>
                     <td style={{...tdS,color:C.gray600}}>{b.mandal}</td>
@@ -911,6 +963,81 @@ const handleSaveSheetsUrl = async (url) => {
       <ImportModal  open={showImport}   onClose={()=>setShowImport(false)}    onImport={handleImport} saving={saving}/>
       <ExcelModal   open={showExcel}    onClose={()=>setShowExcel(false)}     onImport={handleBoothExcel} saving={saving}/>
       <Toast msg={toast.msg} type={toast.type}/>
+      
+      {/* ── MOBILE DETAIL MODAL ── */}
+{showMobileDetail && (
+  <div
+    onClick={e => e.target === e.currentTarget && setShowMobileDetail(false)}
+    style={{ position:"fixed", inset:0, background:"rgba(17,24,39,.6)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:800, backdropFilter:"blur(3px)" }}
+  >
+    <div style={{ background:C.white, borderRadius:"20px 20px 0 0", width:"100%", maxHeight:"85vh", overflowY:"auto", paddingBottom:80 }}>
+      <div style={{ width:40, height:4, background:C.gray200, borderRadius:2, margin:"12px auto 0" }}/>
+      {screen === "contacts"
+        ? <ContactDetail
+            contact={contacts.find(c => c.id === selC?.id) || null}
+            settings={settings}
+            onEdit={c => { setEditC(c); setShowAdd(true); setShowMobileDetail(false); }}
+            onDelete={id => { handleDeleteContact(id); setShowMobileDetail(false); }}
+          />
+        : <BoothDetail
+            booth={booths.find(b => b.id === selB?.id) || null}
+            settings={settings}
+            onEdit={b => { setEditB(b); setShowBAdd(true); setShowMobileDetail(false); }}
+            onDelete={id => { handleDeleteBooth(id); setShowMobileDetail(false); }}
+          />
+      }
+    </div>
+  </div>
+)}
+
+{/* ── BOTTOM NAV (mobile only) ── */}
+<div id="bottom-nav" style={{ display:"none" }}>
+  {[
+    { icon:"👥", label:"Contacts", screen:"contacts" },
+    { icon:"📍", label:"Booths",   screen:"booths"   },
+    { icon:"⚙️", label:"Settings", screen:"settings" },
+  ].map(tab => (
+    <button
+      key={tab.screen}
+      onClick={() => {
+        if (tab.screen === "settings") {
+          reqAdmin(() => setShowSettings(true));
+        } else {
+          setScreen(tab.screen);
+          setActiveTag("");
+          setSelC(null);
+          setSelB(null);
+        }
+      }}
+      style={{
+        flex:1, display:"flex", flexDirection:"column", alignItems:"center",
+        justifyContent:"center", gap:3, padding:"8px 4px",
+        background:"none", border:"none", cursor:"pointer", fontFamily:"inherit",
+        color: screen === tab.screen ? C.primary : C.gray400,
+        borderTop: screen === tab.screen ? `2.5px solid ${C.primary}` : "2.5px solid transparent",
+        transition:"all .15s",
+      }}
+    >
+      <span style={{ fontSize:20 }}>{tab.icon}</span>
+      <span style={{ fontSize:10, fontWeight:700 }}>{tab.label}</span>
+    </button>
+  ))}
+
+  {/* Big Add button in center */}
+  <button
+    onClick={() => { setEditC(null); setShowAdd(true); }}
+    style={{
+      position:"absolute", bottom:12, left:"50%", transform:"translateX(-50%)",
+      width:54, height:54, borderRadius:"50%", border:"none", cursor:"pointer",
+      background:`linear-gradient(135deg,${C.success},#047857)`,
+      color:C.white, fontSize:26, fontWeight:800,
+      boxShadow:"0 6px 20px rgba(5,150,105,.45)",
+      display:"flex", alignItems:"center", justifyContent:"center",
+    }}
+  >
+    ＋
+  </button>
+</div>
     </div>
   );
 }
