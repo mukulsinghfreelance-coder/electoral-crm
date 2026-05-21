@@ -246,7 +246,6 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
         <Fld label="Total Voters" col="3"><Inp value={f.voters} onChange={e=>setF(p=>({...p,voters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 1200" booth/></Fld>
         {[0,1,2].map(i=>(<Fld key={i} label={`Top Caste ${i+1}`} col={String(i+1)}><Sel value={f.castes[i]} onChange={e=>{const c=[...f.castes];c[i]=e.target.value;setF(p=>({...p,castes:c}));}} booth><option value="">— Select —</option>{settings.castes.map(c=><option key={c}>{c}</option>)}</Sel></Fld>))}
       </div>
-      ////
       <div
         className="election-history-section"
         style={{marginBottom:12}}
@@ -289,7 +288,6 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
           </tbody>
         </table>
       </div>
-      ////
       <Fld label="Notes"><textarea value={f.notes} onChange={e=>setF(p=>({...p,notes:e.target.value}))} placeholder="Booth-specific notes…" style={{width:"100%",padding:"9px 12px",fontSize:13,border:`1.5px solid ${C.teal}66`,borderRadius:9,background:C.white,resize:"vertical",minHeight:50,fontFamily:"inherit",outline:"none"}}/></Fld>
       <div style={{display:"flex",gap:10,marginTop:14}}>
         <Btn v="ghost" onClick={onClose} style={{flex:1}}>Cancel</Btn>
@@ -830,7 +828,6 @@ const handleSaveSheetsUrl = async (url) => {
         <div id="main-content" style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
 
           {screen==="contacts"&&<>
-            ////
 
           <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"12px 16px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
           
@@ -866,7 +863,6 @@ const handleSaveSheetsUrl = async (url) => {
               }}
             />
           </div>
-            ////
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               {[["Total",contacts.length,C.primary,"👥"],["Karyakartas",tagCounts["Karyakarta"]||0,C.success,"⚡"],["Key Voters",tagCounts["Key Voter"]||0,"#7C3AED","⭐"],["Opponents",tagCounts["Opponent"]||0,C.red,"⚠️"]].map(([l,v,cl,ic])=>(
                 <div key={l} style={{background:C.white,border:`1.5px solid ${cl}22`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
