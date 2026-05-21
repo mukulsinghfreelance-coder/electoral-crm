@@ -524,6 +524,7 @@ export default function App() {
     setLoading(true); setLoadErr(null);
     try {
       const [s,c,b] = await Promise.all([fetchSettings(), fetchContacts(), fetchBooths()]);
+      console.log("Settings loaded:", s); // ← ADD THIS LINE
       setSettingsState(s); setContacts(c); setBooths(b);
     } catch(err) {
       setLoadErr(err.message||"Unknown error");
