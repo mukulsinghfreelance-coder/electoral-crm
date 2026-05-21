@@ -85,7 +85,7 @@ function Modal({open,onClose,title,children,wide=false}) {
   if(!open)return null;
   return (
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"rgba(17,24,39,.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:1000,padding:"30px 16px",overflowY:"auto",backdropFilter:"blur(3px)"}}>
-      <div style={{background:C.white,borderRadius:18,boxShadow:"0 24px 64px rgba(0,0,0,.18)",padding:"24px 26px",width:wide?640:450,maxHeight:"90vh",overflowY:"auto",marginBottom:20}}>
+      <div className="modal-inner" style={{background:C.white,borderRadius:18,boxShadow:"0 24px 64px rgba(0,0,0,.18)",padding:"24px 26px",width:wide?640:450,maxHeight:"90vh",overflowY:"auto",marginBottom:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
           <span style={{fontSize:17,fontWeight:800,color:C.gray900}}>{title}</span>
           <button onClick={onClose} style={{background:C.gray100,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",color:C.gray600}}>✕</button>
@@ -739,10 +739,9 @@ const handleSaveSheetsUrl = async (url) => {
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.white,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",fontSize:13,overflow:"hidden"}}>
 
       {/* CONSTANTS BAR */}
-//
 
-<div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, paddingRight: 12 }}>
-  {/* Sync status indicator */}
+  <div id="const-bar" style={{display:"flex",alignItems:"center",background:"linear-gradient(135deg,#1E1B4B,#312E81)",color:"#C7D2FE",flexShrink:0,padding:0,minHeight:42}}>
+    {/* Sync status indicator */}
   {syncStatus && (
     <span style={{
       fontSize: 11, fontWeight: 600,
@@ -768,11 +767,10 @@ const handleSaveSheetsUrl = async (url) => {
   </button>
 </div>
 
-//      
      
         <div id="app-body" style={{ display:"flex", flex:1, overflow:"hidden" }}>
         
-        // Find sidebar div opening tag and add id:
+        // Find sidebar div opening tag and add id: 
         <div id="sidebar-desktop" style={{ width:200, minWidth:200, ... }}>
         
         // Find main content div and add id:
@@ -807,7 +805,7 @@ const handleSaveSheetsUrl = async (url) => {
         
         
         {/* SIDEBAR */}
-        <div style={{width:200,minWidth:200,borderRight:`1px solid ${C.gray200}`,background:C.gray50,display:"flex",flexDirection:"column",overflowY:"auto"}}>
+        <div id="sidebar-desktop" style={{width:200,minWidth:200,borderRight:`1px solid ${C.gray200}`,background:C.gray50,display:"flex",flexDirection:"column",overflowY:"auto"}}>
           <div style={{padding:"14px 14px 10px",borderBottom:`1px solid ${C.gray200}`}}>
             <div style={{display:"flex",alignItems:"center",gap:9}}>
               <div style={{width:32,height:32,borderRadius:9,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 3px 10px rgba(79,70,229,.3)"}}>📋</div>
@@ -836,10 +834,10 @@ const handleSaveSheetsUrl = async (url) => {
         </div>
 
         {/* MAIN */}
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+        <div id="main-content" style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
 
           {screen==="contacts"&&<>
-            <div style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"12px 16px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+            <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"12px 16px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:C.primaryDark}}>{activeTag||"All Contacts"}</div><div style={{fontSize:11,color:C.primary,fontWeight:500}}>{contacts.length} total · {filteredC.length} shown</div></div>
                 <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="🔍  Search name, phone, caste…" style={{flex:2,padding:"9px 14px",fontSize:13,border:`1.5px solid ${C.gray200}`,borderRadius:22,background:C.white,color:C.gray900,outline:"none",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}/>
@@ -848,7 +846,7 @@ const handleSaveSheetsUrl = async (url) => {
                 <Btn v="ghost" onClick={()=>setShowImport(true)} title="Import CSV">⬆️</Btn>
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+            <div id="metrics-row" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               {[["Total",contacts.length,C.primary,"👥"],["Karyakartas",tagCounts["Karyakarta"]||0,C.success,"⚡"],["Key Voters",tagCounts["Key Voter"]||0,"#7C3AED","⭐"],["Opponents",tagCounts["Opponent"]||0,C.red,"⚠️"]].map(([l,v,cl,ic])=>(
                 <div key={l} style={{background:C.white,border:`1.5px solid ${cl}22`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
                   <div style={{fontSize:10,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{ic} {l}</div>
@@ -856,7 +854,7 @@ const handleSaveSheetsUrl = async (url) => {
                 </div>
               ))}
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,flexWrap:"wrap",background:C.gray50}}>
+<div id="filter-bar" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,flexWrap:"wrap",background:C.gray50}}>
               {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All Mandals",settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All Panchayats",mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All Booths",[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All Castes",settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS]].map(([val,setter,ph,opts],i)=>(
                 <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer"}}>
                   <option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}
@@ -865,8 +863,8 @@ const handleSaveSheetsUrl = async (url) => {
               {(search||fM||fP||fB||fCaste||fT||activeTag)&&<button onClick={()=>{setSearch("");setFM("");setFP("");setFB("");setFCaste("");setFT("");setActiveTag("");setPage(1);}} style={{padding:"5px 10px",fontSize:11,background:"#FEE2E2",color:C.red,border:"none",borderRadius:8,cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
               <span style={{marginLeft:"auto",fontSize:11,color:C.gray400,fontWeight:600}}>{filteredC.length} result{filteredC.length!==1?"s":""}</span>
             </div>
-            <div style={{flex:1,overflowY:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
+           <div id="table-wrap" style={{flex:1,overflowY:"auto"}}>
+                <table id="contact-table" style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
                 <thead><tr>{[["name","Name",106],["phone","Phone",88],["caste","Caste",64],["mandal","Mandal",72],["panchayat","Panchayat",76],["bno","Booth",42],["tag","Tag",86]].map(([col,label,w])=>(<th key={col} style={{...thS,width:w}}>{label}<SortArrow col={col} sort={sort} onSort={col=>setSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})}/></th>))}</tr></thead>
                 <tbody>{slice.map(c=>(<tr key={c.id} onClick={()=> { 
 			setSelC(c);
@@ -915,8 +913,8 @@ const handleSaveSheetsUrl = async (url) => {
                 </div>
               ))}
             </div>
-            <div style={{flex:1,overflowY:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
+            <div id="table-wrap" style={{flex:1,overflowY:"auto"}}>
+              <table id="booth-table" style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
                 <thead><tr>
                   {[["bno","No.",50],["bnm","Booth Name",120],["mandal","Mandal",80],["panchayat","Panchayat",90],["voters","Voters",60],["rating","Rating",80],["castes","Top Castes",null],["last","Last Election",null]].map(([col,label,w])=>(
                     <th key={col} style={{...thSB,...(w?{width:w}:{})}}>{label}{col!=="castes"&&col!=="last"&&<SortArrow col={col} sort={bSort} onSort={col=>setBSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})} booth/>}</th>
@@ -945,7 +943,7 @@ const handleSaveSheetsUrl = async (url) => {
         </div>
 
         {/* DETAIL PANEL */}
-        <div style={{width:248,minWidth:248,borderLeft:`1px solid ${C.gray200}`,display:"flex",flexDirection:"column",overflowY:"auto",background:C.white}}>
+        <<div id="detail-panel-desktop" style={{width:248,minWidth:248,borderLeft:`1px solid ${C.gray200}`,display:"flex",flexDirection:"column",overflowY:"auto",background:C.white}}>
           {screen==="contacts"
             ?<ContactDetail contact={contacts.find(c=>c.id===selC?.id)||null} settings={settings} onEdit={c=>{setEditC(c);setShowAdd(true);}} onDelete={handleDeleteContact}/>
             :<BoothDetail   booth={booths.find(b=>b.id===selB?.id)||null}     settings={settings} onEdit={b=>{setEditB(b);setShowBAdd(true);}} onDelete={handleDeleteBooth}/>
