@@ -246,22 +246,50 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
         <Fld label="Total Voters" col="3"><Inp value={f.voters} onChange={e=>setF(p=>({...p,voters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 1200" booth/></Fld>
         {[0,1,2].map(i=>(<Fld key={i} label={`Top Caste ${i+1}`} col={String(i+1)}><Sel value={f.castes[i]} onChange={e=>{const c=[...f.castes];c[i]=e.target.value;setF(p=>({...p,castes:c}));}} booth><option value="">— Select —</option>{settings.castes.map(c=><option key={c}>{c}</option>)}</Sel></Fld>))}
       </div>
-      <div style={{background:C.tealLight,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.boothDark,marginBottom:10}}>📊 Election History</div>
-        <table id="booth-table" style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-          <thead><tr><th style={thS}>Election</th><th style={thS}>Casted Vote</th>{settings.parties.map((p,i)=><th key={i} style={thS}>{p}</th>)}<th style={{...thS,color:C.primary}}>Remaining</th></tr></thead>
-          <tbody>{f.elec.map((e,ei)=>{
-            const total=e.votes.slice(0,settings.parties.length).reduce((a,v)=>a+(parseInt(v)||0),0);
-            const rem=(parseInt(e.cast)||0)-total;
-            return(<tr key={ei} style={{borderTop:`1px solid ${C.teal}22`}}>
-              <td style={{padding:"5px 8px",color:C.boothDark,fontWeight:600}}>{settings.elections[ei]||`E${ei+1}`}</td>
-              <td style={{padding:"4px 5px"}}><Inp value={e.cast} onChange={ev=>setElec(ei,"cast",ev.target.value)} style={{padding:"5px 8px",fontSize:12}} booth/></td>
-              {settings.parties.map((_,pi)=><td key={pi} style={{padding:"4px 5px"}}><Inp value={e.votes[pi]||""} onChange={ev=>setElec(ei,"vote",ev.target.value,pi)} style={{padding:"5px 8px",fontSize:12}} booth/></td>)}
-              <td style={{padding:"5px 8px",fontWeight:700,color:rem<0?C.red:C.primary,fontSize:14}}>{rem>=0?rem:"—"}</td>
-            </tr>);
-          })}</tbody>
+      ////
+      <div
+        className="election-history-section"
+        style={{marginBottom:12}}
+      >
+        <div style={{fontSize:12,fontWeight:700,color:C.boothDark,marginBottom:10}}>
+          📊 Election History
+        </div>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead>
+            <tr>
+              <th style={thS}>Election</th>
+              <th style={thS}>Casted Vote</th>
+              {settings.parties.map((p,i)=><th key={i} style={thS}>{p}</th>)}
+              <th style={{...thS,color:C.primary}}>Remaining</th>
+            </tr>
+          </thead>
+          <tbody>
+            {f.elec.map((e,ei)=>{
+              const total=e.votes.slice(0,settings.parties.length).reduce((a,v)=>a+(parseInt(v)||0),0);
+              const rem=(parseInt(e.cast)||0)-total;
+              return(
+                <tr key={ei} style={{borderTop:`1px solid ${C.teal}22`}}>
+                  <td style={{padding:"5px 8px",color:C.boothDark,fontWeight:600}}>
+                    {settings.elections[ei]||`E${ei+1}`}
+                  </td>
+                  <td style={{padding:"4px 5px"}}>
+                    <Inp value={e.cast} onChange={ev=>setElec(ei,"cast",ev.target.value)} style={{padding:"5px 8px",fontSize:12}} booth/>
+                  </td>
+                  {settings.parties.map((_,pi)=>(
+                    <td key={pi} style={{padding:"4px 5px"}}>
+                      <Inp value={e.votes[pi]||""} onChange={ev=>setElec(ei,"vote",ev.target.value,pi)} style={{padding:"5px 8px",fontSize:12}} booth/>
+                    </td>
+                  ))}
+                  <td style={{padding:"5px 8px",fontWeight:700,color:rem<0?C.red:C.primary,fontSize:14}}>
+                    {rem>=0?rem:"—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
         </table>
       </div>
+      ////
       <Fld label="Notes"><textarea value={f.notes} onChange={e=>setF(p=>({...p,notes:e.target.value}))} placeholder="Booth-specific notes…" style={{width:"100%",padding:"9px 12px",fontSize:13,border:`1.5px solid ${C.teal}66`,borderRadius:9,background:C.white,resize:"vertical",minHeight:50,fontFamily:"inherit",outline:"none"}}/></Fld>
       <div style={{display:"flex",gap:10,marginTop:14}}>
         <Btn v="ghost" onClick={onClose} style={{flex:1}}>Cancel</Btn>
@@ -802,15 +830,43 @@ const handleSaveSheetsUrl = async (url) => {
         <div id="main-content" style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
 
           {screen==="contacts"&&<>
-            <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"12px 16px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:C.primaryDark}}>{activeTag||"All Contacts"}</div><div style={{fontSize:11,color:C.primary,fontWeight:500}}>{contacts.length} total · {filteredC.length} shown</div></div>
-                <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="🔍  Search name, phone, caste…" style={{flex:2,padding:"9px 14px",fontSize:13,border:`1.5px solid ${C.gray200}`,borderRadius:22,background:C.white,color:C.gray900,outline:"none",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}/>
-                <Btn v="success" onClick={()=>{setEditC(null);setShowAdd(true);}} style={{padding:"10px 22px",fontSize:14,boxShadow:"0 6px 20px rgba(5,150,105,.35)"}}>＋ Add Contact</Btn>
-                <Btn v="ghost" onClick={()=>reqAdmin(exportCSV)} title="Export CSV (Admin)">⬇️</Btn>
-                <Btn v="ghost" onClick={()=>setShowImport(true)} title="Import CSV">⬆️</Btn>
+            ////
+
+          <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"12px 16px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+          
+            {/* Row 1 — Title + Buttons */}
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:16,fontWeight:800,color:C.primaryDark}}>{activeTag||"All Contacts"}</div>
+                <div style={{fontSize:11,color:C.primary,fontWeight:500}}>{contacts.length} total · {filteredC.length} shown</div>
+              </div>
+              {/* Buttons — always visible */}
+              <div className="hero-buttons" style={{display:"flex",gap:6,alignItems:"center"}}>
+                <Btn v="success" onClick={()=>{setEditC(null);setShowAdd(true);}} style={{padding:"9px 16px",fontSize:13}}>＋ Add</Btn>
+                <Btn v="ghost" onClick={()=>reqAdmin(exportCSV)} title="Export CSV (Admin)" style={{padding:"9px 12px"}}>⬇️</Btn>
+                <Btn v="ghost" onClick={()=>setShowImport(true)} title="Import CSV" style={{padding:"9px 12px"}}>⬆️</Btn>
               </div>
             </div>
+          
+            {/* Row 2 — Search bar full width */}
+            <input
+              value={search}
+              onChange={e=>{setSearch(e.target.value);setPage(1);}}
+              placeholder="🔍  Search name, phone, caste, booth…"
+              style={{
+                width:"100%",
+                padding:"9px 14px",
+                fontSize:13,
+                border:`1.5px solid ${C.gray200}`,
+                borderRadius:22,
+                background:C.white,
+                color:C.gray900,
+                outline:"none",
+                boxShadow:"0 2px 8px rgba(0,0,0,.06)",
+              }}
+            />
+          </div>
+            ////
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               {[["Total",contacts.length,C.primary,"👥"],["Karyakartas",tagCounts["Karyakarta"]||0,C.success,"⚡"],["Key Voters",tagCounts["Key Voter"]||0,"#7C3AED","⭐"],["Opponents",tagCounts["Opponent"]||0,C.red,"⚠️"]].map(([l,v,cl,ic])=>(
                 <div key={l} style={{background:C.white,border:`1.5px solid ${cl}22`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
