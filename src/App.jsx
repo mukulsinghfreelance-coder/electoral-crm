@@ -735,7 +735,7 @@ const handleSaveSheetsUrl = async (url) => {
   const tdS={padding:"10px 10px",fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",borderBottom:`1px solid ${C.gray100}`};
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.white,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",fontSize:13,overflow:"hidden"}}>
+    <div id="app-root" style={{display:"flex",flexDirection:"column",height:"100vh",background:C.white,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",fontSize:13,overflow:"hidden"}}>
 
       {/* CONSTANTS BAR */}
 
@@ -856,21 +856,25 @@ const handleSaveSheetsUrl = async (url) => {
           </>}
 
           {screen==="booths"&&<>
-            <div style={{background:`linear-gradient(135deg,${C.tealLight},#ECFDF5)`,padding:"12px 16px",borderBottom:`1px solid ${C.teal}33`,flexShrink:0}}>
+            <div id="booth-hero" style={{background:`linear-gradient(135deg,${C.tealLight},#ECFDF5)`,padding:"12px 16px",borderBottom:`1px solid ${C.teal}33`,flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div><div style={{fontSize:16,fontWeight:800,color:C.boothDark}}>📍 Booth Management</div><div style={{fontSize:11,color:C.teal,fontWeight:500}}>{booths.length} booths · {filteredB.length} shown</div></div>
                 <input value={bSearch} onChange={e=>setBSearch(e.target.value)} placeholder="🔍  Search booths…" style={{flex:1,padding:"9px 14px",fontSize:13,border:`1.5px solid ${C.teal}55`,borderRadius:22,background:C.white,color:C.gray900,outline:"none",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}/>
-                <select value={bfR} onChange={e=>setBfR(e.target.value)} style={{padding:"8px 12px",fontSize:12,border:`1.5px solid ${C.teal}55`,borderRadius:9,background:bfR?C.tealLight:C.white,color:bfR?C.teal:C.gray600,fontWeight:bfR?700:400,outline:"none"}}>
-                  <option value="">All Ratings</option><option>A</option><option>B</option><option>C</option>
-                </select>
-                <select value={bfP} onChange={e=>setBfP(e.target.value)} style={{padding:"8px 12px",fontSize:12,border:`1.5px solid ${C.teal}55`,borderRadius:9,background:bfP?C.tealLight:C.white,color:bfP?C.teal:C.gray600,fontWeight:bfP?700:400,outline:"none"}}>
-                  <option value="">All Panchayats</option>{allPanchs.map(p=><option key={p}>{p}</option>)}
-                </select>
-                <Btn v="teal" onClick={()=>{setEditB(null);setShowBAdd(true);}} style={{padding:"10px 20px",fontSize:14}}>＋ Add Booth</Btn>
-                <Btn v="ghost" onClick={()=>setShowExcel(true)} style={{background:C.tealLight,color:C.teal,border:`1.5px solid ${C.teal}55`}}>📊 Excel</Btn>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <select value={bfR} onChange={e=>setBfR(e.target.value)} style={{padding:"8px 12px",fontSize:12,border:`1.5px solid ${C.teal}55`,borderRadius:9,background:bfR?C.tealLight:C.white,color:bfR?C.teal:C.gray600,fontWeight:bfR?700:400,outline:"none",flex:1,minWidth:100}}>
+                      <option value="">All Ratings</option><option>A</option><option>B</option><option>C</option>
+                    </select>
+                    <select value={bfP} onChange={e=>setBfP(e.target.value)} style={{padding:"8px 12px",fontSize:12,border:`1.5px solid ${C.teal}55`,borderRadius:9,background:bfP?C.tealLight:C.white,color:bfP?C.teal:C.gray600,fontWeight:bfP?700:400,outline:"none",flex:1,minWidth:100}}>
+                      <option value="">All Panchayats</option>{allPanchs.map(p=><option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <Btn v="teal" onClick={()=>{setEditB(null);setShowBAdd(true);}} style={{padding:"10px 20px",fontSize:14}}>＋ Add Booth</Btn>
+                    <Btn v="ghost" onClick={()=>setShowExcel(true)} style={{background:C.tealLight,color:C.teal,border:`1.5px solid ${C.teal}55`}}>📊 Excel</Btn>
+                  </div>
               </div>
             </div>
-            <div id="metrics-row" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.teal}22`,flexShrink:0,background:"#F0FDFA"}}>
+            <div id="booth-metrics" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.teal}22`,flexShrink:0,background:"#F0FDFA"}}>
               {[["Total",booths.length,C.teal,"📍"],["Rating A",boothRatingCounts.A,C.success,"✅"],["Rating B",boothRatingCounts.B,C.amber,"⚠️"],["Rating C",boothRatingCounts.C,C.red,"❌"]].map(([l,v,cl,ic])=>(
                 <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
                   <div style={{fontSize:10,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{ic} {l}</div>
