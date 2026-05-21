@@ -248,7 +248,7 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
       </div>
       <div style={{background:C.tealLight,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
         <div style={{fontSize:12,fontWeight:700,color:C.boothDark,marginBottom:10}}>📊 Election History</div>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <table id="booth-table" style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead><tr><th style={thS}>Election</th><th style={thS}>Casted Vote</th>{settings.parties.map((p,i)=><th key={i} style={thS}>{p}</th>)}<th style={{...thS,color:C.primary}}>Remaining</th></tr></thead>
           <tbody>{f.elec.map((e,ei)=>{
             const total=e.votes.slice(0,settings.parties.length).reduce((a,v)=>a+(parseInt(v)||0),0);
@@ -740,8 +740,9 @@ const handleSaveSheetsUrl = async (url) => {
 
       {/* CONSTANTS BAR */}
 
-  <div id="const-bar" style={{display:"flex",alignItems:"center",background:"linear-gradient(135deg,#1E1B4B,#312E81)",color:"#C7D2FE",flexShrink:0,padding:0,minHeight:42}}>
-    {/* Sync status indicator */}
+
+<div id="const-bar" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, paddingRight: 12 }}>
+  {/* Sync status indicator */}
   {syncStatus && (
     <span style={{
       fontSize: 11, fontWeight: 600,
@@ -767,43 +768,8 @@ const handleSaveSheetsUrl = async (url) => {
   </button>
 </div>
 
-     
-        <div id="app-body" style={{ display:"flex", flex:1, overflow:"hidden" }}>
-        
-        // Find sidebar div opening tag and add id: 
-        <div id="sidebar-desktop" style={{ width:200, minWidth:200, ... }}>
-        
-        // Find main content div and add id:
-        <div id="main-content" style={{ flex:1, display:"flex", ... }}>
-        
-        // Find detail panel div and add id:
-        <div id="detail-panel-desktop" style={{ width:248, minWidth:248, ... }}>
-        
-        // Find constants bar div and add id:
-        <div id="const-bar" style={{ display:"flex", alignItems:"center", background:"linear-gradient(...)", ... }}>
-        
-        // Find hero bar div and add id:
-        <div id="hero-bar" style={{ background:`linear-gradient(...)`, padding:"12px 16px", ... }}>
-        
-        // Find metrics row div and add id:
-        <div id="metrics-row" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", ... }}>
-        
-        // Find filter bar div and add id:
-        <div id="filter-bar" style={{ display:"flex", alignItems:"center", ... }}>
-        
-        // Find table wrapper div and add id:
-        <div id="table-wrap" style={{ flex:1, overflowY:"auto" }}>
-        
-        // Find contact table and add id:
-        <table id="contact-table" style={{ width:"100%", ... }}>
-        
-        // Find booth table and add id:
-        <table id="booth-table" style={{ width:"100%", ... }}>
-        
-        // Find modal inner divs (the white box inside modals) and add className:
-        <div className="modal-inner" style={{ background:C.white, borderRadius:18, ... }}>
-        
-        
+      <div id="app-body" style={{display:"flex",flex:1,overflow:"hidden"}}>
+
         {/* SIDEBAR */}
         <div id="sidebar-desktop" style={{width:200,minWidth:200,borderRight:`1px solid ${C.gray200}`,background:C.gray50,display:"flex",flexDirection:"column",overflowY:"auto"}}>
           <div style={{padding:"14px 14px 10px",borderBottom:`1px solid ${C.gray200}`}}>
@@ -846,7 +812,7 @@ const handleSaveSheetsUrl = async (url) => {
                 <Btn v="ghost" onClick={()=>setShowImport(true)} title="Import CSV">⬆️</Btn>
               </div>
             </div>
-            <div id="metrics-row" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               {[["Total",contacts.length,C.primary,"👥"],["Karyakartas",tagCounts["Karyakarta"]||0,C.success,"⚡"],["Key Voters",tagCounts["Key Voter"]||0,"#7C3AED","⭐"],["Opponents",tagCounts["Opponent"]||0,C.red,"⚠️"]].map(([l,v,cl,ic])=>(
                 <div key={l} style={{background:C.white,border:`1.5px solid ${cl}22`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
                   <div style={{fontSize:10,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{ic} {l}</div>
@@ -854,7 +820,7 @@ const handleSaveSheetsUrl = async (url) => {
                 </div>
               ))}
             </div>
-<div id="filter-bar" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,flexWrap:"wrap",background:C.gray50}}>
+            <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,flexWrap:"wrap",background:C.gray50}}>
               {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All Mandals",settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All Panchayats",mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All Booths",[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All Castes",settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS]].map(([val,setter,ph,opts],i)=>(
                 <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer"}}>
                   <option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}
@@ -863,8 +829,8 @@ const handleSaveSheetsUrl = async (url) => {
               {(search||fM||fP||fB||fCaste||fT||activeTag)&&<button onClick={()=>{setSearch("");setFM("");setFP("");setFB("");setFCaste("");setFT("");setActiveTag("");setPage(1);}} style={{padding:"5px 10px",fontSize:11,background:"#FEE2E2",color:C.red,border:"none",borderRadius:8,cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
               <span style={{marginLeft:"auto",fontSize:11,color:C.gray400,fontWeight:600}}>{filteredC.length} result{filteredC.length!==1?"s":""}</span>
             </div>
-           <div id="table-wrap" style={{flex:1,overflowY:"auto"}}>
-                <table id="contact-table" style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
+            <div style={{flex:1,overflowY:"auto"}}>
+              <table id="contact-table" style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
                 <thead><tr>{[["name","Name",106],["phone","Phone",88],["caste","Caste",64],["mandal","Mandal",72],["panchayat","Panchayat",76],["bno","Booth",42],["tag","Tag",86]].map(([col,label,w])=>(<th key={col} style={{...thS,width:w}}>{label}<SortArrow col={col} sort={sort} onSort={col=>setSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})}/></th>))}</tr></thead>
                 <tbody>{slice.map(c=>(<tr key={c.id} onClick={()=> { 
 			setSelC(c);
@@ -905,7 +871,7 @@ const handleSaveSheetsUrl = async (url) => {
                 <Btn v="ghost" onClick={()=>setShowExcel(true)} style={{background:C.tealLight,color:C.teal,border:`1.5px solid ${C.teal}55`}}>📊 Excel</Btn>
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.teal}22`,flexShrink:0,background:"#F0FDFA"}}>
+            <div id="metrics-row" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.teal}22`,flexShrink:0,background:"#F0FDFA"}}>
               {[["Total",booths.length,C.teal,"📍"],["Rating A",boothRatingCounts.A,C.success,"✅"],["Rating B",boothRatingCounts.B,C.amber,"⚠️"],["Rating C",boothRatingCounts.C,C.red,"❌"]].map(([l,v,cl,ic])=>(
                 <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
                   <div style={{fontSize:10,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{ic} {l}</div>
@@ -914,7 +880,7 @@ const handleSaveSheetsUrl = async (url) => {
               ))}
             </div>
             <div id="table-wrap" style={{flex:1,overflowY:"auto"}}>
-              <table id="booth-table" style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
                 <thead><tr>
                   {[["bno","No.",50],["bnm","Booth Name",120],["mandal","Mandal",80],["panchayat","Panchayat",90],["voters","Voters",60],["rating","Rating",80],["castes","Top Castes",null],["last","Last Election",null]].map(([col,label,w])=>(
                     <th key={col} style={{...thSB,...(w?{width:w}:{})}}>{label}{col!=="castes"&&col!=="last"&&<SortArrow col={col} sort={bSort} onSort={col=>setBSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})} booth/>}</th>
@@ -943,13 +909,13 @@ const handleSaveSheetsUrl = async (url) => {
         </div>
 
         {/* DETAIL PANEL */}
-        <<div id="detail-panel-desktop" style={{width:248,minWidth:248,borderLeft:`1px solid ${C.gray200}`,display:"flex",flexDirection:"column",overflowY:"auto",background:C.white}}>
+        <div id="detail-panel-desktop" style={{width:248,minWidth:248,borderLeft:`1px solid ${C.gray200}`,display:"flex",flexDirection:"column",overflowY:"auto",background:C.white}}>
           {screen==="contacts"
             ?<ContactDetail contact={contacts.find(c=>c.id===selC?.id)||null} settings={settings} onEdit={c=>{setEditC(c);setShowAdd(true);}} onDelete={handleDeleteContact}/>
             :<BoothDetail   booth={booths.find(b=>b.id===selB?.id)||null}     settings={settings} onEdit={b=>{setEditB(b);setShowBAdd(true);}} onDelete={handleDeleteBooth}/>
           }
         </div>
-     </div>
+      </div>
 
       {/* MODALS */}
       <OTPModal     open={showOTP}      onClose={()=>setShowOTP(false)}      pin={settings.adminPin} onSuccess={()=>{setIsAdmin(true);setShowOTP(false);if(otpAction){otpAction();setOtpAction(null);}}}/>
@@ -962,81 +928,6 @@ const handleSaveSheetsUrl = async (url) => {
       <ImportModal  open={showImport}   onClose={()=>setShowImport(false)}    onImport={handleImport} saving={saving}/>
       <ExcelModal   open={showExcel}    onClose={()=>setShowExcel(false)}     onImport={handleBoothExcel} saving={saving}/>
       <Toast msg={toast.msg} type={toast.type}/>
-      
-      {/* ── MOBILE DETAIL MODAL ── */}
-{showMobileDetail && (
-  <div
-    onClick={e => e.target === e.currentTarget && setShowMobileDetail(false)}
-    style={{ position:"fixed", inset:0, background:"rgba(17,24,39,.6)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:800, backdropFilter:"blur(3px)" }}
-  >
-    <div style={{ background:C.white, borderRadius:"20px 20px 0 0", width:"100%", maxHeight:"85vh", overflowY:"auto", paddingBottom:80 }}>
-      <div style={{ width:40, height:4, background:C.gray200, borderRadius:2, margin:"12px auto 0" }}/>
-      {screen === "contacts"
-        ? <ContactDetail
-            contact={contacts.find(c => c.id === selC?.id) || null}
-            settings={settings}
-            onEdit={c => { setEditC(c); setShowAdd(true); setShowMobileDetail(false); }}
-            onDelete={id => { handleDeleteContact(id); setShowMobileDetail(false); }}
-          />
-        : <BoothDetail
-            booth={booths.find(b => b.id === selB?.id) || null}
-            settings={settings}
-            onEdit={b => { setEditB(b); setShowBAdd(true); setShowMobileDetail(false); }}
-            onDelete={id => { handleDeleteBooth(id); setShowMobileDetail(false); }}
-          />
-      }
-    </div>
-  </div>
-)}
-
-{/* ── BOTTOM NAV (mobile only) ── */}
-<div id="bottom-nav" style={{ display:"none" }}>
-  {[
-    { icon:"👥", label:"Contacts", screen:"contacts" },
-    { icon:"📍", label:"Booths",   screen:"booths"   },
-    { icon:"⚙️", label:"Settings", screen:"settings" },
-  ].map(tab => (
-    <button
-      key={tab.screen}
-      onClick={() => {
-        if (tab.screen === "settings") {
-          reqAdmin(() => setShowSettings(true));
-        } else {
-          setScreen(tab.screen);
-          setActiveTag("");
-          setSelC(null);
-          setSelB(null);
-        }
-      }}
-      style={{
-        flex:1, display:"flex", flexDirection:"column", alignItems:"center",
-        justifyContent:"center", gap:3, padding:"8px 4px",
-        background:"none", border:"none", cursor:"pointer", fontFamily:"inherit",
-        color: screen === tab.screen ? C.primary : C.gray400,
-        borderTop: screen === tab.screen ? `2.5px solid ${C.primary}` : "2.5px solid transparent",
-        transition:"all .15s",
-      }}
-    >
-      <span style={{ fontSize:20 }}>{tab.icon}</span>
-      <span style={{ fontSize:10, fontWeight:700 }}>{tab.label}</span>
-    </button>
-  ))}
-
-  {/* Big Add button in center */}
-  <button
-    onClick={() => { setEditC(null); setShowAdd(true); }}
-    style={{
-      position:"absolute", bottom:12, left:"50%", transform:"translateX(-50%)",
-      width:54, height:54, borderRadius:"50%", border:"none", cursor:"pointer",
-      background:`linear-gradient(135deg,${C.success},#047857)`,
-      color:C.white, fontSize:26, fontWeight:800,
-      boxShadow:"0 6px 20px rgba(5,150,105,.45)",
-      display:"flex", alignItems:"center", justifyContent:"center",
-    }}
-  >
-    ＋
-  </button>
-</div>
     </div>
   );
 }
