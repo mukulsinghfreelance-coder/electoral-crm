@@ -610,7 +610,7 @@ const handleSaveSheetsUrl = async (url) => {
   }
 };
 
-  useEffect(()=>{loadAll();},[loadAll]);
+  useEffect(() => { loadAll(); }, []); // empty array = run once only
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [screen,    setScreen]    = useState("contacts");
@@ -764,49 +764,129 @@ const handleSaveSheetsUrl = async (url) => {
   return (
     <div id="app-root" style={{display:"flex",flexDirection:"column",height:"100vh",background:C.white,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",fontSize:13,overflow:"hidden"}}>
 
-      {/* CONSTANTS BAR */}
+      {/* ── CONSTANTS BAR ── */}
+      <div
+        id="const-bar"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          background: "linear-gradient(135deg,#1E1B4B,#312E81)",
+          flexShrink: 0,
+          width: "100%",
+          minHeight: 42,
+          maxHeight: 42,
+          overflowX: "auto",
+          overflowY: "hidden",
+          position: "relative",
+          zIndex: 100,
+        }}
+      >
+        {/* Constant fields */}
+        {[
+          ["State",        settings.state        || "—"],
+          ["Lok Sabha",    settings.ls           || "—"],
+          ["Vidhan Sabha", settings.vs           || "—"],
+          ["Voters",       settings.totalVoters  || "—"],
+          ["Booths",       settings.totalBooths  || "—"],
+        ].map(([label, value]) => (
+          <div
+            key={label}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "0 16px",
+              borderRight: "1px solid #3730A3",
+              height: 42,
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span style={{
+              fontSize: 10,
+              letterSpacing: ".04em",
+              color: "#A5B4FC",
+              fontWeight: 600,
+              textTransform: "uppercase",
+            }}>
+              {label}
+            </span>
+            <span style={{
+              fontWeight: 700,
+              color: "#FFFFFF",
+              fontSize: 13,
+              marginLeft: 4,
+            }}>
+              {value}
+            </span>
+          </div>
+        ))}
+      
+        {/* Sync status indicator */}
+        {syncStatus && (
+          <span style={{
+            marginLeft: 10,
+            fontSize: 11,
+            fontWeight: 600,
+            flexShrink: 0,
+            color: syncStatus === "ok"      ? "#6EE7B7"
+                 : syncStatus === "error"   ? "#FCA5A5"
+                 :                            "#A5B4FC",
+          }}>
+            {syncStatus === "syncing" ? "⏳ Syncing…"
+           : syncStatus === "ok"      ? "✅ Synced"
+           :                            "❌ Failed"}
+          </span>
+        )}
+      
+        {/* Right side — Pull + Edit buttons */}
+        <div style={{
+          marginLeft: "auto",
+          display: "flex",
+          gap: 6,
+          paddingRight: 12,
+          flexShrink: 0,
+        }}>
+          {settings.sheetsUrl && (
+            <button
+              onClick={pullFromSheets}
+              style={{
+                padding: "5px 10px",
+                fontSize: 10,
+                background: "transparent",
+                border: "1px solid #4338CA",
+                borderRadius: 6,
+                color: "#C7D2FE",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontFamily: "inherit",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ⬇️ Pull
+            </button>
+          )}
+          <button
+            onClick={() => reqAdmin(() => setShowConst(true))}
+            style={{
+              padding: "5px 10px",
+              fontSize: 10,
+              background: "transparent",
+              border: "1px solid #4338CA",
+              borderRadius: 6,
+              color: "#C7D2FE",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontFamily: "inherit",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ✏️ Edit
+          </button>
+        </div>
+      
+      </div>
 
-
-    <div id="const-bar" style={{
-      display:"flex",
-      alignItems:"center",
-      background:"linear-gradient(135deg,#1E1B4B,#312E81)",
-      color:"#C7D2FE",
-      flexShrink:0,
-      padding:0,
-      minHeight:42,
-      width:"100%",
-      position:"relative",
-      zIndex:100,
-      overflowX:"auto",
-      overflowY:"hidden",
-    }}>
-  
-  {/* Sync status indicator */}
-  {syncStatus && (
-    <span style={{
-      fontSize: 11, fontWeight: 600,
-      color: syncStatus === "ok" ? "#6EE7B7" : syncStatus === "error" ? "#FCA5A5" : "#A5B4FC"
-    }}>
-      {syncStatus === "syncing" ? "⏳ Syncing…" : syncStatus === "ok" ? "✅ Synced" : "❌ Sync failed"}
-    </span>
-  )}
-  {/* Pull from Sheets button — only shown when URL is configured */}
-  {settings.sheetsUrl && (
-    <button
-      onClick={pullFromSheets}
-      style={{ padding: "5px 10px", fontSize: 10, background: "transparent", border: "1px solid #4338CA", borderRadius: 6, color: "#C7D2FE", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}
-    >
-      ⬇️ Pull Sheets
-    </button>
-  )}
-  <button
-    onClick={() => reqAdmin(() => setShowConst(true))}
-    style={{ padding: "5px 10px", fontSize: 10, background: "transparent", border: "1px solid #4338CA", borderRadius: 6, color: "#C7D2FE", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}
-  >
-    ✏️ Edit
-  </button>
-</div>
 
       <div id="app-body" style={{display:"flex",flex:1,overflow:"hidden"}}>
 
