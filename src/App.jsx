@@ -768,42 +768,7 @@ const handleSaveSheetsUrl = async (url) => {
   </button>
 </div>
 //      
-
-
-      <div id="app-body" style={{ display:"flex", flex:1, overflow:"hidden" }}>
-
-      // Find sidebar div opening tag and add id:
-      <div id="sidebar-desktop" style={{ width:200, minWidth:200, ... }}>
-      
-      // Find main content div and add id:
-      <div id="main-content" style={{ flex:1, display:"flex", ... }}>
-      
-      // Find detail panel div and add id:
-      <div id="detail-panel-desktop" style={{ width:248, minWidth:248, ... }}>
-      
-      // Find constants bar div and add id:
-      <div id="const-bar" style={{ display:"flex", alignItems:"center", background:"linear-gradient(...)", ... }}>
-      
-      // Find hero bar div and add id:
-      <div id="hero-bar" style={{ background:`linear-gradient(...)`, padding:"12px 16px", ... }}>
-      
-      // Find metrics row div and add id:
-      <div id="metrics-row" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", ... }}>
-      
-      // Find filter bar div and add id:
-      <div id="filter-bar" style={{ display:"flex", alignItems:"center", ... }}>
-      
-      // Find table wrapper div and add id:
-      <div id="table-wrap" style={{ flex:1, overflowY:"auto" }}>
-      
-      // Find contact table and add id:
-      <table id="contact-table" style={{ width:"100%", ... }}>
-      
-      // Find booth table and add id:
-      <table id="booth-table" style={{ width:"100%", ... }}>
-      
-      // Find modal inner divs (the white box inside modals) and add className:
-      <div className="modal-inner" style={{ background:C.white, borderRadius:18, ... }}>
+       <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
 
         {/* SIDEBAR */}
         <div style={{width:200,minWidth:200,borderRight:`1px solid ${C.gray200}`,background:C.gray50,display:"flex",flexDirection:"column",overflowY:"auto"}}>
