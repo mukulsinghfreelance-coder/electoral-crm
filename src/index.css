@@ -53,7 +53,9 @@ input:focus, select:focus, textarea:focus {
 ::-webkit-scrollbar-thumb { background: var(--color-border-primary); border-radius: 10px; }
 
 
-/* ── MOBILE RESPONSIVE ─────────────────────────────────────────────────────── */
+/* ── ADD THESE AT THE BOTTOM OF YOUR EXISTING index.css ── */
+
+/* ── MOBILE RESPONSIVE ───────────────────────────────────────────────────── */
 @media (max-width: 768px) {
 
   /* Hide sidebar on mobile */
@@ -63,24 +65,19 @@ input:focus, select:focus, textarea:focus {
   #detail-panel-desktop { display: none !important; }
 
   /* Full width main */
-  #main-content { min-width: 0 !important; width: 100% !important; }
-
-  /* Bottom tab bar */
-  #bottom-nav {
-    display: flex !important;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: #fff;
-    border-top: 1.5px solid #E5E7EB;
-    z-index: 500;
-    box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+  #main-content {
+    min-width: 0 !important;
+    width: 100% !important;
   }
 
   /* Add padding at bottom so content doesn't hide behind tab bar */
-  #app-body { padding-bottom: 64px !important; }
+  #app-body { padding-bottom: 70px !important; }
 
   /* Make constants bar scrollable horizontally */
-  #const-bar { overflow-x: auto; }
+  #const-bar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
   #const-bar::-webkit-scrollbar { display: none; }
 
   /* Bigger touch targets */
@@ -90,32 +87,59 @@ input:focus, select:focus, textarea:focus {
   .modal-inner {
     width: 96vw !important;
     max-width: 96vw !important;
-    margin: 0 8px !important;
+    margin: 0 auto !important;
     border-radius: 16px !important;
   }
 
   /* Stack filter bar */
-  #filter-bar { flex-wrap: wrap; gap: 6px !important; }
+  #filter-bar {
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
   #filter-bar select { font-size: 12px !important; }
 
   /* Smaller metrics cards */
-  #metrics-row { gap: 5px !important; padding: 8px !important; }
-  #metrics-row > div { padding: 8px !important; }
-  #metrics-row .metric-val { font-size: 18px !important; }
+  #metrics-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5px !important;
+    padding: 8px !important;
+  }
 
   /* Table horizontal scroll */
-  #table-wrap { overflow-x: auto; }
+  #table-wrap { overflow-x: auto !important; }
   #contact-table { min-width: 520px; }
   #booth-table   { min-width: 600px; }
 
   /* Hero bar stack on mobile */
-  #hero-bar { flex-wrap: wrap; gap: 8px !important; padding: 10px 12px !important; }
-  #hero-bar input { min-width: 0 !important; width: 100% !important; order: 3; flex: unset !important; }
-  #hero-bar .hero-title { flex: 1; }
-  #hero-bar .hero-actions { display: flex; gap: 6px; order: 2; }
+  #hero-bar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+  #hero-bar input {
+    width: 100% !important;
+    order: 3;
+    flex: unset !important;
+  }
 }
 
-@media (min-width: 769px) {
-  /* Hide bottom nav on desktop */
-  #bottom-nav { display: none !important; }
+/* ── BOTTOM NAV — desktop: hidden, mobile: visible ───────────────────────── */
+#bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  #bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: #ffffff;
+    border-top: 1.5px solid #E5E7EB;
+    z-index: 999;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.10);
+    align-items: stretch;
+  }
 }

@@ -916,6 +916,147 @@ const handleSaveSheetsUrl = async (url) => {
         </div>
       </div>
 
+      {/* ── MOBILE DETAIL MODAL ── */}
+      {showMobileDetail && (
+        <div
+          onClick={e => e.target === e.currentTarget && setShowMobileDetail(false)}
+          style={{
+            position:"fixed", inset:0,
+            background:"rgba(17,24,39,.6)",
+            display:"flex", alignItems:"flex-end", justifyContent:"center",
+            zIndex:800, backdropFilter:"blur(3px)"
+          }}
+        >
+          <div style={{
+            background:"#FFFFFF",
+            borderRadius:"20px 20px 0 0",
+            width:"100%", maxHeight:"85vh",
+            overflowY:"auto", paddingBottom:80
+          }}>
+            {/* Drag handle */}
+            <div style={{
+              width:40, height:4,
+              background:"#E5E7EB",
+              borderRadius:2,
+              margin:"12px auto 0"
+            }}/>
+            {screen === "contacts"
+              ? <ContactDetail
+                  contact={contacts.find(c => c.id === selC?.id) || null}
+                  settings={settings}
+                  onEdit={c => {
+                    setEditC(c);
+                    setShowAdd(true);
+                    setShowMobileDetail(false);
+                  }}
+                  onDelete={id => {
+                    handleDeleteContact(id);
+                    setShowMobileDetail(false);
+                  }}
+                />
+              : <BoothDetail
+                  booth={booths.find(b => b.id === selB?.id) || null}
+                  settings={settings}
+                  onEdit={b => {
+                    setEditB(b);
+                    setShowBAdd(true);
+                    setShowMobileDetail(false);
+                  }}
+                  onDelete={id => {
+                    handleDeleteBooth(id);
+                    setShowMobileDetail(false);
+                  }}
+                />
+            }
+          </div>
+        </div>
+      )}
+
+      {/* ── BOTTOM NAV (shown on mobile via CSS) ── */}
+      <div id="bottom-nav">
+
+        {/* Contacts tab */}
+        <button
+          onClick={() => {
+            setScreen("contacts");
+            setActiveTag("");
+            setSelC(null);
+            setSelB(null);
+          }}
+          style={{
+            flex:1, display:"flex", flexDirection:"column",
+            alignItems:"center", justifyContent:"center",
+            gap:3, background:"none", border:"none",
+            cursor:"pointer", fontFamily:"inherit",
+            color: screen === "contacts" ? "#4F46E5" : "#9CA3AF",
+            borderTop: screen === "contacts" ? "2.5px solid #4F46E5" : "2.5px solid transparent",
+          }}
+        >
+          <span style={{fontSize:20}}>👥</span>
+          <span style={{fontSize:10, fontWeight:700}}>Contacts</span>
+        </button>
+
+        {/* Big green ADD button in centre */}
+        <div style={{
+          flex:1, display:"flex",
+          alignItems:"center", justifyContent:"center",
+          position:"relative"
+        }}>
+          <button
+            onClick={() => { setEditC(null); setShowAdd(true); }}
+            style={{
+              width:54, height:54, borderRadius:"50%",
+              border:"none", cursor:"pointer",
+              background:"linear-gradient(135deg,#059669,#047857)",
+              color:"#FFFFFF", fontSize:28, fontWeight:800,
+              boxShadow:"0 6px 20px rgba(5,150,105,.45)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              position:"absolute", bottom:6,
+            }}
+          >
+            ＋
+          </button>
+        </div>
+
+        {/* Booths tab */}
+        <button
+          onClick={() => {
+            setScreen("booths");
+            setActiveTag("");
+            setSelC(null);
+            setSelB(null);
+          }}
+          style={{
+            flex:1, display:"flex", flexDirection:"column",
+            alignItems:"center", justifyContent:"center",
+            gap:3, background:"none", border:"none",
+            cursor:"pointer", fontFamily:"inherit",
+            color: screen === "booths" ? "#0D9488" : "#9CA3AF",
+            borderTop: screen === "booths" ? "2.5px solid #0D9488" : "2.5px solid transparent",
+          }}
+        >
+          <span style={{fontSize:20}}>📍</span>
+          <span style={{fontSize:10, fontWeight:700}}>Booths</span>
+        </button>
+
+        {/* Settings tab */}
+        <button
+          onClick={() => reqAdmin(() => setShowSettings(true))}
+          style={{
+            flex:1, display:"flex", flexDirection:"column",
+            alignItems:"center", justifyContent:"center",
+            gap:3, background:"none", border:"none",
+            cursor:"pointer", fontFamily:"inherit",
+            color:"#9CA3AF",
+          }}
+        >
+          <span style={{fontSize:20}}>⚙️</span>
+          <span style={{fontSize:10, fontWeight:700}}>Settings</span>
+        </button>
+
+      </div>
+
+      {/* ── MODALS start below this line ── */}
       {/* MODALS */}
       <OTPModal     open={showOTP}      onClose={()=>setShowOTP(false)}      pin={settings.adminPin} onSuccess={()=>{setIsAdmin(true);setShowOTP(false);if(otpAction){otpAction();setOtpAction(null);}}}/>
       <SettingsModal open={showSettings} onClose={()=>setShowSettings(false)} settings={settings} onSave={handleSaveSettings} saving={saving}/>
