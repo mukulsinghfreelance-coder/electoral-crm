@@ -209,8 +209,8 @@ function ContactForm({open,onClose,initial,settings,onSave,saving}) {
             {settings.castes.map(c=><option key={c}>{c}</option>)}
           </Sel>
         </Fld>
-        <Fld label="Booth No." err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric"/></Fld>
-        <Fld label={settings.labels.bnm} col="2"><Inp value={f.bnm} onChange={set("bnm")} placeholder="optional"/></Fld>
+        <Fld label=`${settings.labels.booth} No.` err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric"/></Fld>
+        <Fld label=`${settings.labels.booth} Name` col="2"><Inp value={f.bnm} onChange={set("bnm")} placeholder="optional"/></Fld>
         <Fld label={settings.labels.tag} req err={errs.tag}>
           <Sel value={f.tag} onChange={set("tag")} error={errs.tag}>
             <option value="">— Select Tag —</option>
