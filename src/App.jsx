@@ -1063,8 +1063,8 @@ const handleSaveSheetsUrl = async (url) => {
           </div>
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
-          <SBI icon="🗺️" label=`By ${settings.labels.mandal}` active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
-          <SBI icon="🏘️" label=`By ${settings.labels.panchayat} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
+          <SBI icon="🗺️" label={`By ${settings.labels.mandal}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
+          <SBI icon="🏘️" label={`By ${settings.labels.panchayat}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>By Tag</div>
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Modules</div>
