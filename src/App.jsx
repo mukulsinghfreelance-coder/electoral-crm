@@ -499,7 +499,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
                 ["Booth field",     s.labels?.booth     || "Booth"],
                 ["Village field",   s.labels?.village   || "Village"],
                 ["Caste field",     s.labels?.caste     || "Caste"],
-                ["Worker tag",      s.labels?.karyakarta|| "Karyakarta"],
+                ["Karyakarta tag",      s.labels?.karyakarta|| "Karyakarta"],
               ].map(([orig, custom]) => (
                 <div key={orig} style={{
                   background:"#fff", border:"1.5px solid #E5E7EB",
