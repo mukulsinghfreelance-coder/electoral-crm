@@ -339,7 +339,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
       </div>
       {tab==="geo"&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
         <div>
-          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Mandals</div>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>{settings.labels.mandal}</div>
           <div style={{border:`1.5px solid ${C.gray200}`,borderRadius:10,overflow:"hidden",maxHeight:180,overflowY:"auto",marginBottom:8}}>
             {s.mandals.map((m,i)=>(<div key={i} onClick={()=>setSelM(i)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",fontSize:13,background:selM===i?C.primaryLight:"transparent",cursor:"pointer",borderBottom:`1px solid ${C.gray100}`}}><span style={{fontWeight:selM===i?700:400,color:selM===i?C.primary:"inherit"}}>{m.name}</span><button onClick={e=>{e.stopPropagation();remM(i);}} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:13}}>✕</button></div>))}
             {s.mandals.length===0&&<div style={{padding:12,color:C.gray400,fontSize:12}}>No mandals yet</div>}
@@ -347,7 +347,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
           <div style={{display:"flex",gap:6}}><Inp value={nm} onChange={e=>setNm(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addM()} placeholder={`New ${settings.labels.mandal} name...`}/><Btn v="primary" onClick={addM} style={{padding:"9px 14px"}}>+</Btn></div>
         </div>
         <div>
-          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Panchayats in <span style={{color:C.primary}}>{s.mandals[selM]?.name||"—"}</span></div>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>{settings.labels.panchayat} in <span style={{color:C.primary}}>{s.mandals[selM]?.name||"—"}</span></div>
           <div style={{border:`1.5px solid ${C.gray200}`,borderRadius:10,overflow:"hidden",maxHeight:180,overflowY:"auto",marginBottom:8}}>
             {(s.mandals[selM]?.panchayats||[]).map((p,pi)=>(<div key={pi} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}>{p}<button onClick={()=>remP(selM,pi)} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:13}}>✕</button></div>))}
             {(s.mandals[selM]?.panchayats||[]).length===0&&<div style={{padding:12,color:C.gray400,fontSize:12}}>No panchayats</div>}
@@ -1252,7 +1252,7 @@ const handleSaveSheetsUrl = async (url) => {
             <div id="table-wrap" style={{flex:1,overflowY:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
                 <thead><tr>
-                  {[["bno","No.",50],["bnm", settings.labels.boothName,120],["mandal",settings.labels.mandal,80],["panchayat",settings.labels.panchayat,90],["voters","Voters",60],["rating","Rating",80],["castes","Top Castes",null],["last","Last Election",null]].map(([col,label,w])=>(
+                  {[["bno","No.",50],["bnm", `${settings.labels.booth} Name`,120],["mandal",settings.labels.mandal,80],["panchayat",settings.labels.panchayat,90],["voters","Voters",60],["rating","Rating",80],["castes",`Top ${settings.labels.caste}`,null],["last","Last Election",null]].map(([col,label,w])=>(
                     <th key={col} style={{...thSB,...(w?{width:w}:{})}}>{label}{col!=="castes"&&col!=="last"&&<SortArrow col={col} sort={bSort} onSort={col=>setBSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})} booth/>}</th>
                   ))}
                 </tr></thead>
