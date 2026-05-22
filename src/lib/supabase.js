@@ -129,37 +129,6 @@ export async function upsertBoothByBno(boothData) {
 }
 
 // ─── MAPPERS — DB ↔ App ───────────────────────────────────────────────────────
-function dbToSettings(d) {
-  return {
-    state:        d.state        || 'Bihar',
-    ls:           d.ls           || 'Patna Sahib',
-    vs:           d.vs           || 'Bankipur',
-    totalVoters:  d.total_voters || '',
-    totalBooths:  d.total_booths || '',
-    mandals:      d.mandals      || [],
-    castes:       d.castes       || [],
-    parties:      d.parties      || ['BJP+', 'Congress+', 'Others+'],
-    elections:    d.elections    || ['Election 2015', 'Election 2020', 'Election 2024'],
-    adminPin:     d.admin_pin    || '1234',
-    sheetsUrl:    d.sheets_url   || '',
-  }
-}
-
-function settingsToDb(s) {
-  return {
-    state:        s.state,
-    ls:           s.ls,
-    vs:           s.vs,
-    total_voters: s.totalVoters,
-    total_booths: s.totalBooths,
-    mandals:      s.mandals,
-    castes:       s.castes,
-    parties:      s.parties,
-    elections:    s.elections,
-    admin_pin:    s.adminPin,
-    sheets_url:   s.sheetsUrl,
-  }
-}
 
 function dbToContact(d) {
   return {
