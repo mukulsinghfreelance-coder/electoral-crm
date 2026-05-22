@@ -255,7 +255,7 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
   };
   const thS={padding:"7px 9px",textAlign:"left",fontSize:10,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:".05em",background:C.tealLight,borderBottom:`1.5px solid ${C.teal}33`};
   return (
-    <Modal open={open} onClose={onClose} title={initial?'✏️ Edit '{settings.labels.booth}:'📍 Add '{settings.labels.booth}} wide>
+    <Modal open={open} onClose={onClose} title={initial?'✏️ Edit  ${settings.labels.booth}' : '📍 Add  ${settings.labels.booth}'} wide>
       <div style={{background:`linear-gradient(135deg,${C.tealLight},#F0FDFA)`,borderRadius:12,padding:"12px 14px",marginBottom:14,borderLeft:`4px solid ${C.teal}`}}>
         <div style={{fontSize:12,fontWeight:700,color:C.boothDark}}>Booth Details — fields marked * are required</div>
       </div>
