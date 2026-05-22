@@ -63,8 +63,7 @@ const DEFAULT_SETTINGS = {
     contacts:   "Contacts",
     karyakarta: "Karyakarta",
     whatsapp:   "WhatsApp No.",  // ← ADD THIS
-  },
-};
+  };
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
