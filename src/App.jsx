@@ -257,16 +257,16 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
   return (
     <Modal open={open} onClose={onClose} title={initial?`✏️ Edit  ${settings.labels.booth}` : `📍 Add  ${settings.labels.booth}`} wide>
       <div style={{background:`linear-gradient(135deg,${C.tealLight},#F0FDFA)`,borderRadius:12,padding:"12px 14px",marginBottom:14,borderLeft:`4px solid ${C.teal}`}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.boothDark}}>Booth Details — fields marked * are required</div>
+        <div style={{fontSize:12,fontWeight:700,color:C.boothDark}}>{settings.labels.booth} Details — fields marked * are required</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 14px"}}>
         <Fld label={settings.labels.booth} req err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric" booth/></Fld>
-        <Fld label={settings.labels.boothName} col="2"><Inp value={f.bnm} onChange={e=>setF(p=>({...p,bnm:e.target.value}))} placeholder="optional" booth/></Fld>
+        <Fld label={`${settings.labels.booth} Name`} col="2"><Inp value={f.bnm} onChange={e=>setF(p=>({...p,bnm:e.target.value}))} placeholder="optional" booth/></Fld>
         <Fld label={`${settings.labels.booth} Rating`} col="3"><Sel value={f.rating} onChange={e=>setF(p=>({...p,rating:e.target.value}))} booth><option value="">— Optional —</option><option value="A">A — Generally Wins</option><option value="B">B — Mediocre</option><option value="C">C — Generally Loses</option></Sel></Fld>
         <Fld label={settings.labels.mandal} req err={errs.mandal} col="1"><Sel value={f.mandal} onChange={e=>setF(p=>({...p,mandal:e.target.value,panchayat:""}))} error={errs.mandal} booth><option value="">— Select —</option>{settings.mandals.map(m=><option key={m.name}>{m.name}</option>)}</Sel></Fld>
         <Fld label={settings.labels.panchayat} req err={errs.panchayat} col="2"><Sel value={f.panchayat} onChange={e=>setF(p=>({...p,panchayat:e.target.value}))} error={errs.panchayat} disabled={!f.mandal} booth><option value="">— Select —</option>{panchs.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
         <Fld label="Total Voters" col="3"><Inp value={f.voters} onChange={e=>setF(p=>({...p,voters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 1200" booth/></Fld>
-        {[0,1,2].map(i=>(<Fld key={i} label={`Top Caste ${i+1}`} col={String(i+1)}><Sel value={f.castes[i]} onChange={e=>{const c=[...f.castes];c[i]=e.target.value;setF(p=>({...p,castes:c}));}} booth><option value="">— Select —</option>{settings.castes.map(c=><option key={c}>{c}</option>)}</Sel></Fld>))}
+        {[0,1,2].map(i=>(<Fld key={i} label={`Top ${settings.labels.caste} ${i+1}`} col={String(i+1)}><Sel value={f.castes[i]} onChange={e=>{const c=[...f.castes];c[i]=e.target.value;setF(p=>({...p,castes:c}));}} booth><option value="">— Select —</option>{settings.castes.map(c=><option key={c}>{c}</option>)}</Sel></Fld>))}
       </div>
       <div
         className="election-history-section"
@@ -1235,7 +1235,7 @@ const handleSaveSheetsUrl = async (url) => {
                     fontWeight:bfP?700:400, outline:"none"
                   }}
                 >
-                  <option value="">All ${settings.labels.panchayat}</option>
+                  <option value="">All {settings.labels.panchayat}</option>
                   {allPanchs.map(p=><option key={p}>{p}</option>)}
                 </select>
               </div>
