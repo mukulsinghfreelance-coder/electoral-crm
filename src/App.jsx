@@ -255,14 +255,14 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
   };
   const thS={padding:"7px 9px",textAlign:"left",fontSize:10,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:".05em",background:C.tealLight,borderBottom:`1.5px solid ${C.teal}33`};
   return (
-    <Modal open={open} onClose={onClose} title={initial?'✏️ Edit  ${settings.labels.booth}' : '📍 Add  ${settings.labels.booth}'} wide>
+    <Modal open={open} onClose={onClose} title={initial?`✏️ Edit  ${settings.labels.booth}` : `📍 Add  ${settings.labels.booth}`} wide>
       <div style={{background:`linear-gradient(135deg,${C.tealLight},#F0FDFA)`,borderRadius:12,padding:"12px 14px",marginBottom:14,borderLeft:`4px solid ${C.teal}`}}>
         <div style={{fontSize:12,fontWeight:700,color:C.boothDark}}>Booth Details — fields marked * are required</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 14px"}}>
         <Fld label={settings.labels.booth} req err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric" booth/></Fld>
         <Fld label={settings.labels.boothName} col="2"><Inp value={f.bnm} onChange={e=>setF(p=>({...p,bnm:e.target.value}))} placeholder="optional" booth/></Fld>
-        <Fld label='${settings.labels.booth} Rating' col="3"><Sel value={f.rating} onChange={e=>setF(p=>({...p,rating:e.target.value}))} booth><option value="">— Optional —</option><option value="A">A — Generally Wins</option><option value="B">B — Mediocre</option><option value="C">C — Generally Loses</option></Sel></Fld>
+        <Fld label=`${settings.labels.booth} Rating` col="3"><Sel value={f.rating} onChange={e=>setF(p=>({...p,rating:e.target.value}))} booth><option value="">— Optional —</option><option value="A">A — Generally Wins</option><option value="B">B — Mediocre</option><option value="C">C — Generally Loses</option></Sel></Fld>
         <Fld label={settings.labels.mandal} req err={errs.mandal} col="1"><Sel value={f.mandal} onChange={e=>setF(p=>({...p,mandal:e.target.value,panchayat:""}))} error={errs.mandal} booth><option value="">— Select —</option>{settings.mandals.map(m=><option key={m.name}>{m.name}</option>)}</Sel></Fld>
         <Fld label={settings.labels.panchayat} req err={errs.panchayat} col="2"><Sel value={f.panchayat} onChange={e=>setF(p=>({...p,panchayat:e.target.value}))} error={errs.panchayat} disabled={!f.mandal} booth><option value="">— Select —</option>{panchs.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
         <Fld label="Total Voters" col="3"><Inp value={f.voters} onChange={e=>setF(p=>({...p,voters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 1200" booth/></Fld>
@@ -1063,8 +1063,8 @@ const handleSaveSheetsUrl = async (url) => {
           </div>
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
-          <SBI icon="🗺️" label='By ${settings.labels.mandal}' active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
-          <SBI icon="🏘️" label='By ${settings.labels.panchayat}' active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
+          <SBI icon="🗺️" label=`By ${settings.labels.mandal}` active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
+          <SBI icon="🏘️" label=`By ${settings.labels.panchayat} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>By Tag</div>
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Modules</div>
