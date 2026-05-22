@@ -190,7 +190,7 @@ function ContactForm({open,onClose,initial,settings,onSave,saving}) {
         <div/>
         <Fld label="Phone" req err={errs.phone} col="1"><Inp value={f.phone} onChange={set("phone")} maxLength={10} error={errs.phone} placeholder="10-digit mobile"/></Fld>
         <Fld label="WhatsApp No." err={errs.wa} col="2"><Inp value={f.wa} onChange={set("wa")} maxLength={10} error={errs.wa} placeholder="optional"/></Fld>
-        <Fld label=${settings.labels.mandal} req err={errs.mandal} col="1">
+        <Fld label={settings.labels.mandal} req err={errs.mandal} col="1">
           <Sel value={f.mandal} onChange={e=>setF(p=>({...p,mandal:e.target.value,panchayat:""}))} error={errs.mandal}>
             <option value="">`— Select ${settings.labels.mandal} —`</option>
             {settings.mandals.map(m=><option key={m.name}>{m.name}</option>)}
