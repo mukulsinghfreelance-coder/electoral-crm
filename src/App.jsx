@@ -51,18 +51,6 @@ const DEFAULT_SETTINGS = {
 };
 
 
-// ── In ContactTable headers ───────────────────────────────────────────────
-// Find the COLUMNS array and update:
-  const COLUMNS = [
-    ["name",      "Name",                          108],
-    ["phone",     "Phone",                          88],
-    ["caste",     settings.labels.caste,            64],  // ← dynamic
-    ["mandal",    settings.labels.mandal,           72],  // ← dynamic
-    ["panchayat", settings.labels.panchayat,        76],  // ← dynamic
-    ["bno",       settings.labels.booth,            42],  // ← dynamic
-    ["tag",       settings.labels.tag,              82],  // ← dynamic
-  ];
-
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
   primary:"#4F46E5", primaryDark:"#3730A3", primaryLight:"#EEF2FF",
