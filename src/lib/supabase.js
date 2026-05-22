@@ -9,6 +9,20 @@ if (!url || !key) {
 
 export const supabase = createClient(url, key)
 
+// ── DEFAULT LABELS ────────────────────────────────────────────────────────────
+export const DEFAULT_LABELS = {
+  mandal:     "Mandal",
+  panchayat:  "Panchayat",
+  booth:      "Booth",
+  village:    "Village",
+  boothName:  "Booth Name",
+  caste:      "Caste",
+  tag:        "Tag",
+  contacts:   "Contacts",
+  karyakarta: "Karyakarta",
+  whatsapp:   "WhatsApp No.",  // ← ADD THIS
+};
+
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
 export async function fetchSettings() {
   const { data, error } = await supabase
@@ -210,5 +224,45 @@ function boothToDb(b) {
     castes:    b.castes    || ['', '', ''],
     elec:      b.elec      || [],
     notes:     b.notes     || '',
+  }
+}
+
+// ── UPDATE dbToSettings function ──────────────────────────────────────────────
+// Find the existing dbToSettings function and replace it with this:
+
+function dbToSettings(d) {
+  return {
+    state:        d.state        || 'Bihar',
+    ls:           d.ls           || 'Patna Sahib',
+    vs:           d.vs           || 'Bankipur',
+    totalVoters:  d.total_voters || '',
+    totalBooths:  d.total_booths || '',
+    mandals:      d.mandals      || [],
+    castes:       d.castes       || [],
+    parties:      d.parties      || ['BJP+', 'Congress+', 'Others+'],
+    elections:    d.elections    || ['Election 2015', 'Election 2020', 'Election 2024'],
+    adminPin:     d.admin_pin    || '1234',
+    sheetsUrl:    d.sheets_url   || '',
+    labels:       { ...DEFAULT_LABELS, ...(d.labels || {}) }, // ← ADD THIS
+  }
+}
+
+// ── UPDATE settingsToDb function ──────────────────────────────────────────────
+// Find the existing settingsToDb function and replace it with this:
+
+function settingsToDb(s) {
+  return {
+    state:        s.state,
+    ls:           s.ls,
+    vs:           s.vs,
+    total_voters: s.totalVoters,
+    total_booths: s.totalBooths,
+    mandals:      s.mandals,
+    castes:       s.castes,
+    parties:      s.parties,
+    elections:    s.elections,
+    admin_pin:    s.adminPin,
+    sheets_url:   s.sheetsUrl,
+    labels:       s.labels || DEFAULT_LABELS, // ← ADD THIS
   }
 }

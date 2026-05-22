@@ -15,6 +15,15 @@ const TAG_STYLE = {
   "Padadhikari": {bg:"#FCE7F3",cl:"#9D174D"}, "Neutral":    {bg:"#F3F4F6",cl:"#374151"},
 };
 const RATING = { A:{bg:"#D1FAE5",cl:"#065F46",label:"Wins"}, B:{bg:"#FEF3C7",cl:"#92400E",label:"Mediocre"}, C:{bg:"#FEE2E2",cl:"#991B1B",label:"Loses"} };
+
+const TABS = [
+  ["geo",    "🗺️ Geography"],
+  ["labels", "🏷️ Labels"], 
+  ["castes", "👥 Castes"],
+  ["parties","🏛️ Parties"],
+  ["admin",  "🔐 Admin"],
+];
+
 const DEFAULT_SETTINGS = {
   state:"Bihar", ls:"Patna Sahib", vs:"Bankipur", totalVoters:"", totalBooths:"",
   mandals:[
@@ -24,9 +33,37 @@ const DEFAULT_SETTINGS = {
     {name:"Phulwari",panchayats:["Shahpur","Maner"]},
   ],
   castes:["Yadav","Brahmin","Kurmi","Bhumihar","Rajput","Muslim","Koeri","Dusadh"],
-  parties:["BJP+","Congress+","Others+"],
+  parties:["BJP+","Congress+","Third Front+"],
   elections:["Election 2015","Election 2020","Election 2024"],
   adminPin:"1234", sheetsUrl:"",
+};
+
+
+// ── In ContactTable headers ───────────────────────────────────────────────
+// Find the COLUMNS array and update:
+  const COLUMNS = [
+    ["name",      "Name",                          108],
+    ["phone",     "Phone",                          88],
+    ["caste",     settings.labels.caste,            64],  // ← dynamic
+    ["mandal",    settings.labels.mandal,           72],  // ← dynamic
+    ["panchayat", settings.labels.panchayat,        76],  // ← dynamic
+    ["bno",       settings.labels.booth,            42],  // ← dynamic
+    ["tag",       settings.labels.tag,              82],  // ← dynamic
+  ];
+
+  // ── ADD THIS ──
+  labels:{
+    mandal:     "Mandal",
+    panchayat:  "Panchayat",
+    booth:      "Booth",
+    village:    "Village",
+    boothName:  "Booth Name",
+    caste:      "Caste",
+    tag:        "Tag",
+    contacts:   "Contacts",
+    karyakarta: "Karyakarta",
+    whatsapp:   "WhatsApp No.",  // ← ADD THIS
+  },
 };
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
@@ -168,28 +205,28 @@ function ContactForm({open,onClose,initial,settings,onSave,saving}) {
         <div/>
         <Fld label="Phone" req err={errs.phone} col="1"><Inp value={f.phone} onChange={set("phone")} maxLength={10} error={errs.phone} placeholder="10-digit mobile"/></Fld>
         <Fld label="WhatsApp No." err={errs.wa} col="2"><Inp value={f.wa} onChange={set("wa")} maxLength={10} error={errs.wa} placeholder="optional"/></Fld>
-        <Fld label="Mandal" req err={errs.mandal} col="1">
+        <Fld label=settings.labels.mandal req err={errs.mandal} col="1">
           <Sel value={f.mandal} onChange={e=>setF(p=>({...p,mandal:e.target.value,panchayat:""}))} error={errs.mandal}>
-            <option value="">— Select Mandal —</option>
+            <option value="">`— Select ${settings.labels.mandal} —`</option>
             {settings.mandals.map(m=><option key={m.name}>{m.name}</option>)}
           </Sel>
         </Fld>
-        <Fld label="Panchayat" req err={errs.panchayat} col="2">
+        <Fld label=settings.labels.panchayat req err={errs.panchayat} col="2">
           <Sel value={f.panchayat} onChange={set("panchayat")} error={errs.panchayat} disabled={!f.mandal}>
-            <option value="">— Select Panchayat —</option>
+            <option value="">`— Select ${settings.labels.panchayat} —`</option>
             {panchs.map(p=><option key={p}>{p}</option>)}
           </Sel>
         </Fld>
-        <Fld label="Village" col="1"><Inp value={f.village} onChange={set("village")} placeholder="optional"/></Fld>
-        <Fld label="Caste" req err={errs.caste} col="2">
+        <Fld label=settings.labels.village col="1"><Inp value={f.village} onChange={set("village")} placeholder="optional"/></Fld>
+        <Fld label=settings.labels.caste req err={errs.caste} col="2">
           <Sel value={f.caste} onChange={set("caste")} error={errs.caste}>
-            <option value="">— Select Caste —</option>
+            <option value="">`— Select ${settings.labels.caste} —`</option>
             {settings.castes.map(c=><option key={c}>{c}</option>)}
           </Sel>
         </Fld>
         <Fld label="Booth No." err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric"/></Fld>
-        <Fld label="Booth Name" col="2"><Inp value={f.bnm} onChange={set("bnm")} placeholder="optional"/></Fld>
-        <Fld label="Tag" req err={errs.tag}>
+        <Fld label=settings.labels.bnm col="2"><Inp value={f.bnm} onChange={set("bnm")} placeholder="optional"/></Fld>
+        <Fld label=settings.labels.tag req err={errs.tag}>
           <Sel value={f.tag} onChange={set("tag")} error={errs.tag}>
             <option value="">— Select Tag —</option>
             {TAGS.map(t=><option key={t}>{t}</option>)}
@@ -238,11 +275,11 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
         <div style={{fontSize:12,fontWeight:700,color:C.boothDark}}>Booth Details — fields marked * are required</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 14px"}}>
-        <Fld label="Booth No." req err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric" booth/></Fld>
+        <Fld label=settings.labels.booth req err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric" booth/></Fld>
         <Fld label="Booth Name" col="2"><Inp value={f.bnm} onChange={e=>setF(p=>({...p,bnm:e.target.value}))} placeholder="optional" booth/></Fld>
         <Fld label="Booth Rating" col="3"><Sel value={f.rating} onChange={e=>setF(p=>({...p,rating:e.target.value}))} booth><option value="">— Optional —</option><option value="A">A — Generally Wins</option><option value="B">B — Mediocre</option><option value="C">C — Generally Loses</option></Sel></Fld>
-        <Fld label="Mandal" req err={errs.mandal} col="1"><Sel value={f.mandal} onChange={e=>setF(p=>({...p,mandal:e.target.value,panchayat:""}))} error={errs.mandal} booth><option value="">— Select —</option>{settings.mandals.map(m=><option key={m.name}>{m.name}</option>)}</Sel></Fld>
-        <Fld label="Panchayat" req err={errs.panchayat} col="2"><Sel value={f.panchayat} onChange={e=>setF(p=>({...p,panchayat:e.target.value}))} error={errs.panchayat} disabled={!f.mandal} booth><option value="">— Select —</option>{panchs.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
+        <Fld label=settings.labels.mandal req err={errs.mandal} col="1"><Sel value={f.mandal} onChange={e=>setF(p=>({...p,mandal:e.target.value,panchayat:""}))} error={errs.mandal} booth><option value="">— Select —</option>{settings.mandals.map(m=><option key={m.name}>{m.name}</option>)}</Sel></Fld>
+        <Fld label=settings.labels.panchayat req err={errs.panchayat} col="2"><Sel value={f.panchayat} onChange={e=>setF(p=>({...p,panchayat:e.target.value}))} error={errs.panchayat} disabled={!f.mandal} booth><option value="">— Select —</option>{panchs.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
         <Fld label="Total Voters" col="3"><Inp value={f.voters} onChange={e=>setF(p=>({...p,voters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 1200" booth/></Fld>
         {[0,1,2].map(i=>(<Fld key={i} label={`Top Caste ${i+1}`} col={String(i+1)}><Sel value={f.castes[i]} onChange={e=>{const c=[...f.castes];c[i]=e.target.value;setF(p=>({...p,castes:c}));}} booth><option value="">— Select —</option>{settings.castes.map(c=><option key={c}>{c}</option>)}</Sel></Fld>))}
       </div>
@@ -309,7 +346,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
   const remM=i=>{const m=[...s.mandals];m.splice(i,1);setS(p=>({...p,mandals:m}));setSelM(0);};
   const addP=()=>{const n=np.trim();if(!n||!s.mandals[selM])return;const m=[...s.mandals];if(!m[selM].panchayats.includes(n))m[selM]={...m[selM],panchayats:[...m[selM].panchayats,n]};setS(p=>({...p,mandals:m}));setNp("");};
   const remP=(mi,pi)=>{const m=[...s.mandals];m[mi]={...m[mi],panchayats:m[mi].panchayats.filter((_,i)=>i!==pi)};setS(p=>({...p,mandals:m}));};
-  const TABS=[["geo","🗺️ Geography"],["castes","👥 Castes"],["parties","🏛️ Parties"],["admin","🔐 Admin"]];
+  const TABS=[["geo","🗺️ Geography"],["labels", "🏷️ Labels"],["castes","👥 Castes"],["parties","🏛️ Parties"],["admin","🔐 Admin"]];
   return (
     <Modal open={open} onClose={onClose} title="⚙️ Settings (Admin)" wide>
       <div style={{display:"flex",gap:0,marginBottom:18,borderBottom:`2px solid ${C.gray200}`}}>
@@ -322,7 +359,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
             {s.mandals.map((m,i)=>(<div key={i} onClick={()=>setSelM(i)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",fontSize:13,background:selM===i?C.primaryLight:"transparent",cursor:"pointer",borderBottom:`1px solid ${C.gray100}`}}><span style={{fontWeight:selM===i?700:400,color:selM===i?C.primary:"inherit"}}>{m.name}</span><button onClick={e=>{e.stopPropagation();remM(i);}} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:13}}>✕</button></div>))}
             {s.mandals.length===0&&<div style={{padding:12,color:C.gray400,fontSize:12}}>No mandals yet</div>}
           </div>
-          <div style={{display:"flex",gap:6}}><Inp value={nm} onChange={e=>setNm(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addM()} placeholder="New mandal name…"/><Btn v="primary" onClick={addM} style={{padding:"9px 14px"}}>+</Btn></div>
+          <div style={{display:"flex",gap:6}}><Inp value={nm} onChange={e=>setNm(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addM()} placeholder={`New ${settings.labels.mandal} name...`}/><Btn v="primary" onClick={addM} style={{padding:"9px 14px"}}>+</Btn></div>
         </div>
         <div>
           <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Panchayats in <span style={{color:C.primary}}>{s.mandals[selM]?.name||"—"}</span></div>
@@ -330,14 +367,14 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
             {(s.mandals[selM]?.panchayats||[]).map((p,pi)=>(<div key={pi} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}>{p}<button onClick={()=>remP(selM,pi)} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:13}}>✕</button></div>))}
             {(s.mandals[selM]?.panchayats||[]).length===0&&<div style={{padding:12,color:C.gray400,fontSize:12}}>No panchayats</div>}
           </div>
-          <div style={{display:"flex",gap:6}}><Inp value={np} onChange={e=>setNp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addP()} placeholder="New panchayat…"/><Btn v="primary" onClick={addP} style={{padding:"9px 14px"}}>+</Btn></div>
+          <div style={{display:"flex",gap:6}}><Inp value={np} onChange={e=>setNp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addP()} placeholder={`New ${settings.labels.panchayat} ...`}/><Btn v="primary" onClick={addP} style={{padding:"9px 14px"}}>+</Btn></div>
         </div>
       </div>)}
       {tab==="castes"&&(<div>
         <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
           {s.castes.map((c,i)=>(<span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",background:C.gray100,borderRadius:20,fontSize:12,fontWeight:500}}>{c}<button onClick={()=>setS(p=>({...p,castes:p.castes.filter(x=>x!==c)}))} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:12}}>✕</button></span>))}
         </div>
-        <div style={{display:"flex",gap:6}}><Inp value={nc} onChange={e=>setNc(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&nc.trim()&&!s.castes.includes(nc.trim())){setS(p=>({...p,castes:[...p.castes,nc.trim()]}));setNc("");}}} placeholder="Add caste…"/><Btn v="primary" onClick={()=>{const n=nc.trim();if(n&&!s.castes.includes(n)){setS(p=>({...p,castes:[...p.castes,n]}));setNc("");}}} style={{whiteSpace:"nowrap"}}>+ Add</Btn></div>
+        <div style={{display:"flex",gap:6}}><Inp value={nc} onChange={e=>setNc(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&nc.trim()&&!s.castes.includes(nc.trim())){setS(p=>({...p,castes:[...p.castes,nc.trim()]}));setNc("");}}} placeholder={`All ${settings.labels.caste} ...`}/><Btn v="primary" onClick={()=>{const n=nc.trim();if(n&&!s.castes.includes(n)){setS(p=>({...p,castes:[...p.castes,n]}));setNc("");}}} style={{whiteSpace:"nowrap"}}>+ Add</Btn></div>
       </div>)}
       {tab==="parties"&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
         <div>
@@ -350,6 +387,147 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
           {elections.map((e,i)=>(<div key={i} style={{marginBottom:8}}><div style={{fontSize:10,color:C.gray400,fontWeight:600,marginBottom:4}}>E{i+1} {i===0?"(oldest)":i===2?"(latest)":""}</div><Inp value={e} onChange={ev=>{const el=[...elections];el[i]=ev.target.value;setElections(el);}}/></div>))}
         </div>
       </div>)}
+      
+      {tab === "labels" && (
+        <div>
+          {/* Info banner */}
+          <div style={{
+            background:"#EEF2FF", borderRadius:10, padding:"10px 14px",
+            marginBottom:16, fontSize:12, color:"#4F46E5", lineHeight:1.7
+          }}>
+            <b>Customize field names for your state.</b><br/>
+            e.g. Rename "Mandal" → "Tehsil", "Panchayat" → "Gram Sabha"
+          </div>
+      
+          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px 16px"}}>
+      
+            {/* Mandal */}
+            <div>
+              <label style={{display:"block",fontSize:10,fontWeight:700,color:"#9CA3AF",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>
+                Mandal label
+              </label>
+              <input
+                value={s.labels?.mandal || "Mandal"}
+                onChange={e => setS(p => ({...p, labels:{...p.labels, mandal:e.target.value}}))}
+                style={{width:"100%",padding:"8px 11px",fontSize:13,border:"1.5px solid #E5E7EB",borderRadius:9,background:"#fff",outline:"none"}}
+                placeholder="e.g. Mandal / Tehsil / Block"
+              />
+              <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>
+                Common: Mandal, Tehsil, Taluka, Block, Circle
+              </div>
+            </div>
+      
+            {/* Panchayat */}
+            <div>
+              <label style={{display:"block",fontSize:10,fontWeight:700,color:"#9CA3AF",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>
+                Panchayat label
+              </label>
+              <input
+                value={s.labels?.panchayat || "Panchayat"}
+                onChange={e => setS(p => ({...p, labels:{...p.labels, panchayat:e.target.value}}))}
+                style={{width:"100%",padding:"8px 11px",fontSize:13,border:"1.5px solid #E5E7EB",borderRadius:9,background:"#fff",outline:"none"}}
+                placeholder="e.g. Panchayat / Gram Sabha / Ward"
+              />
+              <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>
+                Common: Panchayat, Gram Sabha, Gram Panchayat, Ward
+              </div>
+            </div>
+      
+            {/* Booth */}
+            <div>
+              <label style={{display:"block",fontSize:10,fontWeight:700,color:"#9CA3AF",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>
+                Booth label
+              </label>
+              <input
+                value={s.labels?.booth || "Booth"}
+                onChange={e => setS(p => ({...p, labels:{...p.labels, booth:e.target.value}}))}
+                style={{width:"100%",padding:"8px 11px",fontSize:13,border:"1.5px solid #E5E7EB",borderRadius:9,background:"#fff",outline:"none"}}
+                placeholder="e.g. Booth / Polling Station"
+              />
+              <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>
+                Common: Booth, Polling Station, Polling Booth
+              </div>
+            </div>
+      
+            {/* Village */}
+            <div>
+              <label style={{display:"block",fontSize:10,fontWeight:700,color:"#9CA3AF",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>
+                Village label
+              </label>
+              <input
+                value={s.labels?.village || "Village"}
+                onChange={e => setS(p => ({...p, labels:{...p.labels, village:e.target.value}}))}
+                style={{width:"100%",padding:"8px 11px",fontSize:13,border:"1.5px solid #E5E7EB",borderRadius:9,background:"#fff",outline:"none"}}
+                placeholder="e.g. Village / Ward / Colony / Mohalla"
+              />
+              <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>
+                Common: Village, Ward, Colony, Mohalla, Tola
+              </div>
+            </div>
+      
+            {/* Caste */}
+            <div>
+              <label style={{display:"block",fontSize:10,fontWeight:700,color:"#9CA3AF",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>
+                Caste label
+              </label>
+              <input
+                value={s.labels?.caste || "Caste"}
+                onChange={e => setS(p => ({...p, labels:{...p.labels, caste:e.target.value}}))}
+                style={{width:"100%",padding:"8px 11px",fontSize:13,border:"1.5px solid #E5E7EB",borderRadius:9,background:"#fff",outline:"none"}}
+                placeholder="e.g. Caste / Community / Samaj"
+              />
+              <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>
+                Common: Caste, Community, Samaj, Jati
+              </div>
+            </div>
+      
+            {/* Karyakarta */}
+            <div>
+              <label style={{display:"block",fontSize:10,fontWeight:700,color:"#9CA3AF",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>
+                Karyakarta label
+              </label>
+              <input
+                value={s.labels?.karyakarta || "Karyakarta"}
+                onChange={e => setS(p => ({...p, labels:{...p.labels, karyakarta:e.target.value}}))}
+                style={{width:"100%",padding:"8px 11px",fontSize:13,border:"1.5px solid #E5E7EB",borderRadius:9,background:"#fff",outline:"none"}}
+                placeholder="e.g. Karyakarta / Worker / Activist"
+              />
+              <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>
+                Common: Karyakarta, Worker, Activist, Sevak
+              </div>
+            </div>
+      
+          </div>
+      
+          {/* Preview */}
+          <div style={{
+            background:"#F9FAFB", borderRadius:10, padding:"12px 14px",
+            marginTop:16, border:"1.5px solid #E5E7EB"
+          }}>
+            <div style={{fontSize:11,fontWeight:700,color:"#6B7280",marginBottom:8}}>
+              👁️ Preview — how it will appear in the app
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+              {[
+                ["Mandal field",    s.labels?.mandal    || "Mandal"],
+                ["Panchayat field", s.labels?.panchayat || "Panchayat"],
+                ["Booth field",     s.labels?.booth     || "Booth"],
+                ["Village field",   s.labels?.village   || "Village"],
+                ["Caste field",     s.labels?.caste     || "Caste"],
+                ["Worker tag",      s.labels?.karyakarta|| "Karyakarta"],
+              ].map(([orig, custom]) => (
+                <div key={orig} style={{
+                  background:"#fff", border:"1.5px solid #E5E7EB",
+                  borderRadius:8, padding:"6px 10px", fontSize:12
+                }}>
+                  <span style={{color:"#9CA3AF",textDecoration:"line-through",marginRight:6}}>{orig.split(" ")[0]}</span>
+                  <span style={{color:"#4F46E5",fontWeight:700}}>→ {custom}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {tab==="admin"&&(<div>
         <div style={{background:"#FEF3C7",borderRadius:10,padding:"12px 14px",marginBottom:14,fontSize:12,color:"#92400E",fontWeight:500}}>⚠️ Simulated PIN. Integrate real SMS OTP for production.</div>
         <Fld label="New Admin PIN (4–6 digits)"><Inp type="password" value={newPin} onChange={e=>setNewPin(e.target.value)} placeholder="Enter new PIN"/></Fld>
@@ -439,7 +617,7 @@ function ContactDetail({contact,settings,onEdit,onDelete}) {
       </div>
     </div>
     <div style={{padding:"14px 16px",flex:1,overflowY:"auto"}}>
-      {[["📞 Phone",contact.phone],["💬 WhatsApp",contact.wa],["🏷️ Caste",contact.caste],["🏘️ Village",contact.village],["🗺️ Mandal",contact.mandal],["🏛️ Panchayat",contact.panchayat],["📍 Booth No.",contact.bno],["🏫 Booth Name",contact.bnm],["📝 Notes",contact.notes]].map(([l,v])=>v?(<div key={l} style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{l}</div><div style={{fontSize:13,fontWeight:500,color:C.gray900}}>{v}</div></div>):null)}
+      {[["📞 Phone",contact.phone],["💬 WhatsApp",contact.wa],[`🏷️ ${settings.labels.caste}`,contact.caste],[`🏘️ ${settings.labels.village}`,contact.village],[`🗺️ ${settings.labels.mandal}`,contact.mandal],[`🏛️ ${settings.labels.panchayat}`,contact.panchayat],[`📍 ${settings.labels.booth} No.`,contact.bno],[`🏫 ${settings.labels.boothName}`,contact.bnm],["📝 Notes",contact.notes]].map(([l,v])=>v?(<div key={l} style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{l}</div><div style={{fontSize:13,fontWeight:500,color:C.gray900}}>{v}</div></div>):null)}
     </div>
     <div style={{padding:"12px 14px",borderTop:`1px solid ${C.gray200}`,display:"flex",gap:8}}>
       <Btn v="outline" onClick={()=>onEdit(contact)} style={{flex:1}}>✏️ Edit</Btn>
@@ -460,7 +638,7 @@ function BoothDetail({booth,settings,onEdit,onDelete}) {
     </div>
     <div style={{padding:"14px 16px",flex:1,overflowY:"auto"}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-        {[["Mandal",b.mandal],["Panchayat",b.panchayat],["Voters",b.voters||"—"],["Rating",b.rating?<RBadge r={b.rating}/>:"—"]].map(([l,v])=>(<div key={l} style={{background:C.tealLight,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:9,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div><div style={{fontSize:13,fontWeight:700,color:C.boothDark,marginTop:2}}>{v}</div></div>))}
+        {[[settings.labels.mandal,b.mandal],[settings.labels.panchayat,b.panchayat],["Voters",b.voters||"—"],["Rating",b.rating?<RBadge r={b.rating}/>:"—"]].map(([l,v])=>(<div key={l} style={{background:C.tealLight,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:9,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div><div style={{fontSize:13,fontWeight:700,color:C.boothDark,marginTop:2}}>{v}</div></div>))}
       </div>
       <div style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>Top Castes</div><div style={{fontSize:13,fontWeight:500}}>{b.castes.filter(Boolean).join(" · ")||"—"}</div></div>
       <div style={{marginBottom:10}}>
@@ -900,8 +1078,8 @@ const handleSaveSheetsUrl = async (url) => {
           </div>
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
-          <SBI icon="🗺️" label="By Mandal"    active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
-          <SBI icon="🏘️" label="By Panchayat" active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
+          <SBI icon="🗺️" label='By ${settings.labels.mandal}' active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
+          <SBI icon="🏘️" label='By ${settings.labels.panchayat}' active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>By Tag</div>
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Modules</div>
@@ -959,7 +1137,9 @@ const handleSaveSheetsUrl = async (url) => {
             />
           </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
-              {[["Total",contacts.length,C.primary,"👥"],["Karyakartas",tagCounts["Karyakarta"]||0,C.success,"⚡"],["Key Voters",tagCounts["Key Voter"]||0,"#7C3AED","⭐"],["Opponents",tagCounts["Opponent"]||0,C.red,"⚠️"]].map(([l,v,cl,ic])=>(
+              {[["Total",contacts.length,C.primary,"👥"],[settings.labels.karyakarta+"s", tagCounts["Karyakarta"]||0, C.success,"⚡"],
+							["Key Voters",tagCounts["Key Voter"]||0,"#7C3AED","⭐"],
+							["Opponents",tagCounts["Opponent"]||0,C.red,"⚠️"]].map(([l,v,cl,ic])=>(
                 <div key={l} style={{background:C.white,border:`1.5px solid ${cl}22`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
                   <div style={{fontSize:10,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{ic} {l}</div>
                   <div style={{fontSize:24,fontWeight:800,color:cl,lineHeight:1}}>{v}</div>
@@ -967,7 +1147,7 @@ const handleSaveSheetsUrl = async (url) => {
               ))}
             </div>
             <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,flexWrap:"wrap",background:C.gray50}}>
-              {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All Mandals",settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All Panchayats",mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All Booths",[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All Castes",settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS]].map(([val,setter,ph,opts],i)=>(
+              {[[fM,v=>{setFM(v);setFP("");setPage(1);},`All ${settings.labels.mandal}s`,settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},`All ${settings.labels.panchayat}s`,mandalPanchs],[fB,v=>{setFB(v);setPage(1);},`All ${settings.labels.booth}s`,[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},`All ${settings.labels.caste}s`,settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS]].map(([val,setter,ph,opts],i)=>(
                 <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer"}}>
                   <option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}
                 </select>
@@ -977,7 +1157,14 @@ const handleSaveSheetsUrl = async (url) => {
             </div>
             <div style={{flex:1,overflowY:"auto"}}>
               <table id="contact-table" style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
-                <thead><tr>{[["name","Name",106],["phone","Phone",88],["caste","Caste",64],["mandal","Mandal",72],["panchayat","Panchayat",76],["bno","Booth",42],["tag","Tag",86]].map(([col,label,w])=>(<th key={col} style={{...thS,width:w}}>{label}<SortArrow col={col} sort={sort} onSort={col=>setSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})}/></th>))}</tr></thead>
+                <thead><tr>{[
+                  ["name",      "Name",                           106],
+                  ["phone",     "Phone",                           88],
+                  ["caste",     settings.labels.caste,             64],
+                  ["mandal",    settings.labels.mandal,            72],
+                  ["panchayat", settings.labels.panchayat,         76],
+                  ["bno",       settings.labels.booth,             42],
+                  ["tag",       settings.labels.tag,               86]].map(([col,label,w])=>(<th key={col} style={{...thS,width:w}}>{label}<SortArrow col={col} sort={sort} onSort={col=>setSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})}/></th>))}</tr></thead>
                 <tbody>{slice.map(c=>(<tr key={c.id} onClick={()=> { 
 			setSelC(c);
 			if (isMobile) setShowMobileDetail(true);
@@ -1008,7 +1195,7 @@ const handleSaveSheetsUrl = async (url) => {
               {/* Row 1 — Title + Add + Excel buttons */}
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:16,fontWeight:800,color:C.boothDark}}>📍 Booth Management</div>
+                  <div style={{fontSize:16,fontWeight:800,color:C.boothDark}}>📍 {settings.labels.booth} Management </div>
                   <div style={{fontSize:11,color:C.teal,fontWeight:500}}>{booths.length} booths · {filteredB.length} shown</div>
                 </div>
                 <Btn v="teal" onClick={()=>{setEditB(null);setShowBAdd(true);}} style={{padding:"10px 20px",fontSize:14}}>＋ Add</Btn>
@@ -1080,7 +1267,7 @@ const handleSaveSheetsUrl = async (url) => {
             <div id="table-wrap" style={{flex:1,overflowY:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
                 <thead><tr>
-                  {[["bno","No.",50],["bnm","Booth Name",120],["mandal","Mandal",80],["panchayat","Panchayat",90],["voters","Voters",60],["rating","Rating",80],["castes","Top Castes",null],["last","Last Election",null]].map(([col,label,w])=>(
+                  {[["bno","No.",50],["bnm", settings.labels.boothName,120],["mandal",settings.labels.mandal,80],["panchayat",settings.labels.panchayat,90],["voters","Voters",60],["rating","Rating",80],["castes","Top Castes",null],["last","Last Election",null]].map(([col,label,w])=>(
                     <th key={col} style={{...thSB,...(w?{width:w}:{})}}>{label}{col!=="castes"&&col!=="last"&&<SortArrow col={col} sort={bSort} onSort={col=>setBSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})} booth/>}</th>
                   ))}
                 </tr></thead>

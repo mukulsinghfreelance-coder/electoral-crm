@@ -91,3 +91,33 @@ CREATE INDEX IF NOT EXISTS idx_booths_bno        ON booths(bno);
 CREATE INDEX IF NOT EXISTS idx_booths_panchayat  ON booths(panchayat);
 
 -- Done! You should see 3 tables: settings, contacts, booths
+
+-- Below updates are to support configurable labels to sell it across India.
+-- Add labels column to settings table
+ALTER TABLE settings
+ADD COLUMN IF NOT EXISTS labels JSONB DEFAULT '{
+  "mandal":    "Mandal",
+  "panchayat": "Panchayat",
+  "booth":     "Booth",
+  "village":   "Village",
+  "boothName": "Booth Name",
+  "caste":     "Caste",
+  "tag":       "Tag",
+  "contacts":  "Contacts",
+  "karyakarta":"Karyakarta"
+}';
+
+-- Update existing row with default labels
+UPDATE settings SET labels = '{
+  "mandal":    "Mandal",
+  "panchayat": "Panchayat",
+  "booth":     "Booth",
+  "village":   "Village",
+  "boothName": "Booth Name",
+  "caste":     "Caste",
+  "tag":       "Tag",
+  "contacts":  "Contacts",
+  "karyakarta":"Karyakarta",
+  "whatsapp": "WhatsApp No."
+}' WHERE labels IS NULL;
+
