@@ -119,13 +119,16 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [loadAppUser])
 
-  const login = async (email) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true }
-    })
-    if (error) throw error
-  }
+const login = async (email) => {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: undefined,  // ← forces OTP not magic link
+    }
+  })
+  if (error) throw error
+}
 
   const verify = async (email, token) => {
     const { data, error } = await supabase.auth.verifyOtp({

@@ -225,3 +225,26 @@ CREATE INDEX IF NOT EXISTS idx_booths_workspace   ON booths(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_app_users_email    ON app_users(email);
 CREATE INDEX IF NOT EXISTS idx_app_users_auth     ON app_users(auth_id);
 CREATE INDEX IF NOT EXISTS idx_workspaces_org     ON workspaces(org_id);
+
+
+-- Allow authenticated users to insert into app_users
+CREATE POLICY "auth_insert_app_users"
+ON app_users
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- Allow authenticated users to update app_users
+CREATE POLICY "auth_update_app_users"
+ON app_users
+FOR UPDATE
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+-- Allow authenticated users to delete from app_users
+CREATE POLICY "auth_delete_app_users"
+ON app_users
+FOR DELETE
+TO authenticated
+USING (true);
