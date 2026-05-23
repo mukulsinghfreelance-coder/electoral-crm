@@ -875,11 +875,8 @@ const handleSaveSheetsUrl = async (url) => {
   const [showConst,  setShowConst]  = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showExcel,  setShowExcel]  = useState(false);
-  const [showOTP,    setShowOTP]    = useState(false); const [otpAction,setOtpAction]=useState(null);
-  const [isAdmin,    setIsAdmin]    = useState(false);
-
-  const reqAdmin=useCallback(action=>{if(isAdmin){action();return;}setOtpAction(()=>action);setShowOTP(true);},[isAdmin]);
-
+  const [showOTP,    setShowOTP]    = useState(false); 
+  
   // ── Derived ───────────────────────────────────────────────────────────────
   const allPanchs=useMemo(()=>[...new Set(settings.mandals.flatMap(m=>m.panchayats))].sort(),[settings]);
   const mandalPanchs=useMemo(()=>fM?settings.mandals.find(m=>m.name===fM)?.panchayats||[]:allPanchs,[fM,settings,allPanchs]);
@@ -1127,6 +1124,7 @@ const handleSaveSheetsUrl = async (url) => {
             >
             ✏️ Edit
           </button>
+          )}
         </div>
       
       </div>
