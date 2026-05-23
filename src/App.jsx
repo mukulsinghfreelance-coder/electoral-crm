@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+
 import {
   fetchSettings, saveSettings,
-  fetchContacts, insertContact, updateContact, deleteContact,
+  fetchContacts, insertContact, updateContact, deleteContact, bulkDeleteContacts,
   fetchBooths, insertBooth, updateBooth, deleteBooth, upsertBoothByBno,
-} from "./lib/supabase";
+} from './lib/supabase'
+
 import { SheetsModal } from "./components/SheetsModal";
+
+import { useAuth } from './context/AuthContext'
+import LoginPage from './pages/LoginPage'
+import WorkspacePage from './pages/WorkspacePage'
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const TAGS = ["Key Voter","Karyakarta","Supporter","Opponent","Champion","Partner","Padadhikari","Neutral"];
@@ -535,25 +541,68 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
 }
 
 // ─── OTHER MODALS ─────────────────────────────────────────────────────────────
-function ConstModal({open,onClose,settings,onSave,saving}) {
-  const [f,setF]=useState({});
-  useEffect(()=>{if(open)setF({state:settings.state,ls:settings.ls,vs:settings.vs,totalVoters:settings.totalVoters||"",totalBooths:settings.totalBooths||""});},[open]);
-  return (
-    <Modal open={open} onClose={onClose} title="✏️ Edit Constituency Constants">
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 14px"}}>
-        <Fld label="State" col="1"><Inp value={f.state||""} onChange={e=>setF(p=>({...p,state:e.target.value}))}/></Fld>
-        <Fld label="Lok Sabha" col="2"><Inp value={f.ls||""} onChange={e=>setF(p=>({...p,ls:e.target.value}))}/></Fld>
-        <Fld label="Vidhan Sabha" col="1"><Inp value={f.vs||""} onChange={e=>setF(p=>({...p,vs:e.target.value}))}/></Fld>
-        <Fld label="Total Voters" col="2"><Inp value={f.totalVoters||""} onChange={e=>setF(p=>({...p,totalVoters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 250000"/></Fld>
-        <Fld label="Total Booths"><Inp value={f.totalBooths||""} onChange={e=>setF(p=>({...p,totalBooths:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 350"/></Fld>
-      </div>
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14}}>
-        <Btn v="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn v="primary" onClick={()=>onSave(f)} disabled={saving}>{saving?"⏳ Saving…":"Save"}</Btn>
-      </div>
-    </Modal>
-  );
-}
+// Find the existing ConstModal function and replace it entirely with this:
+
+  function ConstModal({ open, onClose, settings, onSave, saving, isAdmin }) {
+    const [f, setF] = useState({})
+    useEffect(() => {
+      if (open) setF({
+        state:       settings.state,
+        ls:          settings.ls,
+        vs:          settings.vs,
+        totalVoters: settings.totalVoters || '',
+        totalBooths: settings.totalBooths || '',
+      })
+    }, [open])
+  
+    return (
+      <Modal open={open} onClose={onClose} title="✏️ Edit Constituency Info">
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px 14px" }}>
+  
+          {/* State, LS, VS — read only for non-super-admins */}
+          <div style={{ gridColumn:"1/-1" }}>
+            <div style={{ fontSize:11, fontWeight:700, color:"#9CA3AF", marginBottom:4, textTransform:"uppercase", letterSpacing:".06em" }}>
+              Constituency (read only)
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+              {[["State", f.state], ["Lok Sabha", f.ls], ["Vidhan Sabha", f.vs]].map(([l, v]) => (
+                <div key={l} style={{ background:"#F3F4F6", borderRadius:8, padding:"8px 10px" }}>
+                  <div style={{ fontSize:9, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:".05em", marginBottom:2 }}>{l}</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:"#111827" }}>{v || "—"}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+  
+          {/* Total Voters — editable for admin */}
+          <Fld label="Total Voters" col="1">
+            <Inp
+              value={f.totalVoters || ''}
+              onChange={e => setF(p => ({ ...p, totalVoters: e.target.value.replace(/\D/g, '') }))}
+              placeholder="e.g. 250000"
+            />
+          </Fld>
+  
+          {/* Total Booths — editable for admin */}
+          <Fld label="Total Booths" col="2">
+            <Inp
+              value={f.totalBooths || ''}
+              onChange={e => setF(p => ({ ...p, totalBooths: e.target.value.replace(/\D/g, '') }))}
+              placeholder="e.g. 350"
+            />
+          </Fld>
+  
+        </div>
+  
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:14 }}>
+          <Btn v="ghost" onClick={onClose}>Cancel</Btn>
+          <Btn v="primary" onClick={() => onSave(f)} disabled={saving}>
+            {saving ? "⏳ Saving…" : "Save"}
+          </Btn>
+        </div>
+      </Modal>
+    )
+  }
 
 function ImportModal({open,onClose,onImport,saving}) {
   const [txt,setTxt]=useState(""); const ref=useRef();
@@ -665,6 +714,7 @@ function Toast({msg,type}) {
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
+  const { user, loading: authLoading, workspace, isAdmin, isVolunteer, isMP, logout } = useAuth()
   const [settings,  setSettingsState] = useState(DEFAULT_SETTINGS);
   const [contacts,  setContacts]      = useState([]);
   const [booths,    setBooths]        = useState([]);
@@ -672,9 +722,30 @@ export default function App() {
   const [loadErr,   setLoadErr]       = useState(null);
   const [saving,    setSaving]        = useState(false);
   const [toast,     setToast]         = useState({msg:"",type:"success"});
-
   const showToast=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast({msg:"",type:"success"}),3000);};
-
+ 
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectMode,  setSelectMode]  = useState(false);
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Delete ${selectedIds.length} contacts? This cannot be undone.`)) return
+    try {
+      await bulkDeleteContacts(selectedIds)
+      setContacts(cs => cs.filter(c => !selectedIds.includes(c.id)))
+      setSelectedIds([])
+      setSelectMode(false)
+      showToast(`${selectedIds.length} contacts deleted`)
+    } catch(err) {
+      showToast('Error: ' + err.message, 'error')
+    }
+  }
+  
+  const toggleSelect = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+  
   // Google Sheets
   const [showSheets,  setShowSheets]  = useState(false);
   const [syncStatus,  setSyncStatus]  = useState("");   // "syncing" | "ok" | "error" | ""
@@ -691,17 +762,21 @@ export default function App() {
 // end for mobile
 
   // ── Load all data from Supabase on mount ──────────────────────────────────
-  const loadAll = useCallback(async()=>{
-    setLoading(true); setLoadErr(null);
-    try {
-      const [s,c,b] = await Promise.all([fetchSettings(), fetchContacts(), fetchBooths()]);
-      console.log("Settings loaded:", s); // ← ADD THIS LINE
-      setSettingsState(s); setContacts(c); setBooths(b);
-    } catch(err) {
-      setLoadErr(err.message||"Unknown error");
-    }
-    setLoading(false);
-  },[]);
+const loadAll = useCallback(async () => {
+  if (!workspace?.id) return
+  setLoading(true); setLoadErr(null)
+  try {
+    const [s, c, b] = await Promise.all([
+      fetchSettings(workspace.id),
+      fetchContacts(workspace.id),
+      fetchBooths(workspace.id),
+    ])
+    setSettingsState(s); setContacts(c); setBooths(b)
+  } catch(err) {
+    setLoadErr(err.message || 'Unknown error')
+  }
+  setLoading(false)
+}, [workspace?.id])
 
 // Google Sheets
 // Push a single contact to Google Sheets when it is created
@@ -741,7 +816,7 @@ const pullFromSheets = async () => {
         // Skip if phone already exists in local contacts state
         if (contacts.find(c => c.phone === phone)) continue;
         try {
-          const created = await insertContact({
+          const created = await insertContact(f, workspace.id)({
             name:      row.Name      || "",
             phone,
             wa:        row.WhatsApp  || "",
@@ -773,7 +848,7 @@ const pullFromSheets = async () => {
 const handleSaveSheetsUrl = async (url) => {
   try {
     const updated = { ...settings, sheetsUrl: url };
-    await saveSettings(updated);
+    await saveSettings(updated, workspace.id);
     setSettingsState(updated);
     showToast(url ? "✅ Google Sheets connected!" : "Sheets disconnected");
   } catch (err) {
@@ -867,7 +942,7 @@ const handleSaveSheetsUrl = async (url) => {
     setSaving(true);
     try{
       if(editB){const updated=await updateBooth(editB.id,f);setBooths(bs=>bs.map(b=>b.id===updated.id?updated:b));setSelB(updated);showToast("Booth updated ✓");}
-      else{const created=await insertBooth(f);setBooths(bs=>[...bs,created]);setSelB(created);showToast("Booth added ✓");}
+      else{const created=await insertBooth(f, workspace.id);setBooths(bs=>[...bs,created]);setSelB(created);showToast("Booth added ✓");}
       setShowBAdd(false);setEditB(null);
     }catch(err){showToast("Error: "+err.message,"error");}
     setSaving(false);
@@ -881,14 +956,14 @@ const handleSaveSheetsUrl = async (url) => {
 
   const handleSaveSettings=async s=>{
     setSaving(true);
-    try{await saveSettings(s);setSettingsState(s);setShowSettings(false);showToast("Settings saved ✓");}
+    try{await saveSettings(s, workspace.id);setSettingsState(s);setShowSettings(false);showToast("Settings saved ✓");}
     catch(err){showToast("Error: "+err.message,"error");}
     setSaving(false);
   };
 
   const handleSaveConst=async f=>{
     setSaving(true);
-    try{const updated={...settings,...f};await saveSettings(updated);setSettingsState(updated);setShowConst(false);showToast("Constants saved ✓");}
+    try{const updated={...settings,...f};await saveSettings(updated, workspace.id);setSettingsState(updated);setShowConst(false);showToast("Constants saved ✓");}
     catch(err){showToast("Error: "+err.message,"error");}
     setSaving(false);
   };
@@ -925,7 +1000,10 @@ const handleSaveSheetsUrl = async (url) => {
   };
 
   // ── Render guards ─────────────────────────────────────────────────────────
-  if(loading) return <LoadingScreen message="Connecting to database…"/>;
+  if(authLoading) return <LoadingScreen message="Checking login…"/>;
+  if(!user)       return <LoginPage/>;
+  if(isMP && !workspace) return <WorkspacePage/>;
+  if(loading) return <LoadingScreen message="Loading data…"/>;
   if(loadErr) return <ErrorScreen message={loadErr} onRetry={loadAll}/>;
 
   const thS={position:"sticky",top:0,fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",padding:"8px 10px",borderBottom:`2px solid ${C.gray200}`,textAlign:"left",userSelect:"none",background:C.gray50,whiteSpace:"nowrap"};
@@ -1037,21 +1115,16 @@ const handleSaveSheetsUrl = async (url) => {
               ⬇️ Pull
             </button>
           )}
-          <button
-            onClick={() => reqAdmin(() => setShowConst(true))}
-            style={{
-              padding: "5px 10px",
-              fontSize: 10,
-              background: "transparent",
-              border: "1px solid #4338CA",
-              borderRadius: 6,
-              color: "#C7D2FE",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontFamily: "inherit",
-              whiteSpace: "nowrap",
-            }}
-          >
+          {(isAdmin) && (
+            <button
+              onClick={() => setShowConst(true)}
+              style={{
+                padding:"5px 10px", fontSize:10,
+                background:"transparent", border:"1px solid #4338CA",
+                borderRadius:6, color:"#C7D2FE", cursor:"pointer",
+                fontWeight:600, fontFamily:"inherit", whiteSpace:"nowrap",
+              }}
+            >
             ✏️ Edit
           </button>
         </div>
@@ -1069,6 +1142,15 @@ const handleSaveSheetsUrl = async (url) => {
               <div><div style={{fontSize:14,fontWeight:800,color:C.gray900}}>ContactBook</div><div style={{fontSize:10,color:C.gray400,fontWeight:500}}>Electoral Manager</div></div>
             </div>
           </div>
+          <div style={{
+            padding:'8px 12px', borderBottom:`1px solid ${C.gray200}`,
+            background:C.primaryLight,
+          }}>
+            <div style={{fontSize:12, fontWeight:700, color:C.primary}}>{user?.name}</div>
+            <div style={{fontSize:10, color:C.gray400, marginTop:1}}>
+                {isAdmin ? '👑 Admin' : '👤 Volunteer'} · {workspace?.vs || 'Default'}
+            </div>
+          </div>
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
           <SBI icon="🗺️" label={`By ${settings.labels.mandal}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
@@ -1077,8 +1159,11 @@ const handleSaveSheetsUrl = async (url) => {
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Modules</div>
           <SBI icon="📍" label="Booth Mgmt"    count={booths.length} active={screen==="booths"} onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} color={C.teal}/>
-          <SBI icon="⚙️" label="Settings"       active={false} onClick={()=>reqAdmin(()=>setShowSettings(true))}/>
+          {isAdmin && (
+              <SBI icon="⚙️" label="Settings" active={false} onClick={() => setShowSettings(true)}/>
+          )}          
           <SBI icon="🔗" label="Google Sheets" active={false} onClick={() => reqAdmin(() => setShowSheets(true))}/>
+          <SBI icon="🚪" label="Logout" active={false} onClick={logout}/>
 
           <div style={{padding:"10px 8px",borderTop:`1px solid ${C.gray200}`,marginTop:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
             {[["Contacts",contacts.length,C.primary],["Mandals",settings.mandals.length,C.success],["Booths",booths.length,C.teal],["Castes",settings.castes.length,C.amber]].map(([l,v,cl])=>(
@@ -1106,8 +1191,33 @@ const handleSaveSheetsUrl = async (url) => {
               {/* Buttons — always visible */}
               <div className="hero-buttons" style={{display:"flex",gap:6,alignItems:"center"}}>
                 <Btn v="success" onClick={()=>{setEditC(null);setShowAdd(true);}} style={{padding:"9px 16px",fontSize:13}}>＋ Add</Btn>
-                <Btn v="ghost" onClick={()=>reqAdmin(exportCSV)} title="Export CSV (Admin)" style={{padding:"9px 12px"}}>⬇️</Btn>
+                {isAdmin && (
+                  <Btn v="ghost" onClick={() => reqAdmin(exportCSV)} title="Export CSV">⬇️</Btn>
+                )}
                 <Btn v="ghost" onClick={()=>setShowImport(true)} title="Import CSV" style={{padding:"9px 12px"}}>⬆️</Btn>
+                
+                {isAdmin && (
+                  <Btn
+                    v={selectMode ? "danger" : "ghost"}
+                    onClick={() => {
+                      if (selectMode) {
+                        setSelectMode(false)
+                        setSelectedIds([])
+                      } else {
+                        setSelectMode(true)
+                      }
+                    }}
+                    title="Bulk delete"
+                  >
+                  {selectMode ? `✕ Cancel (${selectedIds.length})` : "☑️ Select"}
+                  </Btn>
+                )}
+                {selectMode && selectedIds.length > 0 && (
+                  <Btn v="danger" onClick={handleBulkDelete}>
+                    🗑️ Delete {selectedIds.length}
+                  </Btn>
+                )}
+
               </div>
             </div>
           
@@ -1159,11 +1269,19 @@ const handleSaveSheetsUrl = async (url) => {
                   ["panchayat", settings.labels.panchayat,         76],
                   ["bno",       settings.labels.booth,             42],
                   ["tag",       settings.labels.tag,               86]].map(([col,label,w])=>(<th key={col} style={{...thS,width:w}}>{label}<SortArrow col={col} sort={sort} onSort={col=>setSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})}/></th>))}</tr></thead>
-                <tbody>{slice.map(c=>(<tr key={c.id} onClick={()=> { 
-			setSelC(c);
-			if (isMobile) setShowMobileDetail(true);
-                     }
-	           } style={{background:selC?.id===c.id?C.primaryLight:"transparent",cursor:"pointer",transition:"background .1s"}}>
+                <tbody>{slice.map(c=>(<tr key={c.id}
+                                    onClick={()=>{
+                                      if(selectMode){toggleSelect(c.id);return;}
+                                      setSelC(c);
+                                      if(isMobile) setShowMobileDetail(true);
+                                    }}
+                                    style={{
+                                      background: selectedIds.includes(c.id) ? '#FEE2E2'
+                                                : selC?.id===c.id ? C.primaryLight
+                                                : 'transparent',
+                                      cursor:"pointer",
+                                      transition:"background .1s"
+                                    }}>
                   <td style={{...tdS,fontWeight:700,color:C.gray900}}>{c.name}</td>
                   <td style={{...tdS,color:C.gray600}}>{c.phone}</td>
                   <td style={tdS}>{c.gender}</td>
@@ -1487,7 +1605,7 @@ const handleSaveSheetsUrl = async (url) => {
 
       <ContactForm  open={showAdd}      onClose={()=>{setShowAdd(false);setEditC(null);}}   initial={editC}  settings={settings} onSave={handleSaveContact} saving={saving}/>
       <BoothForm    open={showBAdd}     onClose={()=>{setShowBAdd(false);setEditB(null);}}  initial={editB}  settings={settings} onSave={handleSaveBooth}   saving={saving} existingBooths={booths}/>
-      <ConstModal   open={showConst}    onClose={()=>setShowConst(false)}     settings={settings} onSave={handleSaveConst}    saving={saving}/>
+      <ConstModal  open={showConst}     onClose={() => setShowConst(false)}   settings={settings}   onSave={handleSaveConst}  saving={saving}  isAdmin={isAdmin}/>
       <ImportModal  open={showImport}   onClose={()=>setShowImport(false)}    onImport={handleImport} saving={saving}/>
       <ExcelModal   open={showExcel}    onClose={()=>setShowExcel(false)}     onImport={handleBoothExcel} saving={saving}/>
       <Toast msg={toast.msg} type={toast.type}/>

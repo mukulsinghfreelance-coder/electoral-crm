@@ -123,3 +123,105 @@ UPDATE settings SET labels = '{
 
 ALTER TABLE contacts 
 ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT '';
+
+-- Adding Multiletency and login
+-- -------------------------------------------------------------------------
+-- ─── STEP 1: Enable UUID extension ───────────────────────────────────────────
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ─── STEP 2: ORGANISATIONS ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS organisations (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT NOT NULL,
+  type        TEXT DEFAULT 'MLA' CHECK (type IN ('MLA','MP','SUPER')),
+  owner_phone TEXT,
+  owner_email TEXT,
+  active      BOOLEAN DEFAULT TRUE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─── STEP 3: WORKSPACES (one per Vidhan Sabha) ───────────────────────────────
+CREATE TABLE IF NOT EXISTS workspaces (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id      UUID REFERENCES organisations(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  state       TEXT DEFAULT '',
+  ls          TEXT DEFAULT '',
+  vs          TEXT DEFAULT '',
+  active      BOOLEAN DEFAULT TRUE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─── STEP 4: APP USERS ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS app_users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_id       UUID UNIQUE,              -- links to Supabase Auth user
+  name          TEXT NOT NULL,
+  phone         TEXT DEFAULT '',
+  email         TEXT DEFAULT '',
+  role          TEXT DEFAULT 'volunteer'
+                CHECK (role IN ('super_admin','admin','volunteer')),
+  org_id        UUID REFERENCES organisations(id) ON DELETE CASCADE,
+  workspace_id  UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  active        BOOLEAN DEFAULT TRUE,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─── STEP 5: ADD workspace_id TO EXISTING TABLES ─────────────────────────────
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES workspaces(id);
+ALTER TABLE booths   ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES workspaces(id);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES workspaces(id);
+
+-- ─── STEP 6: CREATE DEFAULT ORGANISATION & WORKSPACE ─────────────────────────
+-- This is your existing data — assign it to a default workspace
+
+INSERT INTO organisations (id, name, type, owner_email)
+VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'Default Organisation',
+  'MLA',
+  'admin@example.com'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO workspaces (id, org_id, name, state, ls, vs)
+VALUES (
+  'bbbbbbbb-0000-0000-0000-000000000001',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'Default Workspace',
+  'Bihar',
+  'Patna Sahib',
+  'Bankipur'
+) ON CONFLICT (id) DO NOTHING;
+
+-- Assign existing data to default workspace
+UPDATE contacts SET workspace_id = 'bbbbbbbb-0000-0000-0000-000000000001' WHERE workspace_id IS NULL;
+UPDATE booths   SET workspace_id = 'bbbbbbbb-0000-0000-0000-000000000001' WHERE workspace_id IS NULL;
+UPDATE settings SET workspace_id = 'bbbbbbbb-0000-0000-0000-000000000001' WHERE workspace_id IS NULL;
+
+-- ─── STEP 7: INSERT SUPER ADMIN USER ─────────────────────────────────────────
+-- Replace with YOUR email
+INSERT INTO app_users (name, email, role, org_id, workspace_id)
+VALUES (
+  'Super Admin',
+  'mukulsingh.freelance@gmail.com',   -- ← CHANGE THIS to your email
+  'super_admin',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'bbbbbbbb-0000-0000-0000-000000000001'
+) ON CONFLICT DO NOTHING;
+
+-- ─── STEP 8: ROW LEVEL SECURITY ──────────────────────────────────────────────
+ALTER TABLE organisations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workspaces    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_users     ENABLE ROW LEVEL SECURITY;
+
+-- Temporarily allow all for anon (we'll tighten after auth works)
+CREATE POLICY "anon_all_orgs"       ON organisations FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_workspaces" ON workspaces    FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_app_users"  ON app_users     FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- ─── STEP 9: INDEXES ─────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_contacts_workspace ON contacts(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_booths_workspace   ON booths(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_app_users_email    ON app_users(email);
+CREATE INDEX IF NOT EXISTS idx_app_users_auth     ON app_users(auth_id);
+CREATE INDEX IF NOT EXISTS idx_workspaces_org     ON workspaces(org_id);

@@ -3,40 +3,157 @@ import { createClient } from '@supabase/supabase-js'
 const url = import.meta.env.VITE_SUPABASE_URL
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!url || !key) {
-  throw new Error('Missing Supabase environment variables. Check your .env file.')
-}
-
 export const supabase = createClient(url, key)
 
-// ── DEFAULT LABELS ────────────────────────────────────────────────────────────
+// ─── DEFAULT LABELS ───────────────────────────────────────────────────────────
 export const DEFAULT_LABELS = {
-  mandal:     "Mandal",
-  panchayat:  "Panchayat",
-  booth:      "Booth",
-  village:    "Village",
-  boothName:  "Booth Name",
-  caste:      "Caste",
-  tag:        "Tag",
-  contacts:   "Contacts",
-  karyakarta: "Karyakarta",
-  whatsapp:   "WhatsApp No.",  // ← ADD THIS
-};
+  mandal:     'Mandal',
+  panchayat:  'Panchayat',
+  booth:      'Booth',
+  village:    'Village',
+  boothName:  'Booth Name',
+  caste:      'Caste',
+  tag:        'Tag',
+  contacts:   'Contacts',
+  karyakarta: 'Karyakarta',
+  whatsapp:   'WhatsApp No.',
+}
 
-// ─── SETTINGS ────────────────────────────────────────────────────────────────
-export async function fetchSettings() {
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+export async function signInWithOTP(email) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true }
+  })
+  if (error) throw error
+}
+
+export async function verifyOTP(email, token) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email, token, type: 'email'
+  })
+  if (error) throw error
+  return data
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
+}
+
+export async function getSession() {
+  const { data } = await supabase.auth.getSession()
+  return data.session
+}
+
+// ─── APP USER ─────────────────────────────────────────────────────────────────
+export async function fetchAppUser(authId) {
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('*, workspaces(*), organisations(*)')
+    .eq('auth_id', authId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function fetchAppUserByEmail(email) {
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('*, workspaces(*), organisations(*)')
+    .eq('email', email)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateAppUserAuthId(email, authId) {
+  const { error } = await supabase
+    .from('app_users')
+    .update({ auth_id: authId })
+    .eq('email', email)
+  if (error) throw error
+}
+
+// ─── VOLUNTEERS ───────────────────────────────────────────────────────────────
+export async function fetchVolunteers(workspaceId) {
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('role', 'volunteer')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function addVolunteer({ name, email, phone, workspaceId, orgId }) {
+  const { data, error } = await supabase
+    .from('app_users')
+    .insert({
+      name,
+      email,
+      phone,
+      role: 'volunteer',
+      workspace_id: workspaceId,
+      org_id: orgId,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function removeVolunteer(id) {
+  const { error } = await supabase
+    .from('app_users')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ─── WORKSPACES (for MP) ──────────────────────────────────────────────────────
+export async function fetchWorkspaces(orgId) {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .select('*')
+    .eq('org_id', orgId)
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function createWorkspace({ orgId, name, state, ls, vs }) {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .insert({ org_id: orgId, name, state, ls, vs })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+export async function fetchSettings(workspaceId) {
   const { data, error } = await supabase
     .from('settings')
     .select('*')
+    .eq('workspace_id', workspaceId)
     .limit(1)
     .single()
   if (error) throw error
   return dbToSettings(data)
 }
 
-export async function saveSettings(settings) {
-  const { data: existing } = await supabase.from('settings').select('id').limit(1).single()
-  const row = settingsToDb(settings)
+export async function saveSettings(settings, workspaceId) {
+  const { data: existing } = await supabase
+    .from('settings')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .limit(1)
+    .single()
+  const row = { ...settingsToDb(settings), workspace_id: workspaceId }
   if (existing) {
     const { error } = await supabase.from('settings').update(row).eq('id', existing.id)
     if (error) throw error
@@ -46,20 +163,21 @@ export async function saveSettings(settings) {
   }
 }
 
-// ─── CONTACTS ────────────────────────────────────────────────────────────────
-export async function fetchContacts() {
+// ─── CONTACTS ─────────────────────────────────────────────────────────────────
+export async function fetchContacts(workspaceId) {
   const { data, error } = await supabase
     .from('contacts')
     .select('*')
+    .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
   if (error) throw error
   return data.map(dbToContact)
 }
 
-export async function insertContact(contact) {
+export async function insertContact(contact, workspaceId) {
   const { data, error } = await supabase
     .from('contacts')
-    .insert(contactToDb(contact))
+    .insert({ ...contactToDb(contact), workspace_id: workspaceId })
     .select()
     .single()
   if (error) throw error
@@ -82,20 +200,26 @@ export async function deleteContact(id) {
   if (error) throw error
 }
 
-// ─── BOOTHS ──────────────────────────────────────────────────────────────────
-export async function fetchBooths() {
+export async function bulkDeleteContacts(ids) {
+  const { error } = await supabase.from('contacts').delete().in('id', ids)
+  if (error) throw error
+}
+
+// ─── BOOTHS ───────────────────────────────────────────────────────────────────
+export async function fetchBooths(workspaceId) {
   const { data, error } = await supabase
     .from('booths')
     .select('*')
+    .eq('workspace_id', workspaceId)
     .order('bno', { ascending: true })
   if (error) throw error
   return data.map(dbToBooth)
 }
 
-export async function insertBooth(booth) {
+export async function insertBooth(booth, workspaceId) {
   const { data, error } = await supabase
     .from('booths')
-    .insert(boothToDb(booth))
+    .insert({ ...boothToDb(booth), workspace_id: workspaceId })
     .select()
     .single()
   if (error) throw error
@@ -118,17 +242,53 @@ export async function deleteBooth(id) {
   if (error) throw error
 }
 
-export async function upsertBoothByBno(boothData) {
+export async function upsertBoothByBno(boothData, workspaceId) {
   const { data, error } = await supabase
     .from('booths')
-    .upsert(boothToDb(boothData), { onConflict: 'bno' })
+    .upsert(
+      { ...boothToDb(boothData), workspace_id: workspaceId },
+      { onConflict: 'bno' }
+    )
     .select()
     .single()
   if (error) throw error
   return dbToBooth(data)
 }
 
-// ─── MAPPERS — DB ↔ App ───────────────────────────────────────────────────────
+// ─── MAPPERS ──────────────────────────────────────────────────────────────────
+function dbToSettings(d) {
+  return {
+    state:       d.state        || 'Bihar',
+    ls:          d.ls           || 'Patna Sahib',
+    vs:          d.vs           || 'Bankipur',
+    totalVoters: d.total_voters || '',
+    totalBooths: d.total_booths || '',
+    mandals:     d.mandals      || [],
+    castes:      d.castes       || [],
+    parties:     d.parties      || ['BJP+', 'Congress+', 'Others+'],
+    elections:   d.elections    || ['Election 2015', 'Election 2020', 'Election 2024'],
+    adminPin:    d.admin_pin    || '1234',
+    sheetsUrl:   d.sheets_url   || '',
+    labels:      { ...DEFAULT_LABELS, ...(d.labels || {}) },
+  }
+}
+
+function settingsToDb(s) {
+  return {
+    state:        s.state,
+    ls:           s.ls,
+    vs:           s.vs,
+    total_voters: s.totalVoters,
+    total_booths: s.totalBooths,
+    mandals:      s.mandals,
+    castes:       s.castes,
+    parties:      s.parties,
+    elections:    s.elections,
+    admin_pin:    s.adminPin,
+    sheets_url:   s.sheetsUrl,
+    labels:       s.labels || DEFAULT_LABELS,
+  }
+}
 
 function dbToContact(d) {
   return {
@@ -195,45 +355,5 @@ function boothToDb(b) {
     castes:    b.castes    || ['', '', ''],
     elec:      b.elec      || [],
     notes:     b.notes     || '',
-  }
-}
-
-// ── UPDATE dbToSettings function ──────────────────────────────────────────────
-// Find the existing dbToSettings function and replace it with this:
-
-function dbToSettings(d) {
-  return {
-    state:        d.state        || 'Bihar',
-    ls:           d.ls           || 'Patna Sahib',
-    vs:           d.vs           || 'Bankipur',
-    totalVoters:  d.total_voters || '',
-    totalBooths:  d.total_booths || '',
-    mandals:      d.mandals      || [],
-    castes:       d.castes       || [],
-    parties:      d.parties      || ['BJP+', 'Congress+', 'Others+'],
-    elections:    d.elections    || ['Election 2015', 'Election 2020', 'Election 2024'],
-    adminPin:     d.admin_pin    || '1234',
-    sheetsUrl:    d.sheets_url   || '',
-    labels:       { ...DEFAULT_LABELS, ...(d.labels || {}) }, // ← ADD THIS
-  }
-}
-
-// ── UPDATE settingsToDb function ──────────────────────────────────────────────
-// Find the existing settingsToDb function and replace it with this:
-
-function settingsToDb(s) {
-  return {
-    state:        s.state,
-    ls:           s.ls,
-    vs:           s.vs,
-    total_voters: s.totalVoters,
-    total_booths: s.totalBooths,
-    mandals:      s.mandals,
-    castes:       s.castes,
-    parties:      s.parties,
-    elections:    s.elections,
-    admin_pin:    s.adminPin,
-    sheets_url:   s.sheetsUrl,
-    labels:       s.labels || DEFAULT_LABELS, // ← ADD THIS
   }
 }
