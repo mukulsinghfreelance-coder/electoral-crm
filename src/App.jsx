@@ -167,7 +167,7 @@ function OTPModal({open,onClose,onSuccess,pin}) {
 
 // ─── CONTACT FORM ─────────────────────────────────────────────────────────────
 function ContactForm({open,onClose,initial,settings,onSave,saving}) {
-  const blank={name:"",phone:"",wa:"",mandal:"",panchayat:"",village:"",bno:"",bnm:"",tag:"",caste:"",notes:""};
+  const blank={name:"",phone:"",wa:"",mandal:"",panchayat:"",village:"",bno:"",bnm:"",tag:"",caste:"",gender:"",notes:""};
   const [f,setF]=useState(blank); const [errs,setErrs]=useState({});
   useEffect(()=>{if(open){setF(initial||blank);setErrs({});}}, [open]);
   const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
@@ -207,6 +207,14 @@ function ContactForm({open,onClose,initial,settings,onSave,saving}) {
           <Sel value={f.caste} onChange={set("caste")} error={errs.caste}>
             <option value="">— Select {settings.labels.caste} —</option>
             {settings.castes.map(c=><option key={c}>{c}</option>)}
+          </Sel>
+        </Fld>
+        <Fld label="Gender" col="1">
+          <Sel value={f.gender} onChange={set("gender")}>
+            <option value="">— Select —</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
           </Sel>
         </Fld>
         <Fld label={`${settings.labels.booth} No.`} err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric"/></Fld>
@@ -551,7 +559,7 @@ function ImportModal({open,onClose,onImport,saving}) {
   const [txt,setTxt]=useState(""); const ref=useRef();
   return (
     <Modal open={open} onClose={onClose} title="⬆️ Import Contacts">
-      <p style={{fontSize:12,color:C.gray600,marginBottom:12}}>Columns: Name, Phone, WhatsApp, Mandal, Panchayat, Village, BoothNo, BoothName, Tag, Caste, Notes</p>
+      <p style={{fontSize:12,color:C.gray600,marginBottom:12}}>Columns: Name, Phone, WhatsApp, Mandal, Panchayat, Village, BoothNo, BoothName, Tag, Caste, Gender, Notes</p>
       <Fld label="Paste CSV"><textarea value={txt} onChange={e=>setTxt(e.target.value)} style={{width:"100%",padding:"9px 12px",fontSize:11,fontFamily:"monospace",border:`1.5px solid ${C.gray200}`,borderRadius:9,background:"#FAFAFA",minHeight:80,resize:"vertical",outline:"none"}}/></Fld>
       <input ref={ref} type="file" accept=".csv" style={{marginBottom:12,fontSize:12}} onChange={e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>setTxt(ev.target.result);r.readAsText(file);}}/>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
@@ -602,7 +610,7 @@ function ContactDetail({contact,settings,onEdit,onDelete}) {
       </div>
     </div>
     <div style={{padding:"14px 16px",flex:1,overflowY:"auto"}}>
-      {[["📞 Phone",contact.phone],["💬 WhatsApp",contact.wa],[`🏷️ ${settings.labels.caste}`,contact.caste],[`🏘️ ${settings.labels.village}`,contact.village],[`🗺️ ${settings.labels.mandal}`,contact.mandal],[`🏛️ ${settings.labels.panchayat}`,contact.panchayat],[`📍 ${settings.labels.booth} No.`,contact.bno],[`🏫 ${settings.labels.boothName}`,contact.bnm],["📝 Notes",contact.notes]].map(([l,v])=>v?(<div key={l} style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{l}</div><div style={{fontSize:13,fontWeight:500,color:C.gray900}}>{v}</div></div>):null)}
+      {[["📞 Phone",contact.phone],["💬 WhatsApp",contact.wa],["👤 Gender",    contact.gender],[`🏷️ ${settings.labels.caste}`,contact.caste],[`🏘️ ${settings.labels.village}`,contact.village],[`🗺️ ${settings.labels.mandal}`,contact.mandal],[`🏛️ ${settings.labels.panchayat}`,contact.panchayat],[`📍 ${settings.labels.booth} No.`,contact.bno],[`🏫 ${settings.labels.boothName}`,contact.bnm],["📝 Notes",contact.notes]].map(([l,v])=>v?(<div key={l} style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{l}</div><div style={{fontSize:13,fontWeight:500,color:C.gray900}}>{v}</div></div>):null)}
     </div>
     <div style={{padding:"12px 14px",borderTop:`1px solid ${C.gray200}`,display:"flex",gap:8}}>
       <Btn v="outline" onClick={()=>onEdit(contact)} style={{flex:1}}>✏️ Edit</Btn>
@@ -784,7 +792,7 @@ const handleSaveSheetsUrl = async (url) => {
   const [sort,      setSort]      = useState({col:"name",dir:"asc"});
   const [bSort,     setBSort]     = useState({col:"bno",dir:"asc"});
   const [search,    setSearch]    = useState("");
-  const [fM,setFM]=useState(""); const [fP,setFP]=useState(""); const [fB,setFB]=useState(""); const [fT,setFT]=useState(""); const [fCaste,setFCaste]=useState("");
+  const [fM,setFM]=useState(""); const [fP,setFP]=useState(""); const [fB,setFB]=useState(""); const [fT,setFT]=useState(""); const [fCaste,setFCaste]=useState("");  const [fGender,setFGender]=useState("");
   const [bSearch,setBSearch]=useState(""); const [bfR,setBfR]=useState(""); const [bfP,setBfP]=useState("");
   const [showAdd,    setShowAdd]    = useState(false); const [editC,setEditC]=useState(null);
   const [showBAdd,   setShowBAdd]   = useState(false); const [editB,setEditB]=useState(null);
@@ -806,12 +814,12 @@ const handleSaveSheetsUrl = async (url) => {
   const filteredC=useMemo(()=>{
     const q=search.toLowerCase(); const ft=fT||activeTag;
     let r=contacts.filter(c=>{
-      const ok=!q||(c.name+c.phone+c.wa+c.mandal+c.panchayat+c.village+c.bno+c.bnm+c.tag+c.caste).toLowerCase().includes(q);
-      return ok&&(!fM||c.mandal===fM)&&(!fP||c.panchayat===fP)&&(!fB||c.bno===fB)&&(!ft||c.tag===ft)&&(!fCaste||c.caste===fCaste);
+      const ok=!q||(c.name+c.phone+c.wa+c.gender+c.caste+c.mandal+c.panchayat+c.village+c.bno+c.bnm+c.tag).toLowerCase().includes(q);
+      return ok&&(!fM||c.mandal===fM)&&(!fP||c.panchayat===fP)&&(!fB||c.bno===fB)&&(!ft||c.tag===ft)&&(!fCaste||c.caste===fCaste)&&(!fGender||c.gender===fGender);
     });
     r.sort((a,b)=>{let av=a[sort.col]||"",bv=b[sort.col]||"";if(sort.col==="bno"){av=parseInt(av)||0;bv=parseInt(bv)||0;return sort.dir==="asc"?av-bv:bv-av;}return sort.dir==="asc"?av.toString().localeCompare(bv.toString()):bv.toString().localeCompare(av.toString());});
     return r;
-  },[contacts,search,fM,fP,fB,fT,fCaste,activeTag,sort]);
+  },[contacts,search,fM,fP,fB,fT,fCaste,fGender,activeTag,sort]);
 
   const filteredB=useMemo(()=>{
     const q=bSearch.toLowerCase();
@@ -910,8 +918,8 @@ const handleSaveSheetsUrl = async (url) => {
   };
 
   const exportCSV=()=>{
-    const rows=[["Name","Phone","WhatsApp","Mandal","Panchayat","Village","BoothNo","BoothName","Tag","Caste","Notes"]];
-    filteredC.forEach(c=>rows.push([c.name,c.phone,c.wa,c.mandal,c.panchayat,c.village,c.bno,c.bnm,c.tag,c.caste,c.notes]));
+    const rows=[["Name","Phone","WhatsApp","Gender","Caste","Mandal","Panchayat","Village","BoothNo","BoothName","Tag","Notes"]];
+    filteredC.forEach(c=>rows.push([c.name,c.phone,c.wa,c.gender,c.caste,c.mandal,c.panchayat,c.village,c.bno,c.bnm,c.tag,c.notes]));
     const csv=rows.map(r=>r.map(v=>'"'+String(v||"").replace(/"/g,'""')+'"').join(",")).join("\n");
     const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="contacts.csv";a.click();
   };
@@ -1145,6 +1153,7 @@ const handleSaveSheetsUrl = async (url) => {
                 <thead><tr>{[
                   ["name",      "Name",                           106],
                   ["phone",     "Phone",                           88],
+                  ["gender",    "Gender",                          60],
                   ["caste",     settings.labels.caste,             64],
                   ["mandal",    settings.labels.mandal,            72],
                   ["panchayat", settings.labels.panchayat,         76],
@@ -1157,6 +1166,7 @@ const handleSaveSheetsUrl = async (url) => {
 	           } style={{background:selC?.id===c.id?C.primaryLight:"transparent",cursor:"pointer",transition:"background .1s"}}>
                   <td style={{...tdS,fontWeight:700,color:C.gray900}}>{c.name}</td>
                   <td style={{...tdS,color:C.gray600}}>{c.phone}</td>
+                  <td style={tdS}>{c.gender}</td>
                   <td style={tdS}>{c.caste}</td>
                   <td style={tdS}>{c.mandal}</td>
                   <td style={tdS}>{c.panchayat}</td>

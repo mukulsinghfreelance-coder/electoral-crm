@@ -143,6 +143,7 @@ function dbToContact(d) {
     bnm:       d.bnm       || '',
     tag:       d.tag       || '',
     caste:     d.caste     || '',
+    gender:    d.gender    || '',
     notes:     d.notes     || '',
   }
 }
@@ -159,6 +160,7 @@ function contactToDb(c) {
     bnm:       c.bnm       || '',
     tag:       c.tag       || '',
     caste:     c.caste     || '',
+    gender:    c.gender    || '',
     notes:     c.notes     || '',
   }
 }

@@ -121,3 +121,5 @@ UPDATE settings SET labels = '{
   "whatsapp": "WhatsApp No."
 }' WHERE labels IS NULL;
 
+ALTER TABLE contacts 
+ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT '';
