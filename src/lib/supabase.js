@@ -23,7 +23,10 @@ export const DEFAULT_LABELS = {
 export async function signInWithOTP(email) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true }
+    options: {
+	shouldCreateUser: true,
+	emailRedirectTo: null  // disable magic link email
+	}
   })
   if (error) throw error
 }
