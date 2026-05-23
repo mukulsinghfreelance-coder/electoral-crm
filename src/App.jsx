@@ -22,6 +22,8 @@ const TAG_STYLE = {
 };
 const RATING = { A:{bg:"#D1FAE5",cl:"#065F46",label:"Wins"}, B:{bg:"#FEF3C7",cl:"#92400E",label:"Mediocre"}, C:{bg:"#FEE2E2",cl:"#991B1B",label:"Loses"} };
 
+const [dataLoaded, setDataLoaded] = useState(false)
+
 const TABS = [
   ["geo",    "🗺️ Geography"],
   ["labels", "🏷️ Labels"], 
@@ -856,7 +858,11 @@ const handleSaveSheetsUrl = async (url) => {
   }
 };
 
-  useEffect(() => { loadAll(); }, []); // empty array = run once only
+  useEffect(() => { 
+      if (workspace?.id && !dataLoaded) {
+        setDataLoaded(true);
+        loadAll(); 
+  }, [workspace?.id])  // ← depend on workspace.id directly, not loadAll
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [screen,    setScreen]    = useState("contacts");
