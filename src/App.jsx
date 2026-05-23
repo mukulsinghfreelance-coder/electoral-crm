@@ -860,8 +860,8 @@ const handleSaveSheetsUrl = async (url) => {
 
   useEffect(() => { 
       if (workspace?.id && !dataLoaded) {
-        setDataLoaded(true);
-        loadAll(); 
+        setDataLoaded(true)
+        loadAll() 
   }, [workspace?.id])  // ← depend on workspace.id directly, not loadAll
 
   // ── UI state ──────────────────────────────────────────────────────────────
