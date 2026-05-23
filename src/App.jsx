@@ -190,6 +190,21 @@ function ContactForm({open,onClose,initial,settings,onSave,saving}) {
         <div/>
         <Fld label="Phone" req err={errs.phone} col="1"><Inp value={f.phone} onChange={set("phone")} maxLength={10} error={errs.phone} placeholder="10-digit mobile"/></Fld>
         <Fld label="WhatsApp No." err={errs.wa} col="2"><Inp value={f.wa} onChange={set("wa")} maxLength={10} error={errs.wa} placeholder="optional"/></Fld>
+        <Fld label="Gender" col="1">
+          <Sel value={f.gender} onChange={set("gender")}>
+            <option value="">— Select —</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </Sel>
+        </Fld>
+        <Fld label={settings.labels.caste} req err={errs.caste} col="2">
+          <Sel value={f.caste} onChange={set("caste")} error={errs.caste}>
+            <option value="">— Select {settings.labels.caste} —</option>
+            {settings.castes.map(c=><option key={c}>{c}</option>)}
+          </Sel>
+        </Fld>
+        <Fld label={settings.labels.village} col="1"><Inp value={f.village} onChange={set("village")} placeholder="optional"/></Fld>
         <Fld label={settings.labels.mandal} req err={errs.mandal} col="1">
           <Sel value={f.mandal} onChange={e=>setF(p=>({...p,mandal:e.target.value,panchayat:""}))} error={errs.mandal}>
             <option value="">— Select {settings.labels.mandal} —</option>
@@ -200,21 +215,6 @@ function ContactForm({open,onClose,initial,settings,onSave,saving}) {
           <Sel value={f.panchayat} onChange={set("panchayat")} error={errs.panchayat} disabled={!f.mandal}>
             <option value="">— Select {settings.labels.panchayat} —</option>
             {panchs.map(p=><option key={p}>{p}</option>)}
-          </Sel>
-        </Fld>
-        <Fld label={settings.labels.village} col="1"><Inp value={f.village} onChange={set("village")} placeholder="optional"/></Fld>
-        <Fld label={settings.labels.caste} req err={errs.caste} col="2">
-          <Sel value={f.caste} onChange={set("caste")} error={errs.caste}>
-            <option value="">— Select {settings.labels.caste} —</option>
-            {settings.castes.map(c=><option key={c}>{c}</option>)}
-          </Sel>
-        </Fld>
-        <Fld label="Gender" col="1">
-          <Sel value={f.gender} onChange={set("gender")}>
-            <option value="">— Select —</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
           </Sel>
         </Fld>
         <Fld label={`${settings.labels.booth} No.`} err={errs.bno} col="1"><Inp value={f.bno} onChange={e=>setF(p=>({...p,bno:e.target.value.replace(/\D/g,"")}))} error={errs.bno} placeholder="numeric"/></Fld>
