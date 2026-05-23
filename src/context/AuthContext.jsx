@@ -24,10 +24,10 @@ export function AuthProvider({ children }) {
       if (!data) {
         console.log('No user found — signing out')
         setAuthError('Your email is not registered. Contact your admin.')
-        await supabase.auth.signOut()
         setUser(null)
         setWorkspace(null)
         setLoading(false)
+	supabase.auth.signOut().catch(console.warn)
         return
       }
 
