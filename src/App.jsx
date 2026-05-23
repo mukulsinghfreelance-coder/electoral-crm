@@ -1297,62 +1297,104 @@ const handleSaveSheetsUrl = async (url) => {
         </div>
       </div>
 
-      {/* ── MOBILE DETAIL MODAL ── */}
+      {/* ── MOBILE DETAIL MODAL with Swipe down to dismiss ── */}
       {showMobileDetail && (
-        <div
-          onClick={e => e.target === e.currentTarget && setShowMobileDetail(false)}
-          style={{
-            position:"fixed", inset:0,
-            background:"rgba(17,24,39,.6)",
-            display:"flex", alignItems:"flex-end", justifyContent:"center",
-            zIndex:800, backdropFilter:"blur(3px)"
-          }}
-        >
-          <div style={{
-            background:"#FFFFFF",
-            borderRadius:"20px 20px 0 0",
-            width:"100%", maxHeight:"85vh",
-            overflowY:"auto", paddingBottom:80
-          }}>
-            {/* Drag handle */}
-            <div style={{
-              width:40, height:4,
-              background:"#E5E7EB",
-              borderRadius:2,
-              margin:"12px auto 0"
-            }}/>
-            {screen === "contacts"
-              ? <ContactDetail
-                  contact={contacts.find(c => c.id === selC?.id) || null}
-                  settings={settings}
-                  onEdit={c => {
-                    setEditC(c);
-                    setShowAdd(true);
-                    setShowMobileDetail(false);
-                  }}
-                  onDelete={id => {
-                    handleDeleteContact(id);
-                    setShowMobileDetail(false);
-                  }}
-                />
-              : <BoothDetail
-                  booth={booths.find(b => b.id === selB?.id) || null}
-                  settings={settings}
-                  onEdit={b => {
-                    setEditB(b);
-                    setShowBAdd(true);
-                    setShowMobileDetail(false);
-                  }}
-                  onDelete={id => {
-                    handleDeleteBooth(id);
-                    setShowMobileDetail(false);
-                  }}
-                />
-            }
+         <div
+            onClick={e => e.target === e.currentTarget && setShowMobileDetail(false)}
+            style={{
+              position:"fixed", inset:0,
+              background:"rgba(17,24,39,.6)",
+              display:"flex", alignItems:"flex-end", justifyContent:"center",
+              zIndex:800, backdropFilter:"blur(3px)"
+            }}
+          >
+            <div
+              style={{
+                background:"#FFFFFF",
+                borderRadius:"20px 20px 0 0",
+                width:"100%", maxHeight:"85vh",
+                overflowY:"auto", paddingBottom:80,
+                transition:"transform 0.3s ease",
+              }}
+              onTouchStart={e => {
+                // Record where the touch started
+                e.currentTarget._touchStartY = e.touches[0].clientY;
+                e.currentTarget._touchStartTime = Date.now();
+              }}
+              onTouchMove={e => {
+                const deltaY = e.touches[0].clientY - e.currentTarget._touchStartY;
+                // Only move down, not up
+                if (deltaY > 0) {
+                  e.currentTarget.style.transform = `translateY(${deltaY}px)`;
+                }
+              }}
+              onTouchEnd={e => {
+                const deltaY = e.changedTouches[0].clientY - e.currentTarget._touchStartY;
+                const deltaTime = Date.now() - e.currentTarget._touchStartTime;
+                const velocity = deltaY / deltaTime; // pixels per ms
+        
+                // Dismiss if:
+                // - dragged more than 100px down, OR
+                // - quick flick downward (velocity > 0.5px/ms)
+                if (deltaY > 100 || velocity > 0.5) {
+                  setShowMobileDetail(false);
+                } else {
+                  // Snap back to original position
+                  e.currentTarget.style.transform = "translateY(0)";
+                }
+              }}
+            >
+              {/* Drag handle — visual indicator */}
+              <div style={{
+                width:40, height:5,
+                background:"#D1D5DB",
+                borderRadius:3,
+                margin:"12px auto 4px",
+                cursor:"grab",
+              }}/>
+        
+              {/* Hint text */}
+              <div style={{
+                textAlign:"center",
+                fontSize:10,
+                color:"#9CA3AF",
+                marginBottom:8,
+                fontWeight:500,
+              }}>
+                Swipe down to close
+              </div>
+        
+              {screen === "contacts"
+                ? <ContactDetail
+                    contact={contacts.find(c => c.id === selC?.id) || null}
+                    settings={settings}
+                    onEdit={c => {
+                      setEditC(c);
+                      setShowAdd(true);
+                      setShowMobileDetail(false);
+                    }}
+                    onDelete={id => {
+                      handleDeleteContact(id);
+                      setShowMobileDetail(false);
+                    }}
+                  />
+                : <BoothDetail
+                    booth={booths.find(b => b.id === selB?.id) || null}
+                    settings={settings}
+                    onEdit={b => {
+                      setEditB(b);
+                      setShowBAdd(true);
+                      setShowMobileDetail(false);
+                    }}
+                    onDelete={id => {
+                      handleDeleteBooth(id);
+                      setShowMobileDetail(false);
+                    }}
+                  />
+              }
+            </div>
           </div>
-        </div>
-      )}
-
+        )}
       {/* ── BOTTOM NAV (shown on mobile via CSS) ── */}
       <div id="bottom-nav">
 
