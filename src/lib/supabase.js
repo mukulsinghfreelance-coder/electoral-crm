@@ -20,20 +20,22 @@ export const DEFAULT_LABELS = {
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
+
 export async function signInWithOTP(email) {
   const { error } = await supabase.auth.signInWithOtp({
-    email,
+    email: email,
     options: {
-	shouldCreateUser: true,
-	emailRedirectTo: null  // disable magic link email
-	}
+      shouldCreateUser: false,  // ← only allow registered users
+    }
   })
   if (error) throw error
 }
 
 export async function verifyOTP(email, token) {
   const { data, error } = await supabase.auth.verifyOtp({
-    email, token, type: 'email'
+    email,
+    token,
+    type: 'email',
   })
   if (error) throw error
   return data
@@ -65,7 +67,7 @@ export async function fetchAppUserByEmail(email) {
     .from('app_users')
     .select('*, workspaces(*), organisations(*)')
     .eq('email', email)
-    .single()
+    .maybeSingle()   // ← won't throw error if not found
   if (error) throw error
   return data
 }
