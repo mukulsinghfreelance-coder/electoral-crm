@@ -146,9 +146,13 @@ export async function fetchSettings(workspaceId) {
     .select('*')
     .eq('workspace_id', workspaceId)
     .limit(1)
-    .single()
+
   if (error) throw error
-  return dbToSettings(data)
+
+  // If no settings row exists, return defaults
+  if (!data || data.length === 0) return dbToSettings({})
+
+  return dbToSettings(data[0])
 }
 
 export async function saveSettings(settings, workspaceId) {

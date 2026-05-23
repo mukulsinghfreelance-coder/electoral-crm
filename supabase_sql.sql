@@ -249,7 +249,6 @@ FOR DELETE
 TO authenticated
 USING (true);
 
----------------------------------
 -- Multi-User
 -- Create MP organisation
 INSERT INTO organisations (id, name, type, owner_email)
@@ -277,3 +276,27 @@ VALUES (
   'cccccccc-0000-0000-0000-000000000001',
   'dddddddd-0000-0000-0000-000000000001'  -- default workspace
 ) ON CONFLICT DO NOTHING;
+
+-- Insert default settings for all workspaces that don't have settings yet
+INSERT INTO settings (
+  workspace_id, state, ls, vs,
+  total_voters, total_booths,
+  mandals, castes, parties, elections,
+  admin_pin, sheets_url, labels
+)
+SELECT
+  w.id,
+  w.state,
+  w.ls,
+  w.vs,
+  '', '',
+  '[{"name":"Default Mandal","panchayats":["Default Panchayat"]}]',
+  '["Yadav","Brahmin","Kurmi","Bhumihar","Rajput","Muslim","Koeri","Dusadh"]',
+  '["BJP+","Congress+","Others+"]',
+  '["Election 2015","Election 2020","Election 2024"]',
+  '1234', '',
+  '{"mandal":"Mandal","panchayat":"Panchayat","booth":"Booth","village":"Village","boothName":"Booth Name","caste":"Caste","tag":"Tag","contacts":"Contacts","karyakarta":"Karyakarta","whatsapp":"WhatsApp No."}'
+FROM workspaces w
+WHERE NOT EXISTS (
+  SELECT 1 FROM settings s WHERE s.workspace_id = w.id
+);
