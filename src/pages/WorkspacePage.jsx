@@ -52,18 +52,21 @@ export default function WorkspacePage() {
 
       // Fetch stats for each workspace in parallel
       const statsPromises = (ws || []).map(async w => {
-        const [{ count: contactCount }, { count: boothCount }, { data: settings }] = await Promise.all([
-          supabase.from('contacts').select('*', { count:'exact', head:true }).eq('workspace_id', w.id),
-          supabase.from('booths').select('*', { count:'exact', head:true }).eq('workspace_id', w.id),
-          supabase.from('settings').select('total_voters, total_booths, mandals').eq('workspace_id', w.id).maybeSingle(),
-        ])
+        const [{ count: contactCount }, { count: boothCount }, { data: settingsArr }] = await Promise.all([
+            supabase.from('contacts').select('*', { count:'exact', head:true }).eq('workspace_id', w.id),
+            supabase.from('booths').select('*', { count:'exact', head:true }).eq('workspace_id', w.id),
+            supabase.from('settings').select('total_voters, total_booths, mandals').eq('workspace_id', w.id).limit(1),
+            ])
+            
+      const settings = settingsArr?.[0] || null      
 
         // Get booth ratings
         const { data: booths } = await supabase
           .from('booths')
           .select('rating')
           .eq('workspace_id', w.id)
-
+          .not('rating', 'is', null)
+          
         const ratings = { A:0, B:0, C:0 }
         ;(booths||[]).forEach(b => { if(b.rating) ratings[b.rating]++ })
 
