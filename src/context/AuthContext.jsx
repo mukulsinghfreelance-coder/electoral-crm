@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase, signInWithOTP, verifyOTP, signOut } from '../lib/supabase'
 
 const AuthContext = createContext(null)
