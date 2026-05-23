@@ -248,3 +248,32 @@ ON app_users
 FOR DELETE
 TO authenticated
 USING (true);
+
+---------------------------------
+-- Multi-User
+-- Create MP organisation
+INSERT INTO organisations (id, name, type, owner_email)
+VALUES (
+  'cccccccc-0000-0000-0000-000000000001',
+  'Test MP Organisation',
+  'MP',
+  'mp-test@gmail.com'
+) ON CONFLICT DO NOTHING;
+
+-- Create 3 Vidhan Sabhas under this MP
+INSERT INTO workspaces (id, org_id, name, state, ls, vs)
+VALUES
+  ('dddddddd-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000001', 'Bankipur', 'Bihar', 'Patna Sahib', 'Bankipur'),
+  ('eeeeeeee-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000001', 'Patna City', 'Bihar', 'Patna Sahib', 'Patna City'),
+  ('ffffffff-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000001', 'Kumhrar', 'Bihar', 'Patna Sahib', 'Kumhrar')
+ON CONFLICT DO NOTHING;
+
+-- Create MP user
+INSERT INTO app_users (name, email, role, org_id, workspace_id)
+VALUES (
+  'Test MP',
+  'mp-test@gmail.com',   -- ← change to real email for testing
+  'admin',
+  'cccccccc-0000-0000-0000-000000000001',
+  'dddddddd-0000-0000-0000-000000000001'  -- default workspace
+) ON CONFLICT DO NOTHING;

@@ -606,8 +606,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const { user, loading:authLoading, workspace, isAdmin, isVolunteer, isMP, logout } = useAuth()
-
+  const { user, loading:authLoading, workspace, isAdmin, isVolunteer, isMP, logout, switchWorkspace } = useAuth()
   // ── Data state ────────────────────────────────────────────────────────────
   const [settings,  setSettingsState] = useState(DEFAULT_SETTINGS);
   const [contacts,  setContacts]      = useState([]);
@@ -850,7 +849,23 @@ export default function App() {
           <div style={{padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,background:C.primaryLight}}>
             <div style={{fontSize:12,fontWeight:700,color:C.primary}}>{user?.name}</div>
             <div style={{fontSize:10,color:C.gray400,marginTop:1}}>{isAdmin?"👑 Admin":"👤 Volunteer"} · {workspace?.vs||"—"}</div>
-          </div>
+             {/* Workspace switcher — only for MP */}
+              {isMP && (
+                <button
+                  onClick={() => switchWorkspace(null)}  // null triggers WorkspacePage
+                  style={{
+                    marginTop:6, width:"100%", padding:"5px 8px",
+                    fontSize:10, fontWeight:700,
+                    background:C.white, color:C.primary,
+                    border:`1.5px solid ${C.primary}`,
+                    borderRadius:6, cursor:"pointer",
+                    fontFamily:"inherit",
+                  }}
+                >
+                  🔄 Switch Constituency
+                </button>
+              )}
+            </div>
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
