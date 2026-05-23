@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase, signInWithOTP, verifyOTP, signOut } from '../lib/supabase'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
@@ -10,125 +10,144 @@ export function AuthProvider({ children }) {
   const [loading,   setLoading]   = useState(true)
   const [authError, setAuthError] = useState('')
 
-useEffect(() => {
-  let userLoaded = false  // ← flag to prevent double load
+  const loadAppUser = useCallback(async (email) => {
+    console.log('Looking up user:', email)
+    try {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle()
 
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    setSession(session)
-    if (session && !userLoaded) {
-      userLoaded = true
-      loadAppUser(session.user.email)
-    } else {
-      setLoading(false)
-    }
-  })
+      console.log('User lookup result:', data, error)
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      console.log('Auth event:', event, session?.user?.email)
-      setSession(session)
-      if (event === 'SIGNED_IN' && session && !userLoaded) {
-        userLoaded = true  // ← prevent double call
-        await loadAppUser(session.user.email)
-      }
-      if (event === 'SIGNED_OUT') {
-        userLoaded = false
+      if (!data) {
+        console.log('No user found — signing out')
+        setAuthError('Your email is not registered. Contact your admin.')
+        await supabase.auth.signOut()
         setUser(null)
         setWorkspace(null)
         setLoading(false)
+        return
       }
-    }
-  )
-  return () => subscription.unsubscribe()
-}, [])
 
-const loadAppUser = async (email) => {
-  setLoading(true)
-  try {
-    console.log('Looking up user:', email)
-
-    const { data, error } = await supabase
-      .from('app_users')
-      .select('*')
-      .eq('email', email)
-      .maybeSingle()
-
-    console.log('User lookup result:', data, error)
-
-    if (!data) {
-      setAuthError('Your email is not registered. Contact your admin.')
-      await signOut()
-      setLoading(false)
-      return
-    }
-
-    // Update auth_id ONLY if null — but don't wait for it
-    // and don't let it trigger re-render
-    if (!data.auth_id) {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user?.id) {
-        supabase
-          .from('app_users')
-          .update({ auth_id: session.user.id })
-          .eq('email', email)
-          .then(() => console.log('auth_id updated'))
-          .catch(err => console.log('auth_id update failed:', err))
-        // Don't await — fire and forget
+      // Fetch workspace separately
+      let wsData = null
+      if (data.workspace_id) {
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('*')
+          .eq('id', data.workspace_id)
+          .maybeSingle()
+        wsData = ws
+        console.log('Workspace:', ws)
       }
+
+      // Fetch organisation separately
+      let orgData = null
+      if (data.org_id) {
+        const { data: org } = await supabase
+          .from('organisations')
+          .select('*')
+          .eq('id', data.org_id)
+          .maybeSingle()
+        orgData = org
+        console.log('Organisation:', orgData)
+      }
+
+      // Update auth_id if missing — fire and forget
+      if (!data.auth_id) {
+        const { data: { session: s } } = await supabase.auth.getSession()
+        if (s?.user?.id) {
+          supabase
+            .from('app_users')
+            .update({ auth_id: s.user.id })
+            .eq('email', email)
+            .then(() => console.log('auth_id linked'))
+            .catch(e => console.warn('auth_id link failed:', e))
+        }
+      }
+
+      setUser({ ...data, workspaces: wsData, organisations: orgData })
+      setWorkspace(wsData)
+      setAuthError('')
+
+    } catch (err) {
+      console.error('loadAppUser error:', err)
+      setAuthError('Something went wrong. Please try again.')
     }
 
-    // Fetch workspace separately
-    let workspaceData = null
-    if (data.workspace_id) {
-      const { data: ws } = await supabase
-        .from('workspaces')
-        .select('*')
-        .eq('id', data.workspace_id)
-        .maybeSingle()
-      workspaceData = ws
-    }
+    // Always call setLoading(false) at the end
+    setLoading(false)
+  }, [])
 
-    // Fetch organisation separately
-    let orgData = null
-    if (data.org_id) {
-      const { data: org } = await supabase
-        .from('organisations')
-        .select('*')
-        .eq('id', data.org_id)
-        .maybeSingle()
-      orgData = org
-    }
+  useEffect(() => {
+    let handled = false
 
-    setUser({ ...data, workspaces: workspaceData, organisations: orgData })
-    setWorkspace(workspaceData)
-    setAuthError('')
+    // Check existing session first
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.email)
+      setSession(session)
+      if (session?.user?.email && !handled) {
+        handled = true
+        loadAppUser(session.user.email)
+      } else if (!session) {
+        setLoading(false)
+      }
+    })
 
-  } catch (err) {
-    console.error('Error loading user:', err)
-    setAuthError('Something went wrong. Please try again.')
-  }
-  setLoading(false)
-}
+    // Listen for future auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth event:', event, session?.user?.email)
+        setSession(session)
+
+        if (event === 'SIGNED_IN' && session?.user?.email && !handled) {
+          handled = true
+          await loadAppUser(session.user.email)
+        }
+
+        if (event === 'SIGNED_OUT') {
+          handled = false
+          setUser(null)
+          setWorkspace(null)
+          setLoading(false)
+        }
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [loadAppUser])
 
   const login = async (email) => {
-    await signInWithOTP(email)
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true }
+    })
+    if (error) throw error
   }
 
   const verify = async (email, token) => {
-    const data = await verifyOTP(email, token)
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    })
+    if (error) throw error
     return data
   }
 
   const logout = async () => {
-    await signOut()
+    await supabase.auth.signOut()
     setUser(null)
     setSession(null)
     setWorkspace(null)
+    setLoading(false)
   }
 
   const switchWorkspace = (ws) => setWorkspace(ws)
 
-  const isAdmin     = user?.role === 'admin' || user?.role === 'super_admin'
+  const isAdmin      = user?.role === 'admin' || user?.role === 'super_admin'
   const isSuperAdmin = user?.role === 'super_admin'
   const isVolunteer  = user?.role === 'volunteer'
   const isMP         = user?.organisations?.type === 'MP'
