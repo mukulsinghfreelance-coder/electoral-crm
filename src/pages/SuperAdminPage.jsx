@@ -72,7 +72,11 @@ function PlanModal({ customer, onClose, onSaved }) {
       await adminUpdateCustomerPlan(customer.id, plan)
       onSaved(plan)
     } catch(e) {
-      setError(e.message || 'Failed to update plan')
+      let msg = e?.message || 'Failed to update plan'
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
+        msg = '🌐 Network error — please check your internet connection.'
+      }
+      setError(msg)
     }
     setSaving(false)
   }
@@ -176,10 +180,17 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
           setWorkspaces(prev => prev.filter(w => w.id !== ws.id))
           onWSDeleted(customer.id, ws.id)
           setConfirm(null)
+          // Reload workspaces from DB to ensure fresh data
+          const fresh = await adminFetchCustomerWorkspaces(customer.id)
+          setWorkspaces(fresh || [])
         } catch(e) {
           console.error('Delete WS error:', e)
           setConfirm(null)
-          setDeleteError(e.message || 'Failed to delete. Check console.')
+          let msg = e?.message || 'Failed to delete'
+          if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
+            msg = '🌐 Network error — please check your internet connection.'
+          }
+          setDeleteError(msg)
         }
       }
     })
@@ -198,7 +209,11 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
         } catch(e) {
           console.error('Purge error:', e)
           setConfirm(null)
-          setDeleteError(e.message || 'Purge failed. Check console.')
+          let msg = e?.message || 'Purge failed'
+          if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
+            msg = '🌐 Network error — please check your internet connection.'
+          }
+          setDeleteError(msg)
         }
       }
     })

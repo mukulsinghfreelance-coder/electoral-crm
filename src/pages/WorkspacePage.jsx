@@ -137,8 +137,14 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
 // ─── UPGRADE MODAL ────────────────────────────────────────────────────────────
 function UpgradeModal({ plan, onClose }) {
   return createPortal(
-    <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:'28px 24px', width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto' }}>
+    <div
+      onClick={e => e.target === e.currentTarget && onClose()}
+      style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20, pointerEvents:'all' }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background:C.white, borderRadius:20, padding:'28px 24px', width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto', pointerEvents:'all' }}
+      >
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
           <div style={{ fontSize:18, fontWeight:800, color:C.gray900 }}>⚡ Upgrade Your Plan</div>
           <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
@@ -243,7 +249,7 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#1E1B4B 0%,#312E81 50%,#4F46E5 100%)', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", padding:'0 0 60px' }}>
+    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#1E1B4B 0%,#312E81 50%,#4F46E5 100%)', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", padding:'0 0 60px', isolation:'auto' }}>
 
       {/* HEADER */}
       <div style={{ padding:'20px 20px 0', maxWidth:800, margin:'0 auto' }}>
@@ -315,7 +321,10 @@ export default function WorkspacePage() {
           <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', textTransform:'uppercase', letterSpacing:'.06em' }}>Your Constituencies</div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             {isFreeAtLimit && (
-              <div onClick={() => setShowUpgrade(true)} style={{ fontSize:11, background:'linear-gradient(135deg,#FEF3C7,#FDE68A)', color:'#92400E', padding:'7px 14px', borderRadius:8, border:'1px solid #F59E0B', fontWeight:600, cursor:'pointer' }}>
+              <div
+                onClick={e => { e.stopPropagation(); setShowUpgrade(true) }}
+                style={{ fontSize:11, background:'linear-gradient(135deg,#FEF3C7,#FDE68A)', color:'#92400E', padding:'7px 14px', borderRadius:8, border:'1px solid #F59E0B', fontWeight:600, cursor:'pointer' }}
+              >
                 ⚡ Upgrade to add more
               </div>
             )}
