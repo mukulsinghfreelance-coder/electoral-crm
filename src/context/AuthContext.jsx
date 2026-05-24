@@ -1,14 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { PLANS, getPlanLimits, calcMonthlyPrice, SUPER_ADMIN_EMAIL, FEATURES } from '../config'
 
 const AuthContext = createContext(null)
 
-// ─── PLAN LIMITS ──────────────────────────────────────────────────────────────
-export const PLAN_LIMITS = {
-  free:     { vs: 1,  contacts: 1000,      label: 'Free',     price: '₹0',        sameLS: false },
-  single:   { vs: 1,  contacts: Infinity,  label: 'Single',   price: '₹2,999/mo', sameLS: false },
-  multiple: { vs: 12, contacts: Infinity,  label: 'Multiple', price: '₹5,999/mo', sameLS: true  },
-}
+// Re-export for convenience so other files can import from AuthContext
+export { PLANS, calcMonthlyPrice }
 
 export function AuthProvider({ children }) {
   const [customer,  setCustomer]  = useState(null)
@@ -20,7 +17,6 @@ export function AuthProvider({ children }) {
   // ── Load customer row from DB ─────────────────────────────────────────────
   const loadCustomer = useCallback(async (authUser) => {
     try {
-      // 1. Try by auth_id first
       let { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -30,7 +26,6 @@ export function AuthProvider({ children }) {
       if (error) throw error
 
       if (!data) {
-        // 2. Try by email (first login — auth_id not linked yet)
         const { data: byEmail, error: emailErr } = await supabase
           .from('customers')
           .select('*')
@@ -40,14 +35,12 @@ export function AuthProvider({ children }) {
         if (emailErr) throw emailErr
 
         if (byEmail) {
-          // Link auth_id silently
           await supabase
             .from('customers')
             .update({ auth_id: authUser.id })
             .eq('email', authUser.email)
           data = { ...byEmail, auth_id: authUser.id }
         } else {
-          // 3. Brand new user — create customer row
           const { data: newCustomer, error: insertError } = await supabase
             .from('customers')
             .insert({
@@ -73,7 +66,7 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }, [])
 
-  // ── Single auth listener — handles all events ─────────────────────────────
+  // ── Single auth listener ──────────────────────────────────────────────────
   useEffect(() => {
     let initialized = false
 
@@ -81,12 +74,11 @@ export function AuthProvider({ children }) {
       async (event, newSession) => {
         setSession(newSession)
 
-        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           if (newSession?.user && !initialized) {
             initialized = true
             await loadCustomer(newSession.user)
           } else if (!newSession && !initialized) {
-            // No session on initial load
             initialized = true
             setLoading(false)
           }
@@ -98,10 +90,6 @@ export function AuthProvider({ children }) {
           setWorkspace(null)
           setLoading(false)
         }
-
-        // TOKEN_REFRESHED — just update session, don't reload customer
-        // This was causing the "logged out" bug — token refresh was
-        // triggering loadCustomer again and resetting state
       }
     )
 
@@ -110,6 +98,7 @@ export function AuthProvider({ children }) {
 
   // ── Auth methods ──────────────────────────────────────────────────────────
   const loginWithOTP = async (email) => {
+    if (!FEATURES.otpAuth) throw new Error('OTP login is disabled')
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: true },
@@ -122,12 +111,11 @@ export function AuthProvider({ children }) {
       email, token, type: 'email',
     })
     if (error) throw error
-    // onAuthStateChange SIGNED_IN will fire automatically after this
-    // so we don't need to call loadCustomer here — that was causing the hang
     return data
   }
 
   const loginWithGoogle = async () => {
+    if (!FEATURES.googleAuth) throw new Error('Google login is disabled')
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -137,7 +125,6 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     await supabase.auth.signOut()
-    // onAuthStateChange SIGNED_OUT fires and cleans up state
   }
 
   // ── Workspace helpers ─────────────────────────────────────────────────────
@@ -146,15 +133,16 @@ export function AuthProvider({ children }) {
 
   // ── Plan helpers ──────────────────────────────────────────────────────────
   const plan         = customer?.plan || 'free'
-  const planLimits   = PLAN_LIMITS[plan]
-  const isSuperAdmin = customer?.email === import.meta.env.VITE_SUPER_ADMIN_EMAIL
+  const planLimits   = getPlanLimits(plan)
+  const planConfig   = PLANS[plan] || PLANS.free
+  const isSuperAdmin = customer?.email === SUPER_ADMIN_EMAIL
 
   return (
     <AuthContext.Provider value={{
       customer, session, loading, workspace, authError,
       loginWithOTP, verifyOTP, loginWithGoogle, logout,
       switchWorkspace, exitWorkspace,
-      plan, planLimits, isSuperAdmin,
+      plan, planLimits, planConfig, isSuperAdmin, calcMonthlyPrice,
     }}>
       {children}
     </AuthContext.Provider>

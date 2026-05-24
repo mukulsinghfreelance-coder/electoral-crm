@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { fetchStates, fetchLokSabhas, fetchVidhanSabhas } from '../lib/supabase'
+import { PLANS, calcMonthlyPrice, formatPrice, APP } from '../config'
 
 const C = {
   primary:'#4F46E5', primaryDark:'#3730A3', primaryLight:'#EEF2FF',
@@ -9,11 +10,16 @@ const C = {
   gray600:'#4B5563', gray900:'#111827', white:'#FFFFFF',
 }
 
-const PLAN_INFO = [
-  { name:'Free',     vs:1,  contacts:'1,000',     price:'₹0',          color:'#6B7280', note:'1 VS only' },
-  { name:'Single',   vs:1,  contacts:'Unlimited', price:'₹2,999/mo',   color:'#059669', note:'1 VS, unlimited contacts' },
-  { name:'Multiple', vs:12, contacts:'Unlimited', price:'₹5,999/mo',   color:'#4F46E5', note:'Up to 12 VS, same Lok Sabha' },
-]
+const PLAN_INFO = Object.entries(PLANS).map(([key, p]) => ({
+  key,
+  name:      p.label,
+  vs:        p.vs === Infinity ? 'Unlimited' : p.vs,
+  contacts:  p.contacts === Infinity ? 'Unlimited' : p.contacts.toLocaleString('en-IN'),
+  price:     p.basePrice === 0 ? '₹0' : `₹${p.basePrice.toLocaleString('en-IN')}/mo`,
+  extraVS:   p.extraVS > 0 ? `+₹${p.extraVS.toLocaleString('en-IN')}/mo per extra VS` : null,
+  note:      p.description,
+  highlight: p.highlight,
+}))
 
 // ─── OTP LOGIN MODAL ──────────────────────────────────────────────────────────
 function OTPModal({ onClose, onSuccess }) {
@@ -173,13 +179,9 @@ export default function LandingPage({ onSignedIn }) {
   const addToCart = () => {
     if (!selVS) return
     setCartError('')
-    if (cart.length >= 12) { setCartError('Maximum 12 constituencies allowed (Multiple plan limit)'); return }
+    // No hard cap — Multiple plan is open-ended
     if (cart.find(c => c.id === selVS.id)) { setCartError('Already added'); return }
-    // If adding more than 1, enforce same Lok Sabha
-    if (cart.length >= 1 && cart[0].ls !== selLS) {
-      setCartError(`All constituencies must be from the same Lok Sabha. Your first selection is from "${cart[0].ls}".`)
-      return
-    }
+    // No LS restriction — any constituency can be added
     setCart(prev => [...prev, { id: selVS.id, state: selState, ls: selLS, vs: selVS.vidhan_sabha }])
     setSelVS(null)
   }
@@ -346,7 +348,7 @@ export default function LandingPage({ onSignedIn }) {
             {cart.length > 0 && (
               <div style={{ marginBottom:20 }}>
                 <div style={{ fontSize:11, fontWeight:700, color:C.gray400, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>
-                  Your selected constituencies ({cart.length}/12)
+                  Your selected constituencies ({cart.length} selected)
                 </div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                   {cart.map(c => (
@@ -365,7 +367,7 @@ export default function LandingPage({ onSignedIn }) {
                       </button>
                     </div>
                   ))}
-                  {cart.length < 12 && (
+                  {true && (
                     <div style={{ display:'inline-flex', alignItems:'center', fontSize:12, color:C.gray400, padding:'6px 10px', border:`1.5px dashed ${C.gray200}`, borderRadius:30 }}>
                       + Add more
                     </div>
@@ -375,12 +377,12 @@ export default function LandingPage({ onSignedIn }) {
                 {/* Plan hint */}
                 {cart.length === 1 && (
                   <div style={{ background:'#D1FAE5', borderRadius:8, padding:'8px 12px', marginTop:10, fontSize:12, color:'#065F46', fontWeight:500 }}>
-                    ✅ 1 constituency — Free plan available. No payment needed to start!
+                    ✅ 1 VS — Free plan available, or Single at ₹2,999/mo for unlimited contacts.
                   </div>
                 )}
                 {cart.length > 1 && (
                   <div style={{ background:'#EEF2FF', borderRadius:8, padding:'8px 12px', marginTop:10, fontSize:12, color:'#3730A3', fontWeight:500 }}>
-                    ⚡ Multiple constituencies require the <strong>Multiple plan (₹5,999/mo)</strong>. All must be from the same Lok Sabha.
+                    ⚡ {cart.length} VSs — Multiple plan: ₹{(2999 + (cart.length-1)*2249).toLocaleString('en-IN')}/mo estimated
                   </div>
                 )}
               </div>
@@ -415,16 +417,19 @@ export default function LandingPage({ onSignedIn }) {
           <div style={{ textAlign:'center', fontSize:13, fontWeight:700, color:'#A5B4FC', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:20 }}>
             Simple, transparent pricing
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
             {PLAN_INFO.map(p => (
               <div key={p.name} style={{
-                background:'rgba(255,255,255,.08)', backdropFilter:'blur(10px)',
-                border:'1px solid rgba(255,255,255,.12)', borderRadius:14,
-                padding:'16px', textAlign:'center',
+                background: p.highlight ? 'rgba(79,70,229,.3)' : 'rgba(255,255,255,.08)',
+                backdropFilter:'blur(10px)',
+                border: p.highlight ? '1px solid rgba(165,180,252,.5)' : '1px solid rgba(255,255,255,.12)',
+                borderRadius:14, padding:'16px', textAlign:'center', position:'relative',
               }}>
+                {p.highlight && <div style={{ position:'absolute', top:-10, left:'50%', transform:'translateX(-50%)', background:'#818CF8', color:'#fff', fontSize:9, fontWeight:700, padding:'3px 10px', borderRadius:20, whiteSpace:'nowrap', letterSpacing:'.05em' }}>MOST POPULAR</div>}
                 <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', marginBottom:6, textTransform:'uppercase', letterSpacing:'.05em' }}>{p.name}</div>
-                <div style={{ fontSize:22, fontWeight:800, color:'#fff', marginBottom:4 }}>{p.price}</div>
-                <div style={{ fontSize:11, color:'#818CF8', marginBottom:6 }}>{p.note}</div>
+                <div style={{ fontSize:22, fontWeight:800, color:'#fff', marginBottom:2 }}>{p.price}</div>
+                {p.extraVS && <div style={{ fontSize:10, color:'#818CF8', marginBottom:4 }}>{p.extraVS}</div>}
+                <div style={{ fontSize:11, color:'#818CF8' }}>{p.note}</div>
               </div>
             ))}
           </div>

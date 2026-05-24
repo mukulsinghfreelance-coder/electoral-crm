@@ -5,6 +5,7 @@ import {
   fetchWorkspaces, fetchWorkspaceStats, createWorkspace,
   fetchStates, fetchLokSabhas, fetchVidhanSabhas,
 } from '../lib/supabase'
+import { PLANS, calcMonthlyPrice, APP } from '../config'
 
 const C = {
   primary:'#4F46E5', primaryDark:'#3730A3', primaryLight:'#EEF2FF',
@@ -22,14 +23,13 @@ const RATING_COLOR = {
   C: { bg:'#FEE2E2', cl:'#991B1B', label:'Tough'    },
 }
 
-const PLAN_BADGE = {
-  free:     { bg:'#F3F4F6', cl:'#4B5563', label:'Free'     },
-  single:   { bg:'#D1FAE5', cl:'#065F46', label:'Single'   },
-  multiple: { bg:'#EEF2FF', cl:'#3730A3', label:'Multiple' },
-}
+// Built dynamically from config
+const PLAN_BADGE = Object.fromEntries(
+  Object.entries(PLANS).map(([key, p]) => [key, { ...p.badge, label: p.label }])
+)
 
 // ─── ADD CONSTITUENCY MODAL ───────────────────────────────────────────────────
-function AddConstModal({ onClose, onAdded, customer, currentCount, existingLS }) {
+function AddConstModal({ onClose, onAdded, customer, currentCount }) {
   const [states,       setStates]       = useState([])
   const [lokSabhas,    setLokSabhas]    = useState([])
   const [vidhanSabhas, setVidhanSabhas] = useState([])
@@ -57,11 +57,7 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingLS })
       setError(`Your ${customer.plan} plan allows only ${planLimit} constituency/constituencies. Please upgrade.`)
       return
     }
-    // Multiple plan: enforce same Lok Sabha
-    if (customer.plan === 'multiple' && existingLS && selLS !== existingLS) {
-      setError(`Multiple plan requires all constituencies from the same Lok Sabha. Your existing VS are from "${existingLS}".`)
-      return
-    }
+    // No LS restriction
     setLoading(true); setError('')
     try {
       const ws = await createWorkspace({
@@ -96,7 +92,13 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingLS })
         </div>
 
         <div style={{ background:C.primaryLight, borderRadius:10, padding:'10px 12px', marginBottom:16, fontSize:12, color:C.primary, fontWeight:500 }}>
-          Plan: <strong>{customer.plan}</strong> · {currentCount}/{planLimit} constituencies used
+          Plan: <strong>{PLANS[customer.plan]?.label || customer.plan}</strong>
+          {customer.plan === 'multiple' && currentCount >= 1 && (
+            <span> · Adding this VS adds <strong>₹{PLANS.multiple.extraVS?.toLocaleString('en-IN')}/mo</strong></span>
+          )}
+          {customer.plan === 'free' && (
+            <span> · Upgrade to Single or Multiple to add more</span>
+          )}
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:16 }}>
@@ -213,7 +215,8 @@ export default function WorkspacePage() {
   }
 
   const pb = PLAN_BADGE[plan] || PLAN_BADGE.free
-  const canAddMore = workspaces.length < (planLimits?.vs || 1)
+  const vsLimit   = planLimits?.vs ?? 1
+  const canAddMore = vsLimit === Infinity ? true : workspaces.length < vsLimit
 
   return (
     <div style={{
@@ -257,6 +260,11 @@ export default function WorkspacePage() {
           </div>
           <div style={{ fontSize:13, color:'#A5B4FC' }}>
             Managing {totalStats.vsCount} Vidhan Sabha{totalStats.vsCount!==1?'s':''} · Click any to manage
+            {plan !== 'free' && totalStats.vsCount > 0 && (
+              <span style={{ marginLeft:8, color:'#FCD34D', fontWeight:600 }}>
+                · ₹{calcMonthlyPrice(plan, totalStats.vsCount).toLocaleString('en-IN')}/mo
+              </span>
+            )}
           </div>
         </div>
 
@@ -394,7 +402,6 @@ export default function WorkspacePage() {
           onAdded={handleWorkspaceAdded}
           customer={customer}
           currentCount={workspaces.length}
-          existingLS={workspaces[0]?.ls || null}
         />
       )}
     </div>
