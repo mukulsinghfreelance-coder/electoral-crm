@@ -137,6 +137,16 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
 // ─── UPGRADE MODAL ────────────────────────────────────────────────────────────
 function UpgradeModal({ plan, onClose }) {
   const planList = Object.entries(PLANS)
+
+  // Debug: log every click anywhere on document when modal is open
+  useEffect(() => {
+    const handler = (e) => {
+      console.log('CLICK DETECTED:', e.target.tagName, e.target.className, 'zIndex:', getComputedStyle(e.target).zIndex)
+    }
+    document.addEventListener('mousedown', handler, true)  // capture phase
+    return () => document.removeEventListener('mousedown', handler, true)
+  }, [])
+
   return createPortal(
     <div
       style={{
