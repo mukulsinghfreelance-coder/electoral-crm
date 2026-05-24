@@ -363,3 +363,69 @@ function boothToDb(b) {
     castes: b.castes||['','',''], elec: b.elec||[], notes: b.notes||'',
   }
 }
+
+// ─── SUPER ADMIN FUNCTIONS ────────────────────────────────────────────────────
+// These query across all customers — only callable by super admin
+
+export async function adminFetchAllCustomers() {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function adminFetchCustomerWorkspaces(customerId) {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .select('*')
+    .eq('customer_id', customerId)
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function adminUpdateCustomerPlan(customerId, plan) {
+  const { error } = await supabase
+    .from('customers')
+    .update({ plan })
+    .eq('id', customerId)
+  if (error) throw error
+}
+
+export async function adminDeleteWorkspace(workspaceId) {
+  // Delete child records first (in case CASCADE not set)
+  await supabase.from('settings').delete().eq('workspace_id', workspaceId)
+  await supabase.from('contacts').delete().eq('workspace_id', workspaceId)
+  await supabase.from('booths').delete().eq('workspace_id', workspaceId)
+  const { error } = await supabase.from('workspaces').delete().eq('id', workspaceId)
+  if (error) throw error
+}
+
+export async function adminPurgeCustomer(customerId) {
+  // Get all workspaces first
+  const { data: workspaces } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('customer_id', customerId)
+
+  // Delete all workspace data
+  for (const ws of workspaces || []) {
+    await supabase.from('settings').delete().eq('workspace_id', ws.id)
+    await supabase.from('contacts').delete().eq('workspace_id', ws.id)
+    await supabase.from('booths').delete().eq('workspace_id', ws.id)
+  }
+  await supabase.from('workspaces').delete().eq('customer_id', customerId)
+  const { error } = await supabase.from('customers').delete().eq('id', customerId)
+  if (error) throw error
+}
+
+export async function adminFetchWorkspaceContactCount(workspaceId) {
+  const { count } = await supabase
+    .from('contacts')
+    .select('*', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+  return count || 0
+}

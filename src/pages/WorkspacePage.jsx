@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import SuperAdminPage from './SuperAdminPage'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
@@ -157,6 +158,11 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
 
 // ─── STAT CARD ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, color, icon }) {
+  // Show super admin panel
+  if (showAdmin) {
+    return <SuperAdminPage onBack={() => setShowAdmin(false)} />
+  }
+
   return (
     <div style={{ textAlign:'center' }}>
       <div style={{ fontSize:10, color:C.gray400, fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:2 }}>{icon} {label}</div>
@@ -174,6 +180,7 @@ export default function WorkspacePage() {
   const [totalStats,  setTotalStats]  = useState({ contacts:0, booths:0, vsCount:0 })
   const [showAdd,     setShowAdd]     = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [showAdmin,   setShowAdmin]   = useState(false)
 
   // Load workspaces when customer is ready
   useEffect(() => { if (customer?.id) loadWorkspaces() }, [customer?.id])
@@ -240,8 +247,11 @@ export default function WorkspacePage() {
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             {isSuperAdmin && (
-              <button style={{ padding:'7px 14px', fontSize:11, fontWeight:700, background:'rgba(220,38,38,.3)', border:'1px solid rgba(220,38,38,.5)', borderRadius:8, color:'#FCA5A5', cursor:'pointer', fontFamily:'inherit' }}>
-                🛡️ Admin
+              <button
+                onClick={e => { e.stopPropagation(); setShowAdmin(true) }}
+                style={{ padding:'7px 14px', fontSize:11, fontWeight:700, background:'rgba(220,38,38,.3)', border:'1px solid rgba(220,38,38,.5)', borderRadius:8, color:'#FCA5A5', cursor:'pointer', fontFamily:'inherit' }}
+              >
+                🛡️ Admin Panel
               </button>
             )}
             <button onClick={e => { e.stopPropagation(); logout() }} style={{ padding:'7px 14px', fontSize:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>
