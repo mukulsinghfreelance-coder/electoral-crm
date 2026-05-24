@@ -406,26 +406,46 @@ export default function LandingPage() {
             )}
 
             {/* ── CTA ── */}
+            {/* Get Started — only show when cart has items */}
+            {cart.length > 0 && (
+              <button
+                onClick={handleGetStarted}
+                style={{
+                  width:'100%', padding:'14px', fontSize:16, fontWeight:800,
+                  background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,
+                  color:C.white, border:'none', borderRadius:12, cursor:'pointer',
+                  fontFamily:'inherit', boxShadow:`0 8px 24px rgba(79,70,229,.4)`,
+                  transition:'all .2s', marginBottom:12,
+                }}
+              >
+                🚀 Get Started — Sign Up / Sign In
+              </button>
+            )}
+
+            {/* Divider */}
+            <div style={{ display:'flex', alignItems:'center', gap:10, margin: cart.length > 0 ? '4px 0 12px' : '0 0 12px' }}>
+              <div style={{ flex:1, height:1, background:C.gray200 }}/>
+              <span style={{ fontSize:11, color:C.gray400, fontWeight:500, whiteSpace:'nowrap' }}>
+                {cart.length > 0 ? 'or' : 'Already have an account?'}
+              </span>
+              <div style={{ flex:1, height:1, background:C.gray200 }}/>
+            </div>
+
+            {/* Sign In — always visible, prominent */}
             <button
-              onClick={handleGetStarted}
+              onClick={() => setShowOTP(true)}
               style={{
-                width:'100%', padding:'14px', fontSize:16, fontWeight:800,
-                background: cart.length > 0 ? `linear-gradient(135deg,${C.primary},${C.primaryDark})` : C.gray200,
-                color: cart.length > 0 ? C.white : C.gray400,
-                border:'none', borderRadius:12, cursor: cart.length > 0 ? 'pointer' : 'not-allowed',
-                fontFamily:'inherit', boxShadow: cart.length > 0 ? `0 8px 24px rgba(79,70,229,.4)` : 'none',
-                transition:'all .2s', marginBottom:12,
+                width:'100%', padding:'13px', fontSize:15, fontWeight:700,
+                background: cart.length > 0 ? C.white : `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
+                color: cart.length > 0 ? C.primary : C.white,
+                border: cart.length > 0 ? `2px solid ${C.primary}` : 'none',
+                borderRadius:12, cursor:'pointer', fontFamily:'inherit',
+                boxShadow: cart.length > 0 ? 'none' : `0 8px 24px rgba(79,70,229,.4)`,
+                transition:'all .2s',
               }}
             >
-              {cart.length === 0 ? 'Select a constituency to continue' : `🚀 Get Started — Sign Up / Sign In`}
+              {cart.length > 0 ? '👤 Already registered? Sign In' : '👤 Sign In to your account'}
             </button>
-
-            <div style={{ textAlign:'center', fontSize:13, color:C.gray600 }}>
-              Already registered?{' '}
-              <button onClick={() => setShowOTP(true)} style={{ background:'none', border:'none', color:C.primary, fontWeight:700, cursor:'pointer', fontSize:13, fontFamily:'inherit' }}>
-                Sign In directly →
-              </button>
-            </div>
           </div>
         </div>
 

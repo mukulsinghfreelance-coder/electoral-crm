@@ -211,7 +211,13 @@ export default function WorkspacePage() {
 
   const pb = PLAN_BADGE[plan] || PLAN_BADGE.free
   const vsLimit    = planLimits?.vs ?? 1
+  // Free plan (vsLimit=1): can add only if they have 0 workspaces
+  // Single plan (vsLimit=1): same
+  // Multiple plan (vsLimit=Infinity): always can add
+  // Super admin: always can add regardless of plan
   const canAddMore = isSuperAdmin || (vsLimit === Infinity ? true : workspaces.length < vsLimit)
+  const isAtLimit  = !isSuperAdmin && vsLimit !== Infinity && workspaces.length >= vsLimit
+  const isFreeAtLimit = !isSuperAdmin && plan === 'free' && workspaces.length >= 1
 
   return (
     <div style={{
@@ -274,7 +280,7 @@ export default function WorkspacePage() {
           border:'1px solid rgba(255,255,255,.2)', borderRadius:16, padding:'16px 24px',
           display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:24,
         }}>
-          {[['Total Contacts',totalStats.contacts,'#818CF8','👥'],['Total Booths',totalStats.booths,'#34D399','📍'],['Vidhan Sabhas',`${totalStats.vsCount}/${planLimits?.vs||1}`,'#F472B6','🏛️']].map(([l,v,cl,ic]) => (
+          {[['Total Contacts',totalStats.contacts,'#818CF8','👥'],['Total Booths',totalStats.booths,'#34D399','📍'],['Vidhan Sabhas',vsLimit === Infinity ? String(totalStats.vsCount) : `${totalStats.vsCount}/${vsLimit}`,'#F472B6','🏛️']].map(([l,v,cl,ic]) => (
             <div key={l} style={{ textAlign:'center' }}>
               <div style={{ fontSize:10, color:'#A5B4FC', fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>{ic} {l}</div>
               <div style={{ fontSize:26, fontWeight:800, color:'#fff' }}>{loading ? '…' : v}</div>
@@ -287,7 +293,19 @@ export default function WorkspacePage() {
       <div style={{ maxWidth:800, margin:'0 auto', padding:'0 20px' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', textTransform:'uppercase', letterSpacing:'.06em' }}>Your Constituencies</div>
-          {canAddMore && (
+          {isFreeAtLimit && (
+            <div style={{
+              fontSize:11, background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+              color:'#92400E', padding:'7px 14px', borderRadius:8,
+              border:'1px solid #F59E0B', fontWeight:600, cursor:'pointer',
+              display:'flex', alignItems:'center', gap:6,
+            }}
+            onClick={() => setShowUpgrade(true)}
+            >
+              ⚡ Upgrade to add more VSs
+            </div>
+          )}
+          {canAddMore && !isFreeAtLimit && (
             <button
               onClick={e => { e.stopPropagation(); setShowAdd(true) }}
               style={{ padding:'7px 14px', fontSize:12, fontWeight:700, background:`linear-gradient(135deg,${C.success},#047857)`, border:'none', borderRadius:8, color:C.white, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 4px 12px rgba(5,150,105,.4)' }}
@@ -295,7 +313,7 @@ export default function WorkspacePage() {
               + Add Constituency
             </button>
           )}
-          {!canAddMore && (
+          {isAtLimit && !isFreeAtLimit && (
             <div style={{ fontSize:11, color:'#A5B4FC', background:'rgba(255,255,255,.1)', padding:'6px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)' }}>
               {vsLimit === Infinity ? workspaces.length : `${workspaces.length}/${vsLimit}`} VS used —{' '}
               <span
@@ -414,49 +432,71 @@ export default function WorkspacePage() {
       )}
 
       {showUpgrade && (
-        <div onClick={() => setShowUpgrade(false)} style={{
-          position:'fixed', inset:0, background:'rgba(17,24,39,.65)',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          zIndex:1000, padding:20, backdropFilter:'blur(4px)',
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background:C.white, borderRadius:20, padding:'28px 24px',
-            width:'100%', maxWidth:440, boxShadow:'0 24px 64px rgba(0,0,0,.2)',
-          }}>
+        <div
+          onMouseDown={e => { if (e.target === e.currentTarget) setShowUpgrade(false) }}
+          style={{
+            position:'fixed', inset:0, background:'rgba(17,24,39,.65)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            zIndex:2000, padding:20, backdropFilter:'blur(4px)',
+          }}
+        >
+          <div
+            onMouseDown={e => e.stopPropagation()}
+            style={{
+              background:C.white, borderRadius:20, padding:'28px 24px',
+              width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.25)',
+              maxHeight:'90vh', overflowY:'auto',
+            }}
+          >
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-              <div style={{ fontSize:18, fontWeight:800, color:C.gray900 }}>Upgrade Your Plan</div>
-              <button onClick={() => setShowUpgrade(false)} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
+              <div style={{ fontSize:18, fontWeight:800, color:C.gray900 }}>⚡ Upgrade Your Plan</div>
+              <button
+                onMouseDown={e => { e.stopPropagation(); setShowUpgrade(false) }}
+                style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16, color:C.gray600 }}
+              >✕</button>
             </div>
+
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               {Object.entries(PLANS).map(([key, p]) => (
                 <div key={key} style={{
                   border:`2px solid ${plan === key ? C.primary : C.gray200}`,
-                  borderRadius:12, padding:'14px 16px',
+                  borderRadius:12, padding:'16px',
                   background: plan === key ? C.primaryLight : C.white,
+                  position:'relative',
                 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div>
-                      <div style={{ fontSize:15, fontWeight:800, color:C.gray900 }}>{p.label}</div>
-                      <div style={{ fontSize:12, color:C.gray600, marginTop:2 }}>{p.description}</div>
-                      <div style={{ fontSize:11, color:C.gray400, marginTop:4 }}>
-                        {p.vs === Infinity ? 'Unlimited' : p.vs} VS ·{' '}
-                        {p.contacts === Infinity ? 'Unlimited' : p.contacts.toLocaleString('en-IN')} contacts
-                        {p.extraVS > 0 && ` · +₹${p.extraVS.toLocaleString('en-IN')}/mo per extra VS`}
+                  {p.highlight && plan !== key && (
+                    <div style={{ position:'absolute', top:-10, right:12, background:C.primary, color:'#fff', fontSize:9, fontWeight:700, padding:'3px 10px', borderRadius:20, letterSpacing:'.05em' }}>
+                      MOST POPULAR
+                    </div>
+                  )}
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:16, fontWeight:800, color:C.gray900 }}>{p.label}</div>
+                      <div style={{ fontSize:12, color:C.gray600, marginTop:3 }}>{p.description}</div>
+                      <div style={{ fontSize:11, color:C.gray400, marginTop:6, lineHeight:1.8 }}>
+                        📍 {p.vs === Infinity ? 'Unlimited' : p.vs} Vidhan Sabha{p.vs !== 1 ? 's' : ''}<br/>
+                        👥 {p.contacts === Infinity ? 'Unlimited' : p.contacts.toLocaleString('en-IN')} contacts<br/>
+                        {p.extraVS > 0 && `💰 +₹${p.extraVS.toLocaleString('en-IN')}/mo per additional VS`}
                       </div>
                     </div>
-                    <div style={{ textAlign:'right' }}>
-                      <div style={{ fontSize:18, fontWeight:800, color:C.primary }}>
-                        {p.basePrice === 0 ? 'Free' : `₹${p.basePrice.toLocaleString('en-IN')}`}
+                    <div style={{ textAlign:'right', minWidth:80 }}>
+                      <div style={{ fontSize:20, fontWeight:800, color: plan === key ? C.primary : C.gray900 }}>
+                        {p.basePrice === 0 ? '₹0' : `₹${p.basePrice.toLocaleString('en-IN')}`}
                       </div>
                       {p.basePrice > 0 && <div style={{ fontSize:10, color:C.gray400 }}>/month</div>}
-                      {plan === key && <div style={{ fontSize:11, color:C.success, fontWeight:700, marginTop:4 }}>✓ Current</div>}
+                      {plan === key
+                        ? <div style={{ fontSize:11, color:C.success, fontWeight:700, marginTop:6 }}>✓ Current Plan</div>
+                        : <div style={{ fontSize:11, color:C.primary, fontWeight:600, marginTop:6, cursor:'pointer' }}>Select →</div>
+                      }
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{ background:'#FEF3C7', borderRadius:10, padding:'12px 14px', marginTop:16, fontSize:12, color:'#92400E', lineHeight:1.6 }}>
-              💬 To upgrade, contact us at <strong>support@contactbook.in</strong> or WhatsApp us. Razorpay integration coming soon!
+
+            <div style={{ background:'#FEF3C7', borderRadius:10, padding:'12px 14px', marginTop:16, fontSize:12, color:'#92400E', lineHeight:1.7 }}>
+              💬 To upgrade, contact us at <strong>support@contactbook.in</strong><br/>
+              Razorpay payment integration coming soon!
             </div>
           </div>
         </div>
