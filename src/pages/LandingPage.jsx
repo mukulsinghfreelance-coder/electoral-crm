@@ -34,8 +34,16 @@ function OTPModal({ onClose, onSuccess }) {
   const sendOTP = async () => {
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError('Enter a valid email'); return }
     setLoading(true); setError('')
-    try { await loginWithOTP(email.trim().toLowerCase()); setStep('otp') }
-    catch(e) { setError(e.message || 'Failed to send OTP') }
+    try {
+      await loginWithOTP(email.trim().toLowerCase())
+      setStep('otp')
+    } catch(e) {
+      if (e.message?.includes('429') || e.status === 429 || e.message?.toLowerCase().includes('rate limit') || e.message?.toLowerCase().includes('too many')) {
+        setError('Too many OTP requests. Please wait 60 seconds before trying again.')
+      } else {
+        setError(e.message || 'Failed to send OTP. Try again.')
+      }
+    }
     setLoading(false)
   }
 

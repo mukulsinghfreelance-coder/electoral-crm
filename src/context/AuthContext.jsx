@@ -12,102 +12,105 @@ export function AuthProvider({ children }) {
   const [loading,   setLoading]   = useState(true)
   const [authError, setAuthError] = useState('')
 
-  // ── Load customer row from DB ─────────────────────────────────────────────
   const loadCustomer = useCallback(async (authUser) => {
-    console.log('loadCustomer called for:', authUser.email)
+    console.log('loadCustomer:', authUser.email)
     try {
       // 1. Try by auth_id
-      let { data, error } = await supabase
+      let { data } = await supabase
         .from('customers')
         .select('*')
         .eq('auth_id', authUser.id)
         .maybeSingle()
 
-      if (error) throw error
-
+      // 2. Try by email (auth_id not linked yet)
       if (!data) {
-        console.log('No match by auth_id, trying email...')
-        // 2. Try by email
-        const { data: byEmail, error: emailErr } = await supabase
+        const { data: byEmail } = await supabase
           .from('customers')
           .select('*')
           .eq('email', authUser.email)
           .maybeSingle()
 
-        if (emailErr) throw emailErr
-
         if (byEmail) {
-          console.log('Found by email, linking auth_id...')
           // Link auth_id
-          const { error: updateErr } = await supabase
+          await supabase
             .from('customers')
             .update({ auth_id: authUser.id })
             .eq('email', authUser.email)
-
-          if (updateErr) console.warn('auth_id link failed:', updateErr)
           data = { ...byEmail, auth_id: authUser.id }
-        } else {
-          console.log('Brand new user, creating customer row...')
-          // 3. Create new customer
-          const { data: newCustomer, error: insertError } = await supabase
-            .from('customers')
-            .insert({
-              auth_id: authUser.id,
-              email:   authUser.email,
-              name:    authUser.user_metadata?.full_name || authUser.email.split('@')[0],
-              plan:    'free',
-            })
-            .select()
-            .single()
-
-          if (insertError) throw insertError
-          data = newCustomer
-          console.log('New customer created:', data)
+          console.log('Linked auth_id to existing customer:', byEmail.email)
         }
       }
 
-      console.log('Customer loaded:', data.email, 'plan:', data.plan)
+      // 3. Create brand new customer
+      if (!data) {
+        const { data: newC, error: insertErr } = await supabase
+          .from('customers')
+          .insert({
+            auth_id: authUser.id,
+            email:   authUser.email,
+            name:    authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+            plan:    'free',
+          })
+          .select()
+          .single()
+        if (insertErr) throw insertErr
+        data = newC
+        console.log('Created new customer:', data.email)
+      }
+
+      console.log('Customer ready:', data.email, '| plan:', data.plan)
       setCustomer(data)
       setAuthError('')
     } catch (err) {
-      console.error('loadCustomer error:', err)
-      setAuthError('Something went wrong. Please try again.')
+      console.error('loadCustomer failed:', err)
+      setAuthError('Login failed. Please try again.')
     }
     setLoading(false)
   }, [])
 
-  // ── Single auth listener ──────────────────────────────────────────────────
   useEffect(() => {
-    let initialized = false
+    // Track which auth user we've already loaded to avoid duplicate calls
+    let loadedForUserId = null
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('Auth event:', event, newSession?.user?.email)
+        console.log('Auth event:', event, '| user:', newSession?.user?.email || 'none')
         setSession(newSession)
 
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          if (newSession?.user && !initialized) {
-            initialized = true
+        if (event === 'INITIAL_SESSION') {
+          if (newSession?.user) {
+            loadedForUserId = newSession.user.id
             await loadCustomer(newSession.user)
-          } else if (!newSession && !initialized) {
-            initialized = true
+          } else {
+            setLoading(false)
+          }
+        }
+
+        if (event === 'SIGNED_IN') {
+          // Only load if it's a different user than we already loaded
+          if (newSession?.user && newSession.user.id !== loadedForUserId) {
+            loadedForUserId = newSession.user.id
+            await loadCustomer(newSession.user)
+          } else if (newSession?.user && loadedForUserId === newSession.user.id) {
+            // Same user already loaded — just make sure loading is false
             setLoading(false)
           }
         }
 
         if (event === 'SIGNED_OUT') {
-          initialized = false
+          loadedForUserId = null
           setCustomer(null)
           setWorkspace(null)
           setLoading(false)
         }
+
+        // TOKEN_REFRESHED — session updated silently, no action needed
       }
     )
 
     return () => subscription.unsubscribe()
   }, [loadCustomer])
 
-  // ── Auth methods ──────────────────────────────────────────────────────────
   const loginWithOTP = async (email) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -121,8 +124,8 @@ export function AuthProvider({ children }) {
       email, token, type: 'email',
     })
     if (error) throw error
-    // onAuthStateChange SIGNED_IN fires automatically — no need to call loadCustomer here
     return data
+    // SIGNED_IN event fires automatically → loadCustomer called → dashboard shown
   }
 
   const loginWithGoogle = async () => {
@@ -134,15 +137,16 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
+    setLoading(true)
     await supabase.auth.signOut()
   }
 
   const switchWorkspace = (ws) => setWorkspace(ws)
   const exitWorkspace   = ()   => setWorkspace(null)
 
-  const plan         = customer?.plan || 'free'
-  const planLimits   = getPlanLimits(plan)
-  const planConfig   = PLANS[plan] || PLANS.free
+  const plan       = customer?.plan || 'free'
+  const planLimits = getPlanLimits(plan)
+  const planConfig = PLANS[plan] || PLANS.free
   const isSuperAdmin = customer?.email === SUPER_ADMIN_EMAIL
 
   return (
