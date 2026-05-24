@@ -118,7 +118,7 @@ function PlanModal({ customer, onClose, onSaved }) {
                   </div>
                   <div style={{ fontSize:11, color:C.gray400, marginTop:4 }}>
                     {p.vs === Infinity ? 'Unlimited' : p.vs} VS ·{' '}
-                    {p.contacts === Infinity ? 'Unlimited contacts' : `${p.contacts.toLocaleString('en-IN')} contacts`}
+                    {p.contacts === Infinity ? 'Unlimited contacts' : `${Number(p.contacts).toLocaleString('en-IN')} contacts`}
                   </div>
                 </div>
                 <div style={{ textAlign:'right' }}>
@@ -153,8 +153,9 @@ function PlanModal({ customer, onClose, onSaved }) {
 function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
   const [workspaces, setWorkspaces] = useState(null)
   const [loading,    setLoading]    = useState(false)
-  const [confirm,    setConfirm]    = useState(null)  // { type, data }
+  const [confirm,    setConfirm]    = useState(null)
   const [showPlan,   setShowPlan]   = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     setLoading(true)
@@ -174,8 +175,12 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
           await adminDeleteWorkspace(ws.id)
           setWorkspaces(prev => prev.filter(w => w.id !== ws.id))
           onWSDeleted(customer.id, ws.id)
-        } catch(e) { alert(e.message) }
-        setConfirm(null)
+          setConfirm(null)
+        } catch(e) {
+          console.error('Delete WS error:', e)
+          setConfirm(null)
+          setDeleteError(e.message || 'Failed to delete. Check console.')
+        }
       }
     })
   }
@@ -190,8 +195,11 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
         try {
           await adminPurgeCustomer(customer.id)
           onPurged(customer.id)
-        } catch(e) { alert(e.message) }
-        setConfirm(null)
+        } catch(e) {
+          console.error('Purge error:', e)
+          setConfirm(null)
+          setDeleteError(e.message || 'Purge failed. Check console.')
+        }
       }
     })
   }
@@ -230,6 +238,12 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
       </div>
 
       {/* Workspaces */}
+      {deleteError && (
+        <div style={{ background:'#FEE2E2', borderRadius:8, padding:'10px 12px', marginBottom:12, fontSize:12, color:'#991B1B', fontWeight:500 }}>
+          ⚠ {deleteError}
+          <button onClick={() => setDeleteError('')} style={{ float:'right', background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:14 }}>✕</button>
+        </div>
+      )}
       <div style={{ fontSize:11, fontWeight:700, color:C.gray400, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>
         Constituencies ({workspaces?.length || 0})
       </div>
@@ -291,6 +305,7 @@ export default function SuperAdminPage({ onBack }) {
   const { customer: me } = useAuth()
   const [customers,   setCustomers]   = useState([])
   const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState('')
   const [search,      setSearch]      = useState('')
   const [expanded,    setExpanded]    = useState(null)
   const [filterPlan,  setFilterPlan]  = useState('all')
@@ -299,10 +314,14 @@ export default function SuperAdminPage({ onBack }) {
 
   const loadCustomers = async () => {
     setLoading(true)
+    setError('')
     try {
       const data = await adminFetchAllCustomers()
       setCustomers(data || [])
-    } catch(e) { console.error(e) }
+    } catch(e) {
+      console.error('Admin load error:', e)
+      setError(e.message || 'Failed to load customers')
+    }
     setLoading(false)
   }
 
@@ -331,9 +350,9 @@ export default function SuperAdminPage({ onBack }) {
   // Stats
   const stats = {
     total:    customers.length,
-    free:     customers.filter(c => c.plan === 'free').length,
-    single:   customers.filter(c => c.plan === 'single').length,
-    multiple: customers.filter(c => c.plan === 'multiple').length,
+    free:     customers.filter(c => c?.plan === 'free').length,
+    single:   customers.filter(c => c?.plan === 'single').length,
+    multiple: customers.filter(c => c?.plan === 'multiple').length,
   }
 
   return (
@@ -417,7 +436,16 @@ export default function SuperAdminPage({ onBack }) {
         </div>
 
         {/* Customer cards */}
-        {loading ? (
+        {error ? (
+          <div style={{ background:'#FEE2E2', borderRadius:12, padding:24, textAlign:'center' }}>
+            <div style={{ fontSize:20, marginBottom:8 }}>⚠️</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#991B1B', marginBottom:4 }}>Failed to load customers</div>
+            <div style={{ fontSize:12, color:'#DC2626', marginBottom:16 }}>{error}</div>
+            <button onClick={loadCustomers} style={{ padding:'8px 20px', fontSize:13, fontWeight:600, background:'#DC2626', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
           <div style={{ textAlign:'center', color:'#A5B4FC', padding:60 }}>⏳ Loading customers…</div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign:'center', color:'#A5B4FC', padding:60 }}>No customers found</div>
@@ -426,7 +454,7 @@ export default function SuperAdminPage({ onBack }) {
             {filtered.map(c => {
               const isMe = c.email === me?.email
               const isExpanded = expanded === c.id
-              const pc = PLAN_COLORS[c.plan] || PLAN_COLORS.free
+              const pc = PLAN_COLORS[c?.plan] || PLAN_COLORS.free
               return (
                 <div key={c.id} style={{
                   background:C.white, borderRadius:16,
@@ -450,7 +478,7 @@ export default function SuperAdminPage({ onBack }) {
                         display:'flex', alignItems:'center', justifyContent:'center',
                         fontSize:16, color:'#fff', fontWeight:700,
                       }}>
-                        {(c.name || c.email || '?')[0].toUpperCase()}
+                        {((c.name || c.email || '?')[0] || '?').toUpperCase()}
                       </div>
                       <div style={{ minWidth:0 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>

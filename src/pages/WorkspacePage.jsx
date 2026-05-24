@@ -85,7 +85,7 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
 
   return createPortal(
     <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
-      <div style={{ background:C.white, borderRadius:20, padding:24, width:'100%', maxWidth:420, boxShadow:'0 24px 64px rgba(0,0,0,.2)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:24, width:'100%', maxWidth:420, boxShadow:'0 24px 64px rgba(0,0,0,.2)' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
           <div style={{ fontSize:17, fontWeight:800, color:C.gray900 }}>Add Constituency</div>
           <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
@@ -138,7 +138,7 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
 function UpgradeModal({ plan, onClose }) {
   return createPortal(
     <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
-      <div style={{ background:C.white, borderRadius:20, padding:'28px 24px', width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:'28px 24px', width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
           <div style={{ fontSize:18, fontWeight:800, color:C.gray900 }}>⚡ Upgrade Your Plan</div>
           <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>

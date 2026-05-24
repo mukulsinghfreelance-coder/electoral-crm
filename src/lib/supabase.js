@@ -396,12 +396,21 @@ export async function adminUpdateCustomerPlan(customerId, plan) {
 }
 
 export async function adminDeleteWorkspace(workspaceId) {
-  // Delete child records first (in case CASCADE not set)
-  await supabase.from('settings').delete().eq('workspace_id', workspaceId)
-  await supabase.from('contacts').delete().eq('workspace_id', workspaceId)
-  await supabase.from('booths').delete().eq('workspace_id', workspaceId)
+  console.log('Deleting workspace:', workspaceId)
+
+  // Delete child tables first
+  const s = await supabase.from('settings').delete().eq('workspace_id', workspaceId)
+  if (s.error) console.warn('settings delete:', s.error)
+
+  const c = await supabase.from('contacts').delete().eq('workspace_id', workspaceId)
+  if (c.error) console.warn('contacts delete:', c.error)
+
+  const b = await supabase.from('booths').delete().eq('workspace_id', workspaceId)
+  if (b.error) console.warn('booths delete:', b.error)
+
   const { error } = await supabase.from('workspaces').delete().eq('id', workspaceId)
-  if (error) throw error
+  console.log('workspace delete result:', error || 'success')
+  if (error) throw new Error(error.message || JSON.stringify(error))
 }
 
 export async function adminPurgeCustomer(customerId) {
