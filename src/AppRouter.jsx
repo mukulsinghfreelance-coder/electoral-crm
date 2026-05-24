@@ -1,7 +1,6 @@
-// ─── src/AppRouter.jsx ────────────────────────────────────────────────────────
 import { useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
-import { createWorkspace } from './lib/supabase'
+import { createWorkspace, fetchWorkspaces } from './lib/supabase'
 import LandingPage   from './pages/LandingPage'
 import WorkspacePage from './pages/WorkspacePage'
 import App           from './App'
@@ -9,27 +8,47 @@ import App           from './App'
 export default function AppRouter() {
   const { customer, session, loading, workspace, planLimits } = useAuth()
 
-  // ── Process pending constituencies after login ──────────────────────────
-  // When user selects VSs on landing page → logs in → we create their workspaces
+  // ── Process pending constituencies after login ────────────────────────────
   useEffect(() => {
     if (!customer?.id) return
 
     const pending = sessionStorage.getItem('pending_constituencies')
     if (!pending) return
-
     sessionStorage.removeItem('pending_constituencies')
 
     const constituencies = JSON.parse(pending)
     if (!constituencies?.length) return
 
-    console.log('Processing pending constituencies:', constituencies.length)
+    console.log('Processing', constituencies.length, 'pending constituencies')
 
-    const vsLimit = planLimits?.vs === Infinity ? 999 : (planLimits?.vs || 1)
-    const toCreate = constituencies.slice(0, vsLimit)
-
-    // Create workspaces one by one — WorkspacePage will reload after
     ;(async () => {
+      // ── Fetch existing workspaces first to check duplicates ───────────────
+      const existing = await fetchWorkspaces(customer.id)
+      const existingVSNames = existing.map(w => (w.vs || w.name || '').toLowerCase())
+      const existingConstIds = existing.map(w => w.constituency_id).filter(Boolean)
+
+      // ── Enforce plan VS limit ─────────────────────────────────────────────
+      const vsLimit   = planLimits?.vs === Infinity ? 9999 : (planLimits?.vs || 1)
+      const remaining = vsLimit - existing.length
+      if (remaining <= 0) {
+        console.log('VS limit reached, skipping pending constituencies')
+        window.dispatchEvent(new Event('workspaces-updated'))
+        return
+      }
+
+      const toCreate = constituencies.slice(0, remaining)
+
       for (const c of toCreate) {
+        // ── Skip duplicates ────────────────────────────────────────────────
+        if (existingConstIds.includes(c.id)) {
+          console.log('Skipping duplicate (by id):', c.vs)
+          continue
+        }
+        if (existingVSNames.includes(c.vs.toLowerCase())) {
+          console.log('Skipping duplicate (by name):', c.vs)
+          continue
+        }
+
         try {
           await createWorkspace({
             customerId:     customer.id,
@@ -38,15 +57,15 @@ export default function AppRouter() {
             ls:    c.ls,
             vs:    c.vs,
           })
-          console.log('Created workspace for:', c.vs)
+          // Add to our local tracking so next iteration checks correctly
+          existingVSNames.push(c.vs.toLowerCase())
+          existingConstIds.push(c.id)
+          console.log('Created workspace:', c.vs)
         } catch(e) {
-          // Skip duplicates silently
-          if (!e.message?.includes('duplicate') && !e.message?.includes('unique')) {
-            console.warn('Workspace create failed for', c.vs, e.message)
-          }
+          console.warn('Workspace create failed for', c.vs, ':', e.message)
         }
       }
-      // Force WorkspacePage to reload by triggering a re-render
+
       window.dispatchEvent(new Event('workspaces-updated'))
     })()
   }, [customer?.id])
@@ -79,16 +98,12 @@ export default function AppRouter() {
     )
   }
 
-  // ── Not logged in → Landing page ──────────────────────────────────────────
-  if (!session || !customer) {
-    return <LandingPage />
-  }
+  // ── Not logged in → Landing ───────────────────────────────────────────────
+  if (!session || !customer) return <LandingPage />
 
-  // ── Logged in + workspace selected → Main app ─────────────────────────────
-  if (workspace) {
-    return <App />
-  }
+  // ── Workspace selected → Main app ─────────────────────────────────────────
+  if (workspace) return <App />
 
-  // ── Logged in, no workspace selected → Dashboard ──────────────────────────
+  // ── Dashboard ─────────────────────────────────────────────────────────────
   return <WorkspacePage />
 }

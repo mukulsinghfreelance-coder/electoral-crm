@@ -5,7 +5,7 @@ import {
   fetchWorkspaces, fetchWorkspaceStats, createWorkspace,
   fetchStates, fetchLokSabhas, fetchVidhanSabhas,
 } from '../lib/supabase'
-import { PLANS, calcMonthlyPrice, APP } from '../config'
+import { PLANS, calcMonthlyPrice, APP, getPlanLimits } from '../config'
 
 const C = {
   primary:'#4F46E5', primaryDark:'#3730A3', primaryLight:'#EEF2FF',
@@ -39,7 +39,8 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
 
-  const planLimit = PLAN_LIMITS[customer.plan]?.vs || 1
+  const planConfig = PLANS[customer.plan] || PLANS.free
+  const planLimit  = planConfig.vs  // Infinity for multiple, 1 for free/single
 
   useEffect(() => { fetchStates().then(setStates) }, [])
   useEffect(() => {
@@ -63,8 +64,9 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
       setError(`${selVS.vidhan_sabha} is already in your dashboard.`)
       return
     }
-    if (currentCount >= planLimit) {
-      setError(`Your ${customer.plan} plan allows only ${planLimit} constituency/constituencies. Please upgrade.`)
+    if (planLimit !== Infinity && currentCount >= planLimit) {
+      const label = PLANS[customer.plan]?.label || customer.plan
+      setError(`Your ${label} plan allows only ${planLimit} constituency. Please upgrade to Multiple plan to add more.`)
       return
     }
     setLoading(true); setError('')
@@ -170,6 +172,7 @@ export default function WorkspacePage() {
   const [loading,     setLoading]     = useState(true)
   const [totalStats,  setTotalStats]  = useState({ contacts:0, booths:0, vsCount:0 })
   const [showAdd,     setShowAdd]     = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   // Load workspaces when customer is ready
   useEffect(() => { if (customer?.id) loadWorkspaces() }, [customer?.id])
@@ -207,8 +210,8 @@ export default function WorkspacePage() {
   }
 
   const pb = PLAN_BADGE[plan] || PLAN_BADGE.free
-  const vsLimit   = planLimits?.vs ?? 1
-  const canAddMore = vsLimit === Infinity ? true : workspaces.length < vsLimit
+  const vsLimit    = planLimits?.vs ?? 1
+  const canAddMore = isSuperAdmin || (vsLimit === Infinity ? true : workspaces.length < vsLimit)
 
   return (
     <div style={{
@@ -294,7 +297,13 @@ export default function WorkspacePage() {
           )}
           {!canAddMore && (
             <div style={{ fontSize:11, color:'#A5B4FC', background:'rgba(255,255,255,.1)', padding:'6px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)' }}>
-              {workspaces.length}/{planLimits?.vs} VS used — <span style={{ color:'#FCD34D', fontWeight:600, cursor:'pointer' }}>Upgrade plan ↗</span>
+              {vsLimit === Infinity ? workspaces.length : `${workspaces.length}/${vsLimit}`} VS used —{' '}
+              <span
+                onClick={() => setShowUpgrade(true)}
+                style={{ color:'#FCD34D', fontWeight:600, cursor:'pointer', textDecoration:'underline' }}
+              >
+                Upgrade plan ↗
+              </span>
             </div>
           )}
         </div>
@@ -402,6 +411,55 @@ export default function WorkspacePage() {
           existingConstituencyIds={workspaces.map(w => w.constituency_id).filter(Boolean)}
           existingVSNames={workspaces.map(w => w.vs || w.name)}
         />
+      )}
+
+      {showUpgrade && (
+        <div onClick={() => setShowUpgrade(false)} style={{
+          position:'fixed', inset:0, background:'rgba(17,24,39,.65)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          zIndex:1000, padding:20, backdropFilter:'blur(4px)',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background:C.white, borderRadius:20, padding:'28px 24px',
+            width:'100%', maxWidth:440, boxShadow:'0 24px 64px rgba(0,0,0,.2)',
+          }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <div style={{ fontSize:18, fontWeight:800, color:C.gray900 }}>Upgrade Your Plan</div>
+              <button onClick={() => setShowUpgrade(false)} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {Object.entries(PLANS).map(([key, p]) => (
+                <div key={key} style={{
+                  border:`2px solid ${plan === key ? C.primary : C.gray200}`,
+                  borderRadius:12, padding:'14px 16px',
+                  background: plan === key ? C.primaryLight : C.white,
+                }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:800, color:C.gray900 }}>{p.label}</div>
+                      <div style={{ fontSize:12, color:C.gray600, marginTop:2 }}>{p.description}</div>
+                      <div style={{ fontSize:11, color:C.gray400, marginTop:4 }}>
+                        {p.vs === Infinity ? 'Unlimited' : p.vs} VS ·{' '}
+                        {p.contacts === Infinity ? 'Unlimited' : p.contacts.toLocaleString('en-IN')} contacts
+                        {p.extraVS > 0 && ` · +₹${p.extraVS.toLocaleString('en-IN')}/mo per extra VS`}
+                      </div>
+                    </div>
+                    <div style={{ textAlign:'right' }}>
+                      <div style={{ fontSize:18, fontWeight:800, color:C.primary }}>
+                        {p.basePrice === 0 ? 'Free' : `₹${p.basePrice.toLocaleString('en-IN')}`}
+                      </div>
+                      {p.basePrice > 0 && <div style={{ fontSize:10, color:C.gray400 }}>/month</div>}
+                      {plan === key && <div style={{ fontSize:11, color:C.success, fontWeight:700, marginTop:4 }}>✓ Current</div>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background:'#FEF3C7', borderRadius:10, padding:'12px 14px', marginTop:16, fontSize:12, color:'#92400E', lineHeight:1.6 }}>
+              💬 To upgrade, contact us at <strong>support@contactbook.in</strong> or WhatsApp us. Razorpay integration coming soon!
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
