@@ -10,10 +10,9 @@ const C = {
 }
 
 const PLAN_INFO = [
-  { name:'Free',    vs:1, contacts:'1,000',    price:'₹0',         color:'#6B7280' },
-  { name:'Starter', vs:3, contacts:'10,000',   price:'₹999/mo',    color:'#059669' },
-  { name:'Growth',  vs:5, contacts:'50,000',   price:'₹2,499/mo',  color:'#4F46E5' },
-  { name:'Pro',     vs:8, contacts:'2,00,000', price:'₹4,999/mo',  color:'#DC2626' },
+  { name:'Free',     vs:1,  contacts:'1,000',     price:'₹0',          color:'#6B7280', note:'1 VS only' },
+  { name:'Single',   vs:1,  contacts:'Unlimited', price:'₹2,999/mo',   color:'#059669', note:'1 VS, unlimited contacts' },
+  { name:'Multiple', vs:12, contacts:'Unlimited', price:'₹5,999/mo',   color:'#4F46E5', note:'Up to 12 VS, same Lok Sabha' },
 ]
 
 // ─── OTP LOGIN MODAL ──────────────────────────────────────────────────────────
@@ -174,8 +173,13 @@ export default function LandingPage({ onSignedIn }) {
   const addToCart = () => {
     if (!selVS) return
     setCartError('')
-    if (cart.length >= 8) { setCartError('Maximum 8 constituencies allowed (Pro plan limit)'); return }
+    if (cart.length >= 12) { setCartError('Maximum 12 constituencies allowed (Multiple plan limit)'); return }
     if (cart.find(c => c.id === selVS.id)) { setCartError('Already added'); return }
+    // If adding more than 1, enforce same Lok Sabha
+    if (cart.length >= 1 && cart[0].ls !== selLS) {
+      setCartError(`All constituencies must be from the same Lok Sabha. Your first selection is from "${cart[0].ls}".`)
+      return
+    }
     setCart(prev => [...prev, { id: selVS.id, state: selState, ls: selLS, vs: selVS.vidhan_sabha }])
     setSelVS(null)
   }
@@ -342,7 +346,7 @@ export default function LandingPage({ onSignedIn }) {
             {cart.length > 0 && (
               <div style={{ marginBottom:20 }}>
                 <div style={{ fontSize:11, fontWeight:700, color:C.gray400, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>
-                  Your selected constituencies ({cart.length}/8)
+                  Your selected constituencies ({cart.length}/12)
                 </div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                   {cart.map(c => (
@@ -361,7 +365,7 @@ export default function LandingPage({ onSignedIn }) {
                       </button>
                     </div>
                   ))}
-                  {cart.length < 8 && (
+                  {cart.length < 12 && (
                     <div style={{ display:'inline-flex', alignItems:'center', fontSize:12, color:C.gray400, padding:'6px 10px', border:`1.5px dashed ${C.gray200}`, borderRadius:30 }}>
                       + Add more
                     </div>
@@ -371,12 +375,12 @@ export default function LandingPage({ onSignedIn }) {
                 {/* Plan hint */}
                 {cart.length === 1 && (
                   <div style={{ background:'#D1FAE5', borderRadius:8, padding:'8px 12px', marginTop:10, fontSize:12, color:'#065F46', fontWeight:500 }}>
-                    ✅ 1 constituency = Free plan. No payment needed!
+                    ✅ 1 constituency — Free plan available. No payment needed to start!
                   </div>
                 )}
                 {cart.length > 1 && (
-                  <div style={{ background:'#FEF3C7', borderRadius:8, padding:'8px 12px', marginTop:10, fontSize:12, color:'#92400E', fontWeight:500 }}>
-                    ⚡ {cart.length} constituencies requires a paid plan after signup.
+                  <div style={{ background:'#EEF2FF', borderRadius:8, padding:'8px 12px', marginTop:10, fontSize:12, color:'#3730A3', fontWeight:500 }}>
+                    ⚡ Multiple constituencies require the <strong>Multiple plan (₹5,999/mo)</strong>. All must be from the same Lok Sabha.
                   </div>
                 )}
               </div>
@@ -420,7 +424,7 @@ export default function LandingPage({ onSignedIn }) {
               }}>
                 <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', marginBottom:6, textTransform:'uppercase', letterSpacing:'.05em' }}>{p.name}</div>
                 <div style={{ fontSize:22, fontWeight:800, color:'#fff', marginBottom:4 }}>{p.price}</div>
-                <div style={{ fontSize:11, color:'#818CF8', marginBottom:6 }}>Up to {p.vs} VS · {p.contacts} contacts</div>
+                <div style={{ fontSize:11, color:'#818CF8', marginBottom:6 }}>{p.note}</div>
               </div>
             ))}
           </div>

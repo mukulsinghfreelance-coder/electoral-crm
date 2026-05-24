@@ -21,10 +21,9 @@ export const DEFAULT_LABELS = {
 
 // ─── PLAN LIMITS ─────────────────────────────────────────────────────────────
 export const PLAN_LIMITS = {
-  free:    { vs: 1, contacts: 1000   },
-  starter: { vs: 3, contacts: 10000  },
-  growth:  { vs: 5, contacts: 50000  },
-  pro:     { vs: 8, contacts: 200000 },
+  free:     { vs: 1,  contacts: 1000,     sameLS: false },
+  single:   { vs: 1,  contacts: Infinity, sameLS: false },
+  multiple: { vs: 12, contacts: Infinity, sameLS: true  },
 }
 
 // ─── CONSTITUENCY MASTER ──────────────────────────────────────────────────────

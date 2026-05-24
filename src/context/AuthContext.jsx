@@ -5,10 +5,9 @@ const AuthContext = createContext(null)
 
 // ─── PLAN LIMITS ──────────────────────────────────────────────────────────────
 export const PLAN_LIMITS = {
-  free:    { vs: 1, contacts: 1000,   label: 'Free',    price: '₹0' },
-  starter: { vs: 3, contacts: 10000,  label: 'Starter', price: '₹999/mo' },
-  growth:  { vs: 5, contacts: 50000,  label: 'Growth',  price: '₹2,499/mo' },
-  pro:     { vs: 8, contacts: 200000, label: 'Pro',     price: '₹4,999/mo' },
+  free:     { vs: 1,  contacts: 1000,      label: 'Free',     price: '₹0',         sameLS: false },
+  single:   { vs: 1,  contacts: Infinity,  label: 'Single',   price: '₹2,999/mo',  sameLS: false },
+  multiple: { vs: 12, contacts: Infinity,  label: 'Multiple', price: '₹5,999/mo',  sameLS: true  },
 }
 
 export function AuthProvider({ children }) {

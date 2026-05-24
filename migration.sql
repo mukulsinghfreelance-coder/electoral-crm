@@ -403,3 +403,22 @@ ON CONFLICT (state, lok_sabha, vidhan_sabha) DO NOTHING;
 -- SELECT COUNT(*) FROM constituency_master;
 -- SELECT COUNT(*) FROM customers;
 -- SELECT id, name, customer_id, state, ls, vs FROM workspaces;
+
+-- ─── Update plan CHECK constraint in customers table ─────────────────────────
+-- Run this in Supabase SQL Editor
+
+-- Step 1: Drop old constraint
+ALTER TABLE customers DROP CONSTRAINT IF EXISTS customers_plan_check;
+
+-- Step 2: Fix all existing rows FIRST (before adding constraint)
+UPDATE customers SET plan = 'free' WHERE plan NOT IN ('free','single','multiple');
+
+-- Step 3: Set your account to multiple
+UPDATE customers SET plan = 'multiple' WHERE email = 'mukulsingh.freelance@gmail.com';
+
+-- Step 4: NOW add the constraint (data is already clean)
+ALTER TABLE customers ADD CONSTRAINT customers_plan_check
+  CHECK (plan IN ('free', 'single', 'multiple'));
+
+-- Verify
+SELECT email, plan FROM customers;

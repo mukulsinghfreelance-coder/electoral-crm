@@ -23,14 +23,13 @@ const RATING_COLOR = {
 }
 
 const PLAN_BADGE = {
-  free:    { bg:'#F3F4F6', cl:'#4B5563', label:'Free'    },
-  starter: { bg:'#D1FAE5', cl:'#065F46', label:'Starter' },
-  growth:  { bg:'#EEF2FF', cl:'#3730A3', label:'Growth'  },
-  pro:     { bg:'#FEF3C7', cl:'#92400E', label:'Pro'     },
+  free:     { bg:'#F3F4F6', cl:'#4B5563', label:'Free'     },
+  single:   { bg:'#D1FAE5', cl:'#065F46', label:'Single'   },
+  multiple: { bg:'#EEF2FF', cl:'#3730A3', label:'Multiple' },
 }
 
 // ─── ADD CONSTITUENCY MODAL ───────────────────────────────────────────────────
-function AddConstModal({ onClose, onAdded, customer, currentCount }) {
+function AddConstModal({ onClose, onAdded, customer, currentCount, existingLS }) {
   const [states,       setStates]       = useState([])
   const [lokSabhas,    setLokSabhas]    = useState([])
   const [vidhanSabhas, setVidhanSabhas] = useState([])
@@ -56,6 +55,11 @@ function AddConstModal({ onClose, onAdded, customer, currentCount }) {
     if (!selVS) { setError('Please select a Vidhan Sabha'); return }
     if (currentCount >= planLimit) {
       setError(`Your ${customer.plan} plan allows only ${planLimit} constituency/constituencies. Please upgrade.`)
+      return
+    }
+    // Multiple plan: enforce same Lok Sabha
+    if (customer.plan === 'multiple' && existingLS && selLS !== existingLS) {
+      setError(`Multiple plan requires all constituencies from the same Lok Sabha. Your existing VS are from "${existingLS}".`)
       return
     }
     setLoading(true); setError('')
@@ -285,7 +289,7 @@ export default function WorkspacePage() {
           )}
           {!canAddMore && (
             <div style={{ fontSize:11, color:'#A5B4FC', background:'rgba(255,255,255,.1)', padding:'6px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)' }}>
-              {workspaces.length}/{planLimits?.vs} — <span style={{ color:'#FCD34D', fontWeight:600, cursor:'pointer' }}>Upgrade to add more ↗</span>
+              {workspaces.length}/{planLimits?.vs} VS used — <span style={{ color:'#FCD34D', fontWeight:600, cursor:'pointer' }}>Upgrade plan ↗</span>
             </div>
           )}
         </div>
@@ -390,6 +394,7 @@ export default function WorkspacePage() {
           onAdded={handleWorkspaceAdded}
           customer={customer}
           currentCount={workspaces.length}
+          existingLS={workspaces[0]?.ls || null}
         />
       )}
     </div>
