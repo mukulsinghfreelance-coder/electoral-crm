@@ -142,7 +142,7 @@ function OTPModal({ onClose, onSuccess }) {
 }
 
 // ─── MAIN LANDING PAGE ────────────────────────────────────────────────────────
-export default function LandingPage({ onSignedIn }) {
+export default function LandingPage() {
   const { loginWithGoogle } = useAuth()
 
   // Constituency selector state
@@ -197,7 +197,7 @@ export default function LandingPage({ onSignedIn }) {
 
   const handleSignedIn = () => {
     setShowOTP(false)
-    onSignedIn()
+    // AppRouter auto-redirects when auth state changes
   }
 
   const handleGoogleSignIn = () => {

@@ -3,8 +3,6 @@ import { supabase } from '../lib/supabase'
 import { PLANS, getPlanLimits, calcMonthlyPrice, SUPER_ADMIN_EMAIL, FEATURES } from '../config'
 
 const AuthContext = createContext(null)
-
-// Re-export for convenience so other files can import from AuthContext
 export { PLANS, calcMonthlyPrice }
 
 export function AuthProvider({ children }) {
@@ -16,7 +14,9 @@ export function AuthProvider({ children }) {
 
   // ── Load customer row from DB ─────────────────────────────────────────────
   const loadCustomer = useCallback(async (authUser) => {
+    console.log('loadCustomer called for:', authUser.email)
     try {
+      // 1. Try by auth_id
       let { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -26,6 +26,8 @@ export function AuthProvider({ children }) {
       if (error) throw error
 
       if (!data) {
+        console.log('No match by auth_id, trying email...')
+        // 2. Try by email
         const { data: byEmail, error: emailErr } = await supabase
           .from('customers')
           .select('*')
@@ -35,12 +37,18 @@ export function AuthProvider({ children }) {
         if (emailErr) throw emailErr
 
         if (byEmail) {
-          await supabase
+          console.log('Found by email, linking auth_id...')
+          // Link auth_id
+          const { error: updateErr } = await supabase
             .from('customers')
             .update({ auth_id: authUser.id })
             .eq('email', authUser.email)
+
+          if (updateErr) console.warn('auth_id link failed:', updateErr)
           data = { ...byEmail, auth_id: authUser.id }
         } else {
+          console.log('Brand new user, creating customer row...')
+          // 3. Create new customer
           const { data: newCustomer, error: insertError } = await supabase
             .from('customers')
             .insert({
@@ -54,9 +62,11 @@ export function AuthProvider({ children }) {
 
           if (insertError) throw insertError
           data = newCustomer
+          console.log('New customer created:', data)
         }
       }
 
+      console.log('Customer loaded:', data.email, 'plan:', data.plan)
       setCustomer(data)
       setAuthError('')
     } catch (err) {
@@ -72,6 +82,7 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
+        console.log('Auth event:', event, newSession?.user?.email)
         setSession(newSession)
 
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
@@ -98,7 +109,6 @@ export function AuthProvider({ children }) {
 
   // ── Auth methods ──────────────────────────────────────────────────────────
   const loginWithOTP = async (email) => {
-    if (!FEATURES.otpAuth) throw new Error('OTP login is disabled')
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: true },
@@ -111,11 +121,11 @@ export function AuthProvider({ children }) {
       email, token, type: 'email',
     })
     if (error) throw error
+    // onAuthStateChange SIGNED_IN fires automatically — no need to call loadCustomer here
     return data
   }
 
   const loginWithGoogle = async () => {
-    if (!FEATURES.googleAuth) throw new Error('Google login is disabled')
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -127,11 +137,9 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
   }
 
-  // ── Workspace helpers ─────────────────────────────────────────────────────
   const switchWorkspace = (ws) => setWorkspace(ws)
   const exitWorkspace   = ()   => setWorkspace(null)
 
-  // ── Plan helpers ──────────────────────────────────────────────────────────
   const plan         = customer?.plan || 'free'
   const planLimits   = getPlanLimits(plan)
   const planConfig   = PLANS[plan] || PLANS.free

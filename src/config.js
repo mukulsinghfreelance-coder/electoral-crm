@@ -40,7 +40,7 @@ export const PLANS = {
     basePrice:   0,
     extraVS:     0,
     highlight:   false,
-    description: 'Get started with 1 constituency',
+    description: 'Get started with 1 constituency, 1000 contacts',
     badge:       { bg: '#F3F4F6', cl: '#4B5563' },
   },
   single: {
@@ -104,7 +104,7 @@ export const DEFAULTS = {
   lokSabha:  'Patna Sahib',
   vs:        'Bankipur',
   adminPin:  '1234',
-  parties:   ['BJP+', 'Congress+', 'Others+'],
+  parties:   ['BJP+', 'Congress+', 'Third Front'],
   elections: ['Election 2015', 'Election 2020', 'Election 2024'],
   castes:    ['Yadav', 'Brahmin', 'Kurmi', 'Bhumihar', 'Rajput', 'Muslim', 'Koeri', 'Dusadh'],
   labels: {

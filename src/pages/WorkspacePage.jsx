@@ -152,42 +152,22 @@ function StatCard({ label, value, color, icon }) {
 
 // ─── MAIN WORKSPACE PAGE ──────────────────────────────────────────────────────
 export default function WorkspacePage() {
-  const { customer, switchWorkspace, logout, plan, planLimits, isSuperAdmin } = useAuth()
+  const { customer, switchWorkspace, exitWorkspace, logout, plan, planLimits, planConfig, isSuperAdmin, calcMonthlyPrice } = useAuth()
   const [workspaces,  setWorkspaces]  = useState([])
   const [wsStats,     setWsStats]     = useState({})
   const [loading,     setLoading]     = useState(true)
   const [totalStats,  setTotalStats]  = useState({ contacts:0, booths:0, vsCount:0 })
   const [showAdd,     setShowAdd]     = useState(false)
 
-  // ── Check for pending constituencies from landing page ──────────────────────
-  useEffect(() => {
-    const pending = sessionStorage.getItem('pending_constituencies')
-    if (pending && customer?.id) {
-      sessionStorage.removeItem('pending_constituencies')
-      const constituencies = JSON.parse(pending)
-      // Create workspaces for each pending constituency
-      createPendingWorkspaces(constituencies)
-    }
-  }, [customer?.id])
-
-  const createPendingWorkspaces = async (constituencies) => {
-    const limit = planLimits?.vs || 1
-    const toCreate = constituencies.slice(0, limit)
-    for (const c of toCreate) {
-      try {
-        await createWorkspace({
-          customerId:     customer.id,
-          constituencyId: c.id,
-          state: c.state, ls: c.ls, vs: c.vs,
-        })
-      } catch(e) {
-        console.warn('Could not create workspace for', c.vs, e.message)
-      }
-    }
-    loadWorkspaces()
-  }
-
+  // Load workspaces when customer is ready
   useEffect(() => { if (customer?.id) loadWorkspaces() }, [customer?.id])
+
+  // Reload when AppRouter creates pending workspaces after login
+  useEffect(() => {
+    const handler = () => loadWorkspaces()
+    window.addEventListener('workspaces-updated', handler)
+    return () => window.removeEventListener('workspaces-updated', handler)
+  }, [])
 
   const loadWorkspaces = async () => {
     setLoading(true)
@@ -250,13 +230,18 @@ export default function WorkspacePage() {
 
         {/* Welcome */}
         <div style={{ marginBottom:20 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
             <div style={{ fontSize:24, fontWeight:800, color:'#fff' }}>
-              Welcome, {customer?.name || 'Leader'} 👋
+              {isSuperAdmin ? '🛡️' : '👋'} Welcome{isSuperAdmin ? ' back' : ''}, {customer?.name || 'Leader'}!
             </div>
             <span style={{ background:pb.bg, color:pb.cl, padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
               {pb.label}
             </span>
+            {isSuperAdmin && (
+              <span style={{ background:'rgba(220,38,38,.2)', color:'#FCA5A5', padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700, border:'1px solid rgba(220,38,38,.3)' }}>
+                Super Admin
+              </span>
+            )}
           </div>
           <div style={{ fontSize:13, color:'#A5B4FC' }}>
             Managing {totalStats.vsCount} Vidhan Sabha{totalStats.vsCount!==1?'s':''} · Click any to manage
