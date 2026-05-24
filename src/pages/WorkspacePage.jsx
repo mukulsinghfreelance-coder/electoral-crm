@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth, PLAN_LIMITS } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
   fetchWorkspaces, fetchWorkspaceStats, createWorkspace,
