@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import SuperAdminPage from './SuperAdminPage'
+const SuperAdminPage = lazy(() => import('./SuperAdminPage'))
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
@@ -160,7 +160,15 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
 function StatCard({ label, value, color, icon }) {
   // Show super admin panel
   if (showAdmin) {
-    return <SuperAdminPage onBack={() => setShowAdmin(false)} />
+    return (
+      <Suspense fallback={
+        <div style={{ minHeight:'100vh', background:'#1E1B4B', display:'flex', alignItems:'center', justifyContent:'center', color:'#A5B4FC', fontSize:14 }}>
+          ⏳ Loading Admin Panel…
+        </div>
+      }>
+        <SuperAdminPage onBack={() => setShowAdmin(false)} />
+      </Suspense>
+    )
   }
 
   return (
