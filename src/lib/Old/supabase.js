@@ -1,0 +1,368 @@
+import { createClient } from '@supabase/supabase-js'
+
+const url = import.meta.env.VITE_SUPABASE_URL
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = createClient(url, key)
+
+// ─── DEFAULT LABELS ───────────────────────────────────────────────────────────
+export const DEFAULT_LABELS = {
+  mandal:     'Mandal',
+  panchayat:  'Panchayat',
+  booth:      'Booth',
+  village:    'Village',
+  boothName:  'Booth Name',
+  caste:      'Caste',
+  tag:        'Tag',
+  contacts:   'Contacts',
+  karyakarta: 'Karyakarta',
+  whatsapp:   'WhatsApp No.',
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+
+export async function signInWithOTP(email) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email,
+    options: {
+      shouldCreateUser: false,  // ← only allow registered users
+    }
+  })
+  if (error) throw error
+}
+
+export async function verifyOTP(email, token) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'email',
+  })
+  if (error) throw error
+  return data
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
+}
+
+export async function getSession() {
+  const { data } = await supabase.auth.getSession()
+  return data.session
+}
+
+// ─── APP USER ─────────────────────────────────────────────────────────────────
+export async function fetchAppUser(authId) {
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('*, workspaces(*), organisations(*)')
+    .eq('auth_id', authId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function fetchAppUserByEmail(email) {
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('*, workspaces(*), organisations(*)')
+    .eq('email', email)
+    .maybeSingle()   // ← won't throw error if not found
+  if (error) throw error
+  return data
+}
+
+export async function updateAppUserAuthId(email, authId) {
+  const { error } = await supabase
+    .from('app_users')
+    .update({ auth_id: authId })
+    .eq('email', email)
+  if (error) throw error
+}
+
+// ─── VOLUNTEERS ───────────────────────────────────────────────────────────────
+export async function fetchVolunteers(workspaceId) {
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('role', 'volunteer')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function addVolunteer({ name, email, phone, workspaceId, orgId }) {
+  const { data, error } = await supabase
+    .from('app_users')
+    .insert({
+      name,
+      email,
+      phone,
+      role: 'volunteer',
+      workspace_id: workspaceId,
+      org_id: orgId,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function removeVolunteer(id) {
+  const { error } = await supabase
+    .from('app_users')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ─── WORKSPACES (for MP) ──────────────────────────────────────────────────────
+export async function fetchWorkspaces(orgId) {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .select('*')
+    .eq('org_id', orgId)
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function createWorkspace({ orgId, name, state, ls, vs }) {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .insert({ org_id: orgId, name, state, ls, vs })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+export async function fetchSettings(workspaceId) {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .limit(1)
+
+  if (error) throw error
+
+  // If no settings row exists, return defaults
+  if (!data || data.length === 0) return dbToSettings({})
+
+  return dbToSettings(data[0])
+}
+
+export async function saveSettings(settings, workspaceId) {
+  const { data: existing } = await supabase
+    .from('settings')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .limit(1)
+    .single()
+  const row = { ...settingsToDb(settings), workspace_id: workspaceId }
+  if (existing) {
+    const { error } = await supabase.from('settings').update(row).eq('id', existing.id)
+    if (error) throw error
+  } else {
+    const { error } = await supabase.from('settings').insert(row)
+    if (error) throw error
+  }
+}
+
+// ─── CONTACTS ─────────────────────────────────────────────────────────────────
+export async function fetchContacts(workspaceId) {
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.map(dbToContact)
+}
+
+export async function insertContact(contact, workspaceId) {
+  const { data, error } = await supabase
+    .from('contacts')
+    .insert({ ...contactToDb(contact), workspace_id: workspaceId })
+    .select()
+    .single()
+  if (error) throw error
+  return dbToContact(data)
+}
+
+export async function updateContact(id, contact) {
+  const { data, error } = await supabase
+    .from('contacts')
+    .update(contactToDb(contact))
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return dbToContact(data)
+}
+
+export async function deleteContact(id) {
+  const { error } = await supabase.from('contacts').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function bulkDeleteContacts(ids) {
+  const { error } = await supabase.from('contacts').delete().in('id', ids)
+  if (error) throw error
+}
+
+// ─── BOOTHS ───────────────────────────────────────────────────────────────────
+export async function fetchBooths(workspaceId) {
+  const { data, error } = await supabase
+    .from('booths')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('bno', { ascending: true })
+  if (error) throw error
+  return data.map(dbToBooth)
+}
+
+export async function insertBooth(booth, workspaceId) {
+  const { data, error } = await supabase
+    .from('booths')
+    .insert({ ...boothToDb(booth), workspace_id: workspaceId })
+    .select()
+    .single()
+  if (error) throw error
+  return dbToBooth(data)
+}
+
+export async function updateBooth(id, booth) {
+  const { data, error } = await supabase
+    .from('booths')
+    .update(boothToDb(booth))
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return dbToBooth(data)
+}
+
+export async function deleteBooth(id) {
+  const { error } = await supabase.from('booths').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function upsertBoothByBno(boothData, workspaceId) {
+  const { data, error } = await supabase
+    .from('booths')
+    .upsert(
+      { ...boothToDb(boothData), workspace_id: workspaceId },
+      { onConflict: 'bno' }
+    )
+    .select()
+    .single()
+  if (error) throw error
+  return dbToBooth(data)
+}
+
+// ─── MAPPERS ──────────────────────────────────────────────────────────────────
+function dbToSettings(d) {
+  return {
+    state:       d.state        || 'Bihar',
+    ls:          d.ls           || 'Patna Sahib',
+    vs:          d.vs           || 'Bankipur',
+    totalVoters: d.total_voters || '',
+    totalBooths: d.total_booths || '',
+    mandals:     d.mandals      || [],
+    castes:      d.castes       || [],
+    parties:     d.parties      || ['BJP+', 'Congress+', 'Others+'],
+    elections:   d.elections    || ['Election 2015', 'Election 2020', 'Election 2024'],
+    adminPin:    d.admin_pin    || '1234',
+    sheetsUrl:   d.sheets_url   || '',
+    labels:      { ...DEFAULT_LABELS, ...(d.labels || {}) },
+  }
+}
+
+function settingsToDb(s) {
+  return {
+    state:        s.state,
+    ls:           s.ls,
+    vs:           s.vs,
+    total_voters: s.totalVoters,
+    total_booths: s.totalBooths,
+    mandals:      s.mandals,
+    castes:       s.castes,
+    parties:      s.parties,
+    elections:    s.elections,
+    admin_pin:    s.adminPin,
+    sheets_url:   s.sheetsUrl,
+    labels:       s.labels || DEFAULT_LABELS,
+  }
+}
+
+function dbToContact(d) {
+  return {
+    id:        d.id,
+    name:      d.name      || '',
+    phone:     d.phone     || '',
+    wa:        d.wa        || '',
+    mandal:    d.mandal    || '',
+    panchayat: d.panchayat || '',
+    village:   d.village   || '',
+    bno:       d.bno       || '',
+    bnm:       d.bnm       || '',
+    tag:       d.tag       || '',
+    caste:     d.caste     || '',
+    gender:    d.gender    || '',
+    notes:     d.notes     || '',
+  }
+}
+
+function contactToDb(c) {
+  return {
+    name:      c.name,
+    phone:     c.phone,
+    wa:        c.wa        || '',
+    mandal:    c.mandal    || '',
+    panchayat: c.panchayat || '',
+    village:   c.village   || '',
+    bno:       c.bno       || '',
+    bnm:       c.bnm       || '',
+    tag:       c.tag       || '',
+    caste:     c.caste     || '',
+    gender:    c.gender    || '',
+    notes:     c.notes     || '',
+  }
+}
+
+function dbToBooth(d) {
+  return {
+    id:        d.id,
+    bno:       d.bno       || '',
+    bnm:       d.bnm       || '',
+    mandal:    d.mandal    || '',
+    panchayat: d.panchayat || '',
+    voters:    d.voters    || 0,
+    rating:    d.rating    || '',
+    castes:    d.castes    || ['', '', ''],
+    elec:      d.elec      || [
+      { cast: 0, votes: [0, 0, 0] },
+      { cast: 0, votes: [0, 0, 0] },
+      { cast: 0, votes: [0, 0, 0] },
+    ],
+    notes:     d.notes     || '',
+  }
+}
+
+function boothToDb(b) {
+  return {
+    bno:       b.bno,
+    bnm:       b.bnm       || '',
+    mandal:    b.mandal    || '',
+    panchayat: b.panchayat || '',
+    voters:    b.voters    || 0,
+    rating:    b.rating    || '',
+    castes:    b.castes    || ['', '', ''],
+    elec:      b.elec      || [],
+    notes:     b.notes     || '',
+  }
+}

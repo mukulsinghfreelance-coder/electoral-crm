@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAuth } from './context/AuthContext'
+import LoginPage from './pages/LoginPage'
+import WorkspacePage from './pages/WorkspacePage'
 import {
   fetchSettings, saveSettings,
   fetchContacts, insertContact, updateContact, deleteContact, bulkDeleteContacts,
@@ -604,10 +606,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const { customer: user, workspace, exitWorkspace, isSuperAdmin, planLimits, logout } = useAuth()
-  const isAdmin = true   // all customers are admins of their own data
-  const isVolunteer = false
-  const isMP = false     // no MP concept anymore — all customers are equal
+  const { user, loading:authLoading, workspace, isAdmin, isVolunteer, isMP, logout, switchWorkspace } = useAuth()
   // ── Data state ────────────────────────────────────────────────────────────
   const [settings,  setSettingsState] = useState(DEFAULT_SETTINGS);
   const [contacts,  setContacts]      = useState([]);
@@ -717,11 +716,6 @@ export default function App() {
   // ── CRUD ──────────────────────────────────────────────────────────────────
   const handleSaveContact=async f=>{
     setSaving(true);
-    // Check plan contact limit
-    if(!editC && planLimits && contacts.length >= planLimits.contacts){
-      showToast(`Contact limit reached (${planLimits.contacts.toLocaleString()} for your plan). Please upgrade.`,"error");
-      setSaving(false); return;
-    }
     try{
       if(editC){const updated=await updateContact(editC.id,f);setContacts(cs=>cs.map(c=>c.id===updated.id?updated:c));setSelC(updated);showToast("Contact updated ✓");}
       else{const created=await insertContact(f,workspace.id);setContacts(cs=>[created,...cs]);setSelC(created);showToast("Contact added ✓");syncToSheets(created);}
@@ -810,9 +804,12 @@ export default function App() {
     const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="contacts.csv";a.click();
   };
 
-  // ── Guards (AppRouter guarantees user + workspace exist here) ──────────
-  if(loading)  return <LoadingScreen message="Loading data…"/>;
-  if(loadErr)  return <ErrorScreen message={loadErr} onRetry={loadAll}/>;
+  // ── Auth guards ───────────────────────────────────────────────────────────
+  if(authLoading) return <LoadingScreen message="Checking login…"/>;
+  if(!user)       return <LoginPage/>;
+  if(isMP&&!workspace) return <WorkspacePage/>;
+  if(loading)     return <LoadingScreen message="Loading data…"/>;
+  if(loadErr)     return <ErrorScreen message={loadErr} onRetry={loadAll}/>;
 
   const L=settings.labels||{};
   const thS={position:"sticky",top:0,fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",padding:"8px 10px",borderBottom:`2px solid ${C.gray200}`,textAlign:"left",userSelect:"none",background:C.gray50,whiteSpace:"nowrap"};
@@ -852,19 +849,22 @@ export default function App() {
           <div style={{padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,background:C.primaryLight}}>
             <div style={{fontSize:12,fontWeight:700,color:C.primary}}>{user?.name}</div>
             <div style={{fontSize:10,color:C.gray400,marginTop:1}}>{isAdmin?"👑 Admin":"👤 Volunteer"} · {workspace?.vs||"—"}</div>
-              <button
-                onClick={() => exitWorkspace()}
-                style={{
-                  marginTop:6, width:"100%", padding:"5px 8px",
-                  fontSize:10, fontWeight:700,
-                  background:C.white, color:C.primary,
-                  border:`1.5px solid ${C.primary}`,
-                  borderRadius:6, cursor:"pointer",
-                  fontFamily:"inherit",
-                }}
-              >
-                🔄 Switch Constituency
-              </button>
+             {/* Workspace switcher — only for MP */}
+              {isMP && (
+                <button
+                  onClick={() => switchWorkspace(null)}  // null triggers WorkspacePage
+                  style={{
+                    marginTop:6, width:"100%", padding:"5px 8px",
+                    fontSize:10, fontWeight:700,
+                    background:C.white, color:C.primary,
+                    border:`1.5px solid ${C.primary}`,
+                    borderRadius:6, cursor:"pointer",
+                    fontFamily:"inherit",
+                  }}
+                >
+                  🔄 Switch Constituency
+                </button>
+              )}
             </div>
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
@@ -1064,7 +1064,7 @@ export default function App() {
       <ImportModal open={showImport} onClose={()=>setShowImport(false)} onImport={handleImport} saving={saving}/>
       <ExcelModal open={showExcel} onClose={()=>setShowExcel(false)} onImport={handleBoothExcel} saving={saving}/>
       <SheetsModal open={showSheets} onClose={()=>setShowSheets(false)} settings={settings} setSettings={setSettingsState}/>
-      <VolunteerModal open={showVolunteers} onClose={()=>setShowVolunteers(false)} workspaceId={workspace?.id} orgId={user?.id}/>
+      <VolunteerModal open={showVolunteers} onClose={()=>setShowVolunteers(false)} workspaceId={workspace?.id} orgId={user?.org_id}/>
       <Toast msg={toast.msg} type={toast.type}/>
     </div>
   );

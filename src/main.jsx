@@ -1,13 +1,15 @@
+// ─── src/main.jsx ─────────────────────────────────────────────────────────────
+// Replace your existing main.jsx with this
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import { AuthProvider } from './context/AuthContext.jsx'
-import './index.css'
+import AppRouter from './AppRouter'
+import { AuthProvider } from './context/AuthContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <AppRouter />
     </AuthProvider>
   </React.StrictMode>
 )

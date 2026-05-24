@@ -3,113 +3,98 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
+// ─── PLAN LIMITS ──────────────────────────────────────────────────────────────
+export const PLAN_LIMITS = {
+  free:    { vs: 1, contacts: 1000,   label: 'Free',    price: '₹0' },
+  starter: { vs: 3, contacts: 10000,  label: 'Starter', price: '₹999/mo' },
+  growth:  { vs: 5, contacts: 50000,  label: 'Growth',  price: '₹2,499/mo' },
+  pro:     { vs: 8, contacts: 200000, label: 'Pro',     price: '₹4,999/mo' },
+}
+
 export function AuthProvider({ children }) {
-  const [user,      setUser]      = useState(null)
+  const [customer,  setCustomer]  = useState(null)   // customers row
   const [session,   setSession]   = useState(null)
-  const [workspace, setWorkspace] = useState(null)
+  const [workspace, setWorkspace] = useState(null)   // active workspace
   const [loading,   setLoading]   = useState(true)
   const [authError, setAuthError] = useState('')
 
-  const loadAppUser = useCallback(async (email) => {
-    console.log('Looking up user:', email)
+  // ── Load customer from DB after auth ────────────────────────────────────────
+  const loadCustomer = useCallback(async (authUser) => {
     try {
       const { data, error } = await supabase
-        .from('app_users')
+        .from('customers')
         .select('*')
-        .eq('email', email)
+        .eq('auth_id', authUser.id)
         .maybeSingle()
 
-      console.log('User lookup result:', data, error)
+      if (error) throw error
 
       if (!data) {
-        console.log('No user found — signing out')
-        setAuthError('Your email is not registered. Contact your admin.')
-        setUser(null)
-        setWorkspace(null)
-        setLoading(false)
-	supabase.auth.signOut().catch(console.warn)
-        return
-      }
-
-      // Fetch workspace separately
-      let wsData = null
-      if (data.workspace_id) {
-        const { data: ws } = await supabase
-          .from('workspaces')
+        // Try matching by email (first login after signup)
+        const { data: byEmail } = await supabase
+          .from('customers')
           .select('*')
-          .eq('id', data.workspace_id)
+          .eq('email', authUser.email)
           .maybeSingle()
-        wsData = ws
-        console.log('Workspace:', ws)
-      }
 
-      // Fetch organisation separately
-      let orgData = null
-      if (data.org_id) {
-        const { data: org } = await supabase
-          .from('organisations')
-          .select('*')
-          .eq('id', data.org_id)
-          .maybeSingle()
-        orgData = org
-        console.log('Organisation:', orgData)
-      }
+        if (!byEmail) {
+          // Brand new user — create customer row
+          const { data: newCustomer, error: insertError } = await supabase
+            .from('customers')
+            .insert({
+              auth_id: authUser.id,
+              email:   authUser.email,
+              name:    authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+              plan:    'free',
+            })
+            .select()
+            .single()
 
-      // Update auth_id if missing — fire and forget
-      if (!data.auth_id) {
-        const { data: { session: s } } = await supabase.auth.getSession()
-        if (s?.user?.id) {
-          supabase
-            .from('app_users')
-            .update({ auth_id: s.user.id })
-            .eq('email', email)
-            .then(() => console.log('auth_id linked'))
-            .catch(e => console.warn('auth_id link failed:', e))
+          if (insertError) throw insertError
+          setCustomer(newCustomer)
+          setWorkspace(null)   // will go to workspace selector / onboarding
+          setLoading(false)
+          return
         }
+
+        // Link auth_id to existing customer
+        await supabase
+          .from('customers')
+          .update({ auth_id: authUser.id })
+          .eq('email', authUser.email)
+
+        setCustomer({ ...byEmail, auth_id: authUser.id })
+      } else {
+        setCustomer(data)
       }
 
-      setUser({ ...data, workspaces: wsData, organisations: orgData })
-      setWorkspace(wsData)
       setAuthError('')
-
     } catch (err) {
-      console.error('loadAppUser error:', err)
+      console.error('loadCustomer error:', err)
       setAuthError('Something went wrong. Please try again.')
     }
-
-    // Always call setLoading(false) at the end
     setLoading(false)
   }, [])
 
+  // ── Auth state listener ──────────────────────────────────────────────────────
   useEffect(() => {
-    let handled = false
-
-    // Check existing session first
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session?.user?.email)
       setSession(session)
-      if (session?.user?.email && !handled) {
-        handled = true
-        loadAppUser(session.user.email)
-      } else if (!session) {
+      if (session?.user) {
+        loadCustomer(session.user)
+      } else {
         setLoading(false)
       }
     })
 
-    // Listen for future auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth event:', event, session?.user?.email)
         setSession(session)
-
-        if (event === 'SIGNED_IN' && session?.user?.email && !handled) {
-          handled = true
-          await loadAppUser(session.user.email)
+        if (event === 'SIGNED_IN' && session?.user) {
+          await loadCustomer(session.user)
         }
-
         if (event === 'SIGNED_OUT') {
-          handled = false
-          setUser(null)
+          setCustomer(null)
           setWorkspace(null)
           setLoading(false)
         }
@@ -117,49 +102,59 @@ export function AuthProvider({ children }) {
     )
 
     return () => subscription.unsubscribe()
-  }, [loadAppUser])
+  }, [loadCustomer])
 
-const login = async (email) => {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: undefined,  // ← forces OTP not magic link
-    }
-  })
-  if (error) throw error
-}
-
-  const verify = async (email, token) => {
-    const { data, error } = await supabase.auth.verifyOtp({
+  // ── Auth methods ─────────────────────────────────────────────────────────────
+  const loginWithOTP = async (email) => {
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      token,
-      type: 'email',
+      options: { shouldCreateUser: true },
+    })
+    if (error) throw error
+  }
+
+  const verifyOTP = async (email, token) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email, token, type: 'email',
     })
     if (error) throw error
     return data
   }
 
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) throw error
+  }
+
   const logout = async () => {
     await supabase.auth.signOut()
-    setUser(null)
+    setCustomer(null)
     setSession(null)
     setWorkspace(null)
     setLoading(false)
   }
 
+  // ── Workspace switching ───────────────────────────────────────────────────────
   const switchWorkspace = (ws) => setWorkspace(ws)
+  const exitWorkspace   = ()   => setWorkspace(null)
 
-  const isAdmin      = user?.role === 'admin' || user?.role === 'super_admin'
-  const isSuperAdmin = user?.role === 'super_admin'
-  const isVolunteer  = user?.role === 'volunteer'
-  const isMP         = user?.organisations?.type === 'MP'
+  // ── Plan helpers ──────────────────────────────────────────────────────────────
+  const plan       = customer?.plan || 'free'
+  const planLimits = PLAN_LIMITS[plan]
+  const isAdmin    = false  // all customers are equal; super admin via service key
+  const isSuperAdmin = customer?.email === import.meta.env.VITE_SUPER_ADMIN_EMAIL
 
   return (
     <AuthContext.Provider value={{
-      user, session, loading, workspace, authError,
-      login, verify, logout, switchWorkspace,
-      isAdmin, isSuperAdmin, isVolunteer, isMP,
+      customer, session, loading, workspace, authError,
+      loginWithOTP, verifyOTP, loginWithGoogle, logout,
+      switchWorkspace, exitWorkspace,
+      plan, planLimits, isSuperAdmin,
     }}>
       {children}
     </AuthContext.Provider>
