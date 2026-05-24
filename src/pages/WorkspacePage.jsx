@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 import {
+  supabase,
   fetchWorkspaces, fetchWorkspaceStats, createWorkspace,
   fetchStates, fetchLokSabhas, fetchVidhanSabhas,
 } from '../lib/supabase'
