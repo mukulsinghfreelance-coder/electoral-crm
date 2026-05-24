@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-const SuperAdminPage = lazy(() => import('./SuperAdminPage'))
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
@@ -8,6 +7,7 @@ import {
   fetchStates, fetchLokSabhas, fetchVidhanSabhas,
 } from '../lib/supabase'
 import { PLANS, calcMonthlyPrice, APP, getPlanLimits } from '../config'
+const SuperAdminPage = lazy(() => import('./SuperAdminPage'))
 
 const C = {
   primary:'#4F46E5', primaryDark:'#3730A3', primaryLight:'#EEF2FF',
@@ -491,14 +491,14 @@ export default function WorkspacePage() {
                       <div style={{ fontSize:16, fontWeight:800, color:C.gray900 }}>{p.label}</div>
                       <div style={{ fontSize:12, color:C.gray600, marginTop:3 }}>{p.description}</div>
                       <div style={{ fontSize:11, color:C.gray400, marginTop:6, lineHeight:1.8 }}>
-                        📍 {p.vs === Infinity ? 'Unlimited' : p.vs} Vidhan Sabha{p.vs !== 1 ? 's' : ''}<br/>
-                        👥 {p.contacts === Infinity ? 'Unlimited' : p.contacts.toLocaleString('en-IN')} contacts<br/>
-                        {p.extraVS > 0 && `💰 +₹${p.extraVS.toLocaleString('en-IN')}/mo per additional VS`}
+                        📍 {p.vs === Infinity ? 'Unlimited' : p.vs} Vidhan Sabha{p.vs !== Infinity && p.vs !== 1 ? 's' : ''}<br/>
+                        👥 {p.contacts === Infinity ? 'Unlimited' : Number(p.contacts).toLocaleString('en-IN')} contacts<br/>
+                        {p.extraVS > 0 && `💰 +₹${Number(p.extraVS).toLocaleString('en-IN')}/mo per additional VS`}
                       </div>
                     </div>
                     <div style={{ textAlign:'right', minWidth:80 }}>
                       <div style={{ fontSize:20, fontWeight:800, color: plan === key ? C.primary : C.gray900 }}>
-                        {p.basePrice === 0 ? '₹0' : `₹${p.basePrice.toLocaleString('en-IN')}`}
+                        {p.basePrice === 0 ? '₹0' : `₹${Number(p.basePrice).toLocaleString('en-IN')}`}
                       </div>
                       {p.basePrice > 0 && <div style={{ fontSize:10, color:C.gray400 }}>/month</div>}
                       {plan === key
