@@ -23,7 +23,7 @@ const PLAN_INFO = Object.entries(PLANS).map(([key, p]) => ({
 
 // ─── OTP LOGIN MODAL ──────────────────────────────────────────────────────────
 function OTPModal({ onClose, onSuccess }) {
-  const { loginWithOTP, verifyOTP, loginWithGoogle } = useAuth()
+  const { loginWithOTP, verifyOTP, loginWithGoogle, devLogin } = useAuth()
   const [step,    setStep]    = useState('email')
   const [email,   setEmail]   = useState('')
   const [otp,     setOtp]     = useState('')
@@ -138,6 +138,15 @@ function OTPModal({ onClose, onSuccess }) {
             }}>
               {loading ? '⏳ Verifying…' : '✓ Verify & Enter'}
             </button>
+            {/* DEV MODE ONLY — remove before production */}
+            {import.meta.env.DEV && step === 'otp' && (
+              <div style={{ marginTop:16, background:'#FEF3C7', borderRadius:8, padding:'10px 12px', fontSize:12, color:'#92400E' }}>
+                <strong>🛠️ Dev Mode:</strong> Check Supabase Auth → Users for the OTP, or use{' '}
+                <button onClick={async () => { setLoading(true); try { await devLogin(email) } catch(e){ setError(e.message) } setLoading(false) }} style={{ background:'none', border:'none', color:'#92400E', fontWeight:700, cursor:'pointer', textDecoration:'underline', fontSize:12, fontFamily:'inherit', padding:0 }}>
+                  Password Login
+                </button>
+              </div>
+            )}
             <div style={{ display:'flex', justifyContent:'space-between', marginTop:16 }}>
               <button onClick={() => { setStep('email'); setOtp(''); setError('') }} style={{ background:'none', border:'none', color:C.gray600, fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>← Change email</button>
               <button onClick={async () => { setLoading(true); setResent(false); try { await loginWithOTP(email); setResent(true); setOtp('') } catch(e){} setLoading(false) }} disabled={loading} style={{ background:'none', border:'none', color:C.primary, fontSize:13, cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>Resend OTP</button>

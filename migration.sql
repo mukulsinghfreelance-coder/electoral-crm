@@ -422,3 +422,24 @@ ALTER TABLE customers ADD CONSTRAINT customers_plan_check
 
 -- Verify
 SELECT email, plan FROM customers;
+
+-- ─── FIX 1: Allow public (anon) to read constituency_master ─────────────────
+-- The landing page is public — unauthenticated users need to see states/LS/VS
+DROP POLICY IF EXISTS "cm_read_all"   ON constituency_master;
+DROP POLICY IF EXISTS "cm_write_auth" ON constituency_master;
+
+-- Anyone can read (landing page is public)
+CREATE POLICY "cm_read_public" ON constituency_master
+  FOR SELECT USING (active = true);
+
+-- Only authenticated users can write (super admin via service key)
+CREATE POLICY "cm_write_auth" ON constituency_master
+  FOR ALL TO authenticated
+  USING (true) WITH CHECK (true);
+
+-- ─── FIX 2: Verify constituency data exists ───────────────────────────────────
+SELECT COUNT(*) as total_constituencies, COUNT(DISTINCT state) as states
+FROM constituency_master
+WHERE active = true;
+
+-- If count is 0, your data didn't load — re-run the Bihar insert from migration.sql

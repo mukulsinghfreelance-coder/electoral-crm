@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { PLANS, getPlanLimits, calcMonthlyPrice, SUPER_ADMIN_EMAIL, FEATURES } from '../config'
 
@@ -11,19 +11,28 @@ export function AuthProvider({ children }) {
   const [workspace, setWorkspace] = useState(null)
   const [loading,   setLoading]   = useState(true)
   const [authError, setAuthError] = useState('')
+  const loadingRef = useRef(null)  // track which userId we're loading
 
   const loadCustomer = useCallback(async (authUser) => {
+    // Prevent duplicate loads for same user
+    if (loadingRef.current === authUser.id) return
+    loadingRef.current = authUser.id
     console.log('loadCustomer:', authUser.email)
+
     try {
+      let data = null
+
       // 1. Try by auth_id
-      let { data } = await supabase
+      const { data: byAuthId } = await supabase
         .from('customers')
         .select('*')
         .eq('auth_id', authUser.id)
         .maybeSingle()
 
-      // 2. Try by email (auth_id not linked yet)
-      if (!data) {
+      if (byAuthId) {
+        data = byAuthId
+      } else {
+        // 2. Try by email
         const { data: byEmail } = await supabase
           .from('customers')
           .select('*')
@@ -31,90 +40,103 @@ export function AuthProvider({ children }) {
           .maybeSingle()
 
         if (byEmail) {
-          // Link auth_id
-          await supabase
+          // Link auth_id silently
+          supabase
             .from('customers')
             .update({ auth_id: authUser.id })
             .eq('email', authUser.email)
+            .then(() => console.log('auth_id linked'))
+            .catch(console.warn)
           data = { ...byEmail, auth_id: authUser.id }
-          console.log('Linked auth_id to existing customer:', byEmail.email)
+        } else {
+          // 3. Create new customer
+          const { data: newC, error } = await supabase
+            .from('customers')
+            .insert({
+              auth_id: authUser.id,
+              email:   authUser.email,
+              name:    authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+              plan:    'free',
+            })
+            .select()
+            .single()
+          if (error) throw error
+          data = newC
+          console.log('New customer created')
         }
       }
 
-      // 3. Create brand new customer
-      if (!data) {
-        const { data: newC, error: insertErr } = await supabase
-          .from('customers')
-          .insert({
-            auth_id: authUser.id,
-            email:   authUser.email,
-            name:    authUser.user_metadata?.full_name || authUser.email.split('@')[0],
-            plan:    'free',
-          })
-          .select()
-          .single()
-        if (insertErr) throw insertErr
-        data = newC
-        console.log('Created new customer:', data.email)
-      }
-
-      console.log('Customer ready:', data.email, '| plan:', data.plan)
+      console.log('Customer loaded:', data.email, '| plan:', data.plan)
       setCustomer(data)
       setAuthError('')
     } catch (err) {
-      console.error('loadCustomer failed:', err)
+      console.error('loadCustomer error:', err)
       setAuthError('Login failed. Please try again.')
+      loadingRef.current = null  // allow retry
     }
+
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    // Track which auth user we've already loaded to avoid duplicate calls
-    let loadedForUserId = null
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log('Auth event:', event, '| user:', newSession?.user?.email || 'none')
+      (event, newSession) => {
+        console.log('Auth event:', event, newSession?.user?.email || 'none')
         setSession(newSession)
+
+        // ── KEY FIX: Never use await inside onAuthStateChange ──────────────
+        // It causes Supabase client to deadlock. Use setTimeout to break out
+        // of the Supabase internal lock before making any DB calls.
 
         if (event === 'INITIAL_SESSION') {
           if (newSession?.user) {
-            loadedForUserId = newSession.user.id
-            await loadCustomer(newSession.user)
+            setTimeout(() => loadCustomer(newSession.user), 0)
           } else {
-            // No session on app load → show landing page
-            setCustomer(null)
-            setWorkspace(null)
             setLoading(false)
           }
         }
 
         if (event === 'SIGNED_IN') {
-          // Only load if it's a different user than we already loaded
-          if (newSession?.user && newSession.user.id !== loadedForUserId) {
-            loadedForUserId = newSession.user.id
-            await loadCustomer(newSession.user)
-          } else if (newSession?.user && loadedForUserId === newSession.user.id) {
-            // Same user already loaded — just make sure loading is false
+          if (newSession?.user && loadingRef.current !== newSession.user.id) {
+            setTimeout(() => loadCustomer(newSession.user), 0)
+          } else {
             setLoading(false)
           }
         }
 
         if (event === 'SIGNED_OUT') {
-          loadedForUserId = null
+          loadingRef.current = null
           setCustomer(null)
           setSession(null)
           setWorkspace(null)
-          setLoading(false)  // always unblock the app
+          setLoading(false)
         }
 
-        // TOKEN_REFRESHED — session updated silently, no action needed
+        if (event === 'TOKEN_REFRESHED' && newSession?.user) {
+          // Just update session — don't reload customer
+          setSession(newSession)
+        }
       }
     )
 
-    return () => subscription.unsubscribe()
+    // Safety timeout — force unblock after 10s
+    const safetyTimer = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) {
+          console.warn('Auth safety timeout triggered')
+          return false
+        }
+        return prev
+      })
+    }, 10000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(safetyTimer)
+    }
   }, [loadCustomer])
 
+  // ── Auth methods ────────────────────────────────────────────────────────────
   const loginWithOTP = async (email) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -129,7 +151,7 @@ export function AuthProvider({ children }) {
     })
     if (error) throw error
     return data
-    // SIGNED_IN event fires automatically → loadCustomer called → dashboard shown
+    // SIGNED_IN fires via onAuthStateChange → setTimeout → loadCustomer
   }
 
   const loginWithGoogle = async () => {
@@ -140,38 +162,42 @@ export function AuthProvider({ children }) {
     if (error) throw error
   }
 
+  // ── DEV BYPASS: Login without OTP ──────────────────────────────────────────
+  // Only works in development. Remove before production.
+  const devLogin = async (email, password = 'devpassword123') => {
+    if (import.meta.env.PROD) {
+      console.warn('devLogin disabled in production')
+      return
+    }
+    // Try password login first
+    let { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      // Create the user if doesn't exist
+      const res = await supabase.auth.signUp({ email, password })
+      if (res.error) throw res.error
+      data = res.data
+    }
+    return data
+  }
+
   const logout = async () => {
-    // Don't set loading=true here — causes hang in other tabs
-    // SIGNED_OUT event fires and cleans up state
+    loadingRef.current = null
     await supabase.auth.signOut()
+    // SIGNED_OUT event handles state cleanup
   }
 
   const switchWorkspace = (ws) => setWorkspace(ws)
   const exitWorkspace   = ()   => setWorkspace(null)
 
-  const plan       = customer?.plan || 'free'
-  const planLimits = getPlanLimits(plan)
-  const planConfig = PLANS[plan] || PLANS.free
+  const plan         = customer?.plan || 'free'
+  const planLimits   = getPlanLimits(plan)
+  const planConfig   = PLANS[plan] || PLANS.free
   const isSuperAdmin = customer?.email === SUPER_ADMIN_EMAIL
-
-  // Safety net: if loading hangs for more than 8 seconds, force unblock
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(prev => {
-        if (prev) {
-          console.warn('Auth loading timeout — forcing unblock')
-          return false
-        }
-        return prev
-      })
-    }, 8000)
-    return () => clearTimeout(timer)
-  }, [])
 
   return (
     <AuthContext.Provider value={{
       customer, session, loading, workspace, authError,
-      loginWithOTP, verifyOTP, loginWithGoogle, logout,
+      loginWithOTP, verifyOTP, loginWithGoogle, devLogin, logout,
       switchWorkspace, exitWorkspace,
       plan, planLimits, planConfig, isSuperAdmin, calcMonthlyPrice,
     }}>
