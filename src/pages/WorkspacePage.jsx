@@ -137,15 +137,8 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
 // ─── UPGRADE MODAL ────────────────────────────────────────────────────────────
 function UpgradeModal({ plan, onClose }) {
   const planList = Object.entries(PLANS)
+  const [selected, setSelected] = useState(plan)
 
-  // Debug: log every click anywhere on document when modal is open
-  useEffect(() => {
-    const handler = (e) => {
-      console.log('CLICK DETECTED:', e.target.tagName, e.target.className, 'zIndex:', getComputedStyle(e.target).zIndex)
-    }
-    document.addEventListener('mousedown', handler, true)  // capture phase
-    return () => document.removeEventListener('mousedown', handler, true)
-  }, [])
 
   return createPortal(
     <div
@@ -174,37 +167,53 @@ function UpgradeModal({ plan, onClose }) {
             style={{ background:'#F3F4F6', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16, lineHeight:'32px', textAlign:'center' }}
           >✕</button>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {planList.map(([key, p]) => (
-            <div key={key} style={{
-              border:`2px solid ${plan===key ? '#4F46E5' : '#E5E7EB'}`,
-              borderRadius:12, padding:16,
-              background: plan===key ? '#EEF2FF' : '#fff',
-            }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:15, fontWeight:800, color:'#111827', marginBottom:4 }}>{p.label}</div>
-                  <div style={{ fontSize:12, color:'#4B5563' }}>{p.description}</div>
-                  <div style={{ fontSize:11, color:'#9CA3AF', marginTop:6, lineHeight:1.8 }}>
-                    📍 {p.vs === Infinity ? 'Unlimited' : p.vs} VS &nbsp;·&nbsp;
-                    👥 {p.contacts === Infinity ? 'Unlimited' : Number(p.contacts).toLocaleString('en-IN')} contacts
-                    {p.extraVS > 0 && <span><br/>💰 +₹{Number(p.extraVS).toLocaleString('en-IN')}/mo per extra VS</span>}
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {planList.map(([key, p]) => {
+            const isCurrent  = key === plan
+            const isSelected = key === selected
+            return (
+              <div
+                key={key}
+                onMouseDown={() => !isCurrent && setSelected(key)}
+                style={{
+                  border:`2px solid ${isSelected ? '#4F46E5' : '#E5E7EB'}`,
+                  borderRadius:12, padding:'14px 16px',
+                  background: isSelected ? '#EEF2FF' : '#fff',
+                  cursor: isCurrent ? 'default' : 'pointer',
+                  transition:'all .15s',
+                }}
+              >
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                      <div style={{ fontSize:15, fontWeight:800, color:'#111827' }}>{p.label}</div>
+                      {isCurrent && <span style={{ fontSize:10, background:'#D1FAE5', color:'#065F46', padding:'2px 8px', borderRadius:20, fontWeight:700 }}>CURRENT</span>}
+                      {isSelected && !isCurrent && <span style={{ fontSize:10, background:'#EEF2FF', color:'#4F46E5', padding:'2px 8px', borderRadius:20, fontWeight:700 }}>SELECTED</span>}
+                    </div>
+                    <div style={{ fontSize:12, color:'#4B5563' }}>{p.description}</div>
+                    <div style={{ fontSize:11, color:'#9CA3AF', marginTop:5, lineHeight:1.8 }}>
+                      📍 {p.vs === Infinity ? 'Unlimited' : p.vs} VS &nbsp;·&nbsp;
+                      👥 {p.contacts === Infinity ? 'Unlimited' : Number(p.contacts).toLocaleString('en-IN')} contacts
+                      {p.extraVS > 0 && <span><br/>💰 +₹{Number(p.extraVS).toLocaleString('en-IN')}/mo per extra VS</span>}
+                    </div>
                   </div>
-                </div>
-                <div style={{ textAlign:'right', minWidth:90, paddingLeft:12 }}>
-                  <div style={{ fontSize:19, fontWeight:800, color: plan===key ? '#4F46E5' : '#111827' }}>
-                    {p.basePrice === 0 ? '₹0' : `₹${Number(p.basePrice).toLocaleString('en-IN')}`}
+                  <div style={{ textAlign:'right', minWidth:90, paddingLeft:12 }}>
+                    <div style={{ fontSize:19, fontWeight:800, color: isSelected ? '#4F46E5' : '#111827' }}>
+                      {p.basePrice === 0 ? '₹0' : `₹${Number(p.basePrice).toLocaleString('en-IN')}`}
+                    </div>
+                    {p.basePrice > 0 && <div style={{ fontSize:10, color:'#9CA3AF' }}>/month</div>}
                   </div>
-                  {p.basePrice > 0 && <div style={{ fontSize:10, color:'#9CA3AF' }}>/month</div>}
-                  {plan===key && <div style={{ fontSize:11, color:'#059669', fontWeight:700, marginTop:4 }}>✓ Current</div>}
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
-        <div style={{ background:'#FEF3C7', borderRadius:10, padding:'12px 14px', marginTop:16, fontSize:12, color:'#92400E', lineHeight:1.7 }}>
-          💬 To upgrade contact: <strong>support@contactbook.in</strong><br/>
-          Razorpay payment integration coming soon!
+
+
+
+        <div style={{ background:'#FEF3C7', borderRadius:10, padding:'12px 14px', marginTop:12, fontSize:12, color:'#92400E', lineHeight:1.7 }}>
+          💳 Online payment coming soon!<br/>
+          To upgrade now, contact: <strong>support@contactbook.in</strong>
         </div>
       </div>
     </div>,
