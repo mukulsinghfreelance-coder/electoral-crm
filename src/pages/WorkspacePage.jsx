@@ -29,7 +29,7 @@ const PLAN_BADGE = Object.fromEntries(
 )
 
 // ─── ADD CONSTITUENCY MODAL ───────────────────────────────────────────────────
-function AddConstModal({ onClose, onAdded, customer, currentCount }) {
+function AddConstModal({ onClose, onAdded, customer, currentCount, existingConstituencyIds = [], existingVSNames = [] }) {
   const [states,       setStates]       = useState([])
   const [lokSabhas,    setLokSabhas]    = useState([])
   const [vidhanSabhas, setVidhanSabhas] = useState([])
@@ -53,11 +53,20 @@ function AddConstModal({ onClose, onAdded, customer, currentCount }) {
 
   const handleAdd = async () => {
     if (!selVS) { setError('Please select a Vidhan Sabha'); return }
+    // Check duplicate by constituency_id
+    if (existingConstituencyIds.includes(selVS.id)) {
+      setError(`${selVS.vidhan_sabha} is already in your dashboard.`)
+      return
+    }
+    // Also check by name as fallback
+    if (existingVSNames.map(n => n.toLowerCase()).includes(selVS.vidhan_sabha.toLowerCase())) {
+      setError(`${selVS.vidhan_sabha} is already in your dashboard.`)
+      return
+    }
     if (currentCount >= planLimit) {
       setError(`Your ${customer.plan} plan allows only ${planLimit} constituency/constituencies. Please upgrade.`)
       return
     }
-    // No LS restriction
     setLoading(true); setError('')
     try {
       const ws = await createWorkspace({
@@ -120,7 +129,10 @@ function AddConstModal({ onClose, onAdded, customer, currentCount }) {
             <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray400, marginBottom:5, textTransform:'uppercase', letterSpacing:'.06em' }}>Vidhan Sabha</label>
             <select value={selVS?.id||''} onChange={e => setSelVS(vidhanSabhas.find(v => v.id === e.target.value)||null)} disabled={!vidhanSabhas.length} style={{ ...selStyle, opacity: vidhanSabhas.length ? 1 : .5 }}>
               <option value="">Select VS…</option>
-              {vidhanSabhas.map(vs => <option key={vs.id} value={vs.id}>{vs.vidhan_sabha}</option>)}
+              {vidhanSabhas.map(vs => {
+                const alreadyAdded = existingConstituencyIds.includes(vs.id) || existingVSNames.map(n=>n.toLowerCase()).includes(vs.vidhan_sabha.toLowerCase())
+                return <option key={vs.id} value={vs.id} disabled={alreadyAdded}>{vs.vidhan_sabha}{alreadyAdded ? ' ✓ Added' : ''}</option>
+              })}
             </select>
           </div>
         </div>
@@ -222,7 +234,7 @@ export default function WorkspacePage() {
                 🛡️ Admin
               </button>
             )}
-            <button onClick={logout} style={{ padding:'7px 14px', fontSize:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>
+            <button onClick={e => { e.stopPropagation(); logout() }} style={{ padding:'7px 14px', fontSize:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>
               🚪 Logout
             </button>
           </div>
@@ -274,7 +286,7 @@ export default function WorkspacePage() {
           <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', textTransform:'uppercase', letterSpacing:'.06em' }}>Your Constituencies</div>
           {canAddMore && (
             <button
-              onClick={() => setShowAdd(true)}
+              onClick={e => { e.stopPropagation(); setShowAdd(true) }}
               style={{ padding:'7px 14px', fontSize:12, fontWeight:700, background:`linear-gradient(135deg,${C.success},#047857)`, border:'none', borderRadius:8, color:C.white, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 4px 12px rgba(5,150,105,.4)' }}
             >
               + Add Constituency
@@ -294,7 +306,7 @@ export default function WorkspacePage() {
             <div style={{ fontSize:40, marginBottom:12 }}>🏛️</div>
             <div style={{ fontSize:16, fontWeight:700, color:'#fff', marginBottom:8 }}>No constituencies yet</div>
             <div style={{ fontSize:13, color:'#A5B4FC', marginBottom:20 }}>Add your first Vidhan Sabha to get started</div>
-            <button onClick={() => setShowAdd(true)} style={{ padding:'11px 24px', fontSize:14, fontWeight:700, background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`, border:'none', borderRadius:10, color:C.white, cursor:'pointer', fontFamily:'inherit' }}>
+            <button onClick={e => { e.stopPropagation(); setShowAdd(true) }} style={{ padding:'11px 24px', fontSize:14, fontWeight:700, background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`, border:'none', borderRadius:10, color:C.white, cursor:'pointer', fontFamily:'inherit' }}>
               + Add Your First Constituency
             </button>
           </div>
@@ -387,6 +399,8 @@ export default function WorkspacePage() {
           onAdded={handleWorkspaceAdded}
           customer={customer}
           currentCount={workspaces.length}
+          existingConstituencyIds={workspaces.map(w => w.constituency_id).filter(Boolean)}
+          existingVSNames={workspaces.map(w => w.vs || w.name)}
         />
       )}
     </div>

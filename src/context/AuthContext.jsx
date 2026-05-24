@@ -82,6 +82,9 @@ export function AuthProvider({ children }) {
             loadedForUserId = newSession.user.id
             await loadCustomer(newSession.user)
           } else {
+            // No session on app load → show landing page
+            setCustomer(null)
+            setWorkspace(null)
             setLoading(false)
           }
         }
@@ -100,8 +103,9 @@ export function AuthProvider({ children }) {
         if (event === 'SIGNED_OUT') {
           loadedForUserId = null
           setCustomer(null)
+          setSession(null)
           setWorkspace(null)
-          setLoading(false)
+          setLoading(false)  // always unblock the app
         }
 
         // TOKEN_REFRESHED — session updated silently, no action needed
@@ -137,7 +141,8 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    setLoading(true)
+    // Don't set loading=true here — causes hang in other tabs
+    // SIGNED_OUT event fires and cleans up state
     await supabase.auth.signOut()
   }
 
@@ -148,6 +153,20 @@ export function AuthProvider({ children }) {
   const planLimits = getPlanLimits(plan)
   const planConfig = PLANS[plan] || PLANS.free
   const isSuperAdmin = customer?.email === SUPER_ADMIN_EMAIL
+
+  // Safety net: if loading hangs for more than 8 seconds, force unblock
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) {
+          console.warn('Auth loading timeout — forcing unblock')
+          return false
+        }
+        return prev
+      })
+    }, 8000)
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
     <AuthContext.Provider value={{
