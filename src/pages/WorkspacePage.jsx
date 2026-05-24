@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
@@ -431,27 +432,25 @@ export default function WorkspacePage() {
         />
       )}
 
-      {showUpgrade && (
-        <div
-          onMouseDown={e => { if (e.target === e.currentTarget) setShowUpgrade(false) }}
-          style={{
-            position:'fixed', inset:0, background:'rgba(17,24,39,.65)',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            zIndex:2000, padding:20, backdropFilter:'blur(4px)',
-          }}
+      {showUpgrade && createPortal(
+        <div style={{
+          position:'fixed', inset:0, background:'rgba(17,24,39,.65)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          zIndex:99999, padding:20,
+        }}
+        onClick={e => { if(e.target === e.currentTarget) setShowUpgrade(false) }}
         >
-          <div
-            onMouseDown={e => e.stopPropagation()}
-            style={{
-              background:C.white, borderRadius:20, padding:'28px 24px',
-              width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.25)',
-              maxHeight:'90vh', overflowY:'auto',
-            }}
+          <div style={{
+            background:C.white, borderRadius:20, padding:'28px 24px',
+            width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.25)',
+            maxHeight:'90vh', overflowY:'auto',
+          }}
+          onClick={e => e.stopPropagation()}
           >
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
               <div style={{ fontSize:18, fontWeight:800, color:C.gray900 }}>⚡ Upgrade Your Plan</div>
               <button
-                onMouseDown={e => { e.stopPropagation(); setShowUpgrade(false) }}
+                onClick={() => setShowUpgrade(false)}
                 style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16, color:C.gray600 }}
               >✕</button>
             </div>
@@ -486,7 +485,7 @@ export default function WorkspacePage() {
                       {p.basePrice > 0 && <div style={{ fontSize:10, color:C.gray400 }}>/month</div>}
                       {plan === key
                         ? <div style={{ fontSize:11, color:C.success, fontWeight:700, marginTop:6 }}>✓ Current Plan</div>
-                        : <div style={{ fontSize:11, color:C.primary, fontWeight:600, marginTop:6, cursor:'pointer' }}>Select →</div>
+                        : <div style={{ fontSize:11, color:C.primary, fontWeight:600, marginTop:6 }}>Select →</div>
                       }
                     </div>
                   </div>
@@ -499,7 +498,8 @@ export default function WorkspacePage() {
               Razorpay payment integration coming soon!
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
