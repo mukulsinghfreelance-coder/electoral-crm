@@ -136,48 +136,65 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
 
 // ─── UPGRADE MODAL ────────────────────────────────────────────────────────────
 function UpgradeModal({ plan, onClose }) {
+  const planList = Object.entries(PLANS)
   return createPortal(
     <div
-      onClick={e => e.target === e.currentTarget && onClose()}
-      style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20, pointerEvents:'all' }}
+      style={{
+        position:'fixed', top:0, left:0, right:0, bottom:0,
+        background:'rgba(17,24,39,.75)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        zIndex:999999,
+      }}
+      onMouseDown={e => { if(e.target === e.currentTarget) onClose() }}
     >
       <div
-        onClick={e => e.stopPropagation()}
-        style={{ background:C.white, borderRadius:20, padding:'28px 24px', width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto', pointerEvents:'all' }}
+        onMouseDown={e => e.stopPropagation()}
+        style={{
+          background:'#fff', borderRadius:20, padding:28,
+          width:'90%', maxWidth:460,
+          boxShadow:'0 24px 64px rgba(0,0,0,.3)',
+          maxHeight:'85vh', overflowY:'auto',
+          position:'relative', zIndex:999999,
+        }}
       >
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div style={{ fontSize:18, fontWeight:800, color:C.gray900 }}>⚡ Upgrade Your Plan</div>
-          <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
+          <div style={{ fontSize:18, fontWeight:800, color:'#111827' }}>⚡ Upgrade Your Plan</div>
+          <button
+            onMouseDown={e => { e.stopPropagation(); onClose() }}
+            style={{ background:'#F3F4F6', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16, lineHeight:'32px', textAlign:'center' }}
+          >✕</button>
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {Object.entries(PLANS).map(([key, p]) => (
-            <div key={key} style={{ border:`2px solid ${plan===key ? C.primary : C.gray200}`, borderRadius:12, padding:16, background: plan===key ? C.primaryLight : C.white, position:'relative' }}>
-              {p.highlight && plan!==key && (
-                <div style={{ position:'absolute', top:-10, right:12, background:C.primary, color:'#fff', fontSize:9, fontWeight:700, padding:'3px 10px', borderRadius:20 }}>MOST POPULAR</div>
-              )}
+          {planList.map(([key, p]) => (
+            <div key={key} style={{
+              border:`2px solid ${plan===key ? '#4F46E5' : '#E5E7EB'}`,
+              borderRadius:12, padding:16,
+              background: plan===key ? '#EEF2FF' : '#fff',
+            }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:16, fontWeight:800, color:C.gray900 }}>{p.label}</div>
-                  <div style={{ fontSize:12, color:C.gray600, marginTop:3 }}>{p.description}</div>
-                  <div style={{ fontSize:11, color:C.gray400, marginTop:6, lineHeight:1.8 }}>
+                  <div style={{ fontSize:15, fontWeight:800, color:'#111827', marginBottom:4 }}>{p.label}</div>
+                  <div style={{ fontSize:12, color:'#4B5563' }}>{p.description}</div>
+                  <div style={{ fontSize:11, color:'#9CA3AF', marginTop:6, lineHeight:1.8 }}>
                     📍 {p.vs === Infinity ? 'Unlimited' : p.vs} VS &nbsp;·&nbsp;
-                    👥 {safeNum(p.contacts)} contacts
-                    {p.extraVS > 0 && <><br/>💰 +₹{Number(p.extraVS).toLocaleString('en-IN')}/mo per extra VS</>}
+                    👥 {p.contacts === Infinity ? 'Unlimited' : Number(p.contacts).toLocaleString('en-IN')} contacts
+                    {p.extraVS > 0 && <span><br/>💰 +₹{Number(p.extraVS).toLocaleString('en-IN')}/mo per extra VS</span>}
                   </div>
                 </div>
-                <div style={{ textAlign:'right', minWidth:80 }}>
-                  <div style={{ fontSize:20, fontWeight:800, color: plan===key ? C.primary : C.gray900 }}>
+                <div style={{ textAlign:'right', minWidth:90, paddingLeft:12 }}>
+                  <div style={{ fontSize:19, fontWeight:800, color: plan===key ? '#4F46E5' : '#111827' }}>
                     {p.basePrice === 0 ? '₹0' : `₹${Number(p.basePrice).toLocaleString('en-IN')}`}
                   </div>
-                  {p.basePrice > 0 && <div style={{ fontSize:10, color:C.gray400 }}>/month</div>}
-                  {plan===key && <div style={{ fontSize:11, color:C.success, fontWeight:700, marginTop:6 }}>✓ Current</div>}
+                  {p.basePrice > 0 && <div style={{ fontSize:10, color:'#9CA3AF' }}>/month</div>}
+                  {plan===key && <div style={{ fontSize:11, color:'#059669', fontWeight:700, marginTop:4 }}>✓ Current</div>}
                 </div>
               </div>
             </div>
           ))}
         </div>
         <div style={{ background:'#FEF3C7', borderRadius:10, padding:'12px 14px', marginTop:16, fontSize:12, color:'#92400E', lineHeight:1.7 }}>
-          💬 To upgrade contact: <strong>support@contactbook.in</strong><br/>Razorpay integration coming soon!
+          💬 To upgrade contact: <strong>support@contactbook.in</strong><br/>
+          Razorpay payment integration coming soon!
         </div>
       </div>
     </div>,
