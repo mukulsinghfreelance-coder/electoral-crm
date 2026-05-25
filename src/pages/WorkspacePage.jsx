@@ -5,7 +5,7 @@ import {
   fetchWorkspaces, fetchWorkspaceStats, createWorkspace,
   fetchStates, fetchLokSabhas, fetchVidhanSabhas,
 } from '../lib/supabase'
-import { PLANS, getPlanLimits, calcMonthlyPrice } from '../config'
+import { PLANS as PLANS_DEFAULT, getPlanLimits } from '../config'
 import UpgradeModalFull from '../components/UpgradeModal'
 
 const SuperAdminPage = lazy(() => import('./SuperAdminPage'))
@@ -149,7 +149,8 @@ function StatCard({ label, value, color, icon }) {
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function WorkspacePage() {
-  const { customer, switchWorkspace, exitWorkspace, logout, plan, planLimits, isSuperAdmin, isGifted } = useAuth()
+  const { customer, switchWorkspace, exitWorkspace, logout, plan, planLimits, isSuperAdmin, isGifted, livePlans, calcMonthlyPrice } = useAuth()
+  const PLANS = livePlans || PLANS_DEFAULT
   const [workspaces,  setWorkspaces]  = useState([])
   const [wsStats,     setWsStats]     = useState({})
   const [loading,     setLoading]     = useState(true)

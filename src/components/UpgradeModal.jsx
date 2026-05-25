@@ -1,7 +1,7 @@
 // ─── src/components/UpgradeModal.jsx ─────────────────────────────────────────
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { PLANS, BILLING, calcPriceBreakdown } from '../config'
+import { PLANS as DEFAULT_PLANS, BILLING, calcPriceBreakdown } from '../config'
 import { validateCoupon, initiatePayment } from '../lib/razorpay'
 import { useAuth } from '../context/AuthContext'
 
@@ -16,7 +16,20 @@ const C = {
 const font = "system-ui,-apple-system,'Segoe UI',sans-serif"
 
 export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReason = '' }) {
-  const { customer, planLimits } = useAuth()
+  const { customer, planLimits, livePlans } = useAuth()
+  const PLANS = livePlans || DEFAULT_PLANS
+
+  // Live price breakdown using DB pricing
+  const calcLiveBreakdown = (plan, vsCount, discPct) => {
+    const p = PLANS[plan]
+    if (!p || p.basePrice === 0) return { base:0, discount:0, afterDiscount:0, gst:0, total:0, totalPaise:0 }
+    let base = plan === 'single' ? p.basePrice : p.basePrice + Math.max(0, vsCount-1) * p.extraVS
+    const disc  = Math.round(base * discPct / 100)
+    const after = base - disc
+    const gst   = Math.round(after * (livePlans?.gstRate ?? BILLING.gstRate))
+    const total = after + gst
+    return { base, discount:disc, afterDiscount:after, gst, total, totalPaise:total*100 }
+  }
   const [selectedPlan, setSelectedPlan] = useState('single')
   const [coupon,       setCoupon]       = useState('')
   const [couponResult, setCouponResult] = useState(null)
@@ -33,7 +46,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
   }, [selectedPlan, currentVSCount])
 
   const discountPct = couponResult?.valid ? couponResult.discountPct : 0
-  const breakdown   = calcPriceBreakdown(selectedPlan, vsCount, discountPct)
+  const breakdown   = calcLiveBreakdown(selectedPlan, vsCount, discountPct)
   const isFree      = breakdown.total === 0 || couponResult?.freeMonths > 0
 
   const handleCoupon = async () => {

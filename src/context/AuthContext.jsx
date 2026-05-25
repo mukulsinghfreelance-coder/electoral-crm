@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { PLANS, getPlanLimits, calcMonthlyPrice, SUPER_ADMIN_EMAIL, FEATURES } from '../config'
+import { PLANS, getPlanLimits, calcMonthlyPrice, SUPER_ADMIN_EMAIL, FEATURES, fetchPricingFromDB, BILLING } from '../config'
 
 const AuthContext = createContext(null)
 export { PLANS, calcMonthlyPrice }
 
 export function AuthProvider({ children }) {
   const [customer,  setCustomer]  = useState(null)
+  const [livePlans, setLivePlans] = useState(null)  // DB pricing overrides
   const [session,   setSession]   = useState(null)
   const [workspace, setWorkspace] = useState(null)
   const [loading,   setLoading]   = useState(true)
@@ -192,22 +193,34 @@ export function AuthProvider({ children }) {
   // gifted_forever overrides plan — full Multiple access, no payment screens
   const effectivePlan = customer?.gifted_forever ? 'multiple' : (customer?.plan || 'free')
   const plan          = effectivePlan
-  // Read fresh from PLANS every render so pricing changes are reflected immediately
-  const planLimits    = getPlanLimits(effectivePlan)
-  const planConfig    = PLANS[effectivePlan] || PLANS.free
+
+  // Use live DB pricing if available, else fall back to config defaults
+  const activePlans   = livePlans || PLANS
+  const activeConfig  = activePlans[effectivePlan] || PLANS[effectivePlan] || PLANS.free
+  const planLimits    = { vs: activeConfig.vs, contacts: activeConfig.contacts, label: activeConfig.label }
+  const planConfig    = activeConfig
+  const activeGstRate = livePlans?.gstRate ?? BILLING.gstRate
   const isGifted      = customer?.gifted_forever || false
   const isSuperAdmin  = customer?.email === SUPER_ADMIN_EMAIL
+
+  // calcMonthlyPrice using live pricing
+  const calcLivePrice = (p, vsCount = 1) => {
+    const pc = activePlans[p] || PLANS[p]
+    if (!pc || pc.basePrice === 0) return 0
+    if (p === 'single')   return pc.basePrice
+    if (p === 'multiple') return pc.basePrice + Math.max(0, vsCount - 1) * pc.extraVS
+    return 0
+  }
 
   return (
     <AuthContext.Provider value={{
       customer, session, loading, workspace, authError,
       loginWithOTP, verifyOTP, loginWithGoogle, devLogin, logout,
       switchWorkspace, exitWorkspace,
-      plan,
-      // Always read fresh so admin pricing changes reflect without code deploy
-      get planLimits() { return getPlanLimits(effectivePlan) },
-      get planConfig() { return PLANS[effectivePlan] || PLANS.free },
-      isSuperAdmin, isGifted, calcMonthlyPrice,
+      plan, planLimits, planConfig,
+      livePlans: activePlans,
+      isSuperAdmin, isGifted,
+      calcMonthlyPrice: calcLivePrice,
     }}>
       {children}
     </AuthContext.Provider>

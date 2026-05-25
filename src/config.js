@@ -27,43 +27,50 @@ export const SUPER_ADMIN_EMAIL = 'mukulsingh.freelance@gmail.com'
 // Loads live pricing from DB — falls back to defaults if DB unavailable
 // Call loadPricing() once on app start, then use PLANS normally
 
-export async function loadPricing(supabase) {
+// Fetch pricing from DB and return as plain object
+// Used by usePricing() hook in AuthContext
+export async function fetchPricingFromDB(supabase) {
   try {
-    console.log('🔄 Loading pricing from DB...')
     const { data, error } = await supabase
       .from('pricing_config')
       .select('key, value')
 
-    console.log('📦 Pricing data:', data, 'Error:', error)
-
-    if (error) {
-      console.error('❌ Pricing load error:', error)
-      return
-    }
-    if (!data?.length) {
-      console.warn('⚠️ No pricing data returned from DB')
-      return
-    }
+    if (error || !data?.length) return null
 
     const p = Object.fromEntries(data.map(r => [r.key, Number(r.value)]))
-    console.log('📊 Parsed pricing:', p)
 
-    // Update PLANS with live DB values
-    if (p.free_contact_limit)  PLANS.free.contacts        = p.free_contact_limit
-    if (p.single_base_price)   PLANS.single.basePrice     = p.single_base_price
-    if (p.multiple_base_price) PLANS.multiple.basePrice   = p.multiple_base_price
-    if (p.multiple_extra_vs)   PLANS.multiple.extraVS     = p.multiple_extra_vs
-    if (p.gst_rate)            BILLING.gstRate            = p.gst_rate / 100
-
-    console.log('✅ PLANS after update:', {
-      freeContacts: PLANS.free.contacts,
-      singlePrice:  PLANS.single.basePrice,
-      multiplePrice: PLANS.multiple.basePrice,
-      extraVS:      PLANS.multiple.extraVS,
-    })
+    // Return merged PLANS with DB overrides
+    return {
+      free: {
+        ...PLANS.free,
+        contacts: p.free_contact_limit ?? PLANS.free.contacts,
+      },
+      single: {
+        ...PLANS.single,
+        basePrice: p.single_base_price ?? PLANS.single.basePrice,
+      },
+      multiple: {
+        ...PLANS.multiple,
+        basePrice: p.multiple_base_price ?? PLANS.multiple.basePrice,
+        extraVS:   p.multiple_extra_vs   ?? PLANS.multiple.extraVS,
+      },
+      gstRate: (p.gst_rate ?? 18) / 100,
+    }
   } catch(e) {
-    console.warn('❌ Pricing load exception:', e.message)
+    console.warn('Pricing fetch failed, using defaults:', e.message)
+    return null
   }
+}
+
+// Keep for backward compat
+export async function loadPricing(supabase) {
+  const p = await fetchPricingFromDB(supabase)
+  if (!p) return
+  PLANS.free.contacts        = p.free.contacts
+  PLANS.single.basePrice     = p.single.basePrice
+  PLANS.multiple.basePrice   = p.multiple.basePrice
+  PLANS.multiple.extraVS     = p.multiple.extraVS
+  BILLING.gstRate            = p.gstRate
 }
 
 // ─── SUBSCRIPTION PLANS ───────────────────────────────────────────────────────

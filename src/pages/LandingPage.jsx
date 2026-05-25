@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { lazy, Suspense } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { PLANS as DEFAULT_PLANS } from '../config'
 const PrivacyPolicy  = lazy(() => import('./PrivacyPolicy'))
 const TermsOfService = lazy(() => import('./TermsOfService'))
 const ContactUs      = lazy(() => import('./ContactUs'))
@@ -271,7 +272,8 @@ function BoothMockup() {
 
 // ─── MAIN LANDING PAGE ────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const { loginWithGoogle, loginWithOTP, verifyOTP } = useAuth()
+  const { loginWithGoogle, loginWithOTP, verifyOTP, livePlans } = useAuth()
+  const PLANS = livePlans || DEFAULT_PLANS
   const [lang, setLang]         = useState('en')
   const [showAuth, setShowAuth] = useState(false)
   const [showPage, setShowPage] = useState(null)  // 'privacy' | 'terms' | 'contact'
