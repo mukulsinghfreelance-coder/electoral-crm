@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import { PLANS } from '../config'
+import { supabase } from '../lib/supabase'
 import {
   adminFetchAllCustomers,
   adminFetchCustomerWorkspaces,
@@ -384,6 +385,75 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
   )
 }
 
+
+// ─── PRICING PANEL ────────────────────────────────────────────────────────────
+function PricingPanel() {
+  const [pricing, setPricing] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(null)
+  const [saved,   setSaved]   = useState(null)
+
+  const LABELS = {
+    free_contact_limit:  { label:'Free Plan — Contact Limit', unit:'contacts', desc:'Max contacts a Free user can have' },
+    single_base_price:   { label:'Single Plan — Monthly Price', unit:'₹/month', desc:'Base price for Single plan' },
+    multiple_base_price: { label:'Multiple Plan — First VS Price', unit:'₹/month', desc:'Price for first Vidhan Sabha' },
+    multiple_extra_vs:   { label:'Multiple Plan — Extra VS Price', unit:'₹/month', desc:'Price per additional VS (25% discount)' },
+    gst_rate:            { label:'GST Rate', unit:'%', desc:'GST percentage applied to all paid plans' },
+  }
+
+  useEffect(() => {
+    supabase.from('pricing_config').select('*').order('key')
+      .then(({ data }) => { setPricing(data || []); setLoading(false) })
+  }, [])
+
+  const handleSave = async (key, value) => {
+    setSaving(key); setSaved(null)
+    const { error } = await supabase
+      .from('pricing_config')
+      .update({ value: Number(value), updated_at: new Date().toISOString() })
+      .eq('key', key)
+    if (!error) {
+      setSaved(key)
+      setTimeout(() => setSaved(null), 2000)
+    }
+    setSaving(null)
+  }
+
+  if (loading) return <div style={{ textAlign:'center', color:'#9CA3AF', padding:30 }}>⏳ Loading...</div>
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      {pricing.map(p => {
+        const meta = LABELS[p.key] || { label:p.key, unit:'', desc:'' }
+        return (
+          <div key={p.key} style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, padding:'16px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:2 }}>{meta.label}</div>
+                <div style={{ fontSize:12, color:'#6B7280' }}>{meta.desc}</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <input
+                  type="number"
+                  defaultValue={p.value}
+                  onBlur={e => handleSave(p.key, e.target.value)}
+                  style={{ width:100, padding:'7px 10px', fontSize:14, fontWeight:600, border:'1px solid #E5E7EB', borderRadius:8, textAlign:'right', fontFamily:'inherit', outline:'none' }}
+                />
+                <span style={{ fontSize:12, color:'#6B7280', minWidth:50 }}>{meta.unit}</span>
+                {saving === p.key && <span style={{ fontSize:12, color:'#6B7280' }}>⏳</span>}
+                {saved  === p.key && <span style={{ fontSize:12, color:'#10B981' }}>✓ Saved</span>}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+      <div style={{ fontSize:12, color:'#6B7280', textAlign:'center', marginTop:8 }}>
+        Changes take effect immediately for new payments. Existing subscriptions are not affected.
+      </div>
+    </div>
+  )
+}
+
 // ─── MAIN SUPER ADMIN PAGE ────────────────────────────────────────────────────
 export default function SuperAdminPage({ onBack }) {
   const { customer: me } = useAuth()
@@ -393,6 +463,7 @@ export default function SuperAdminPage({ onBack }) {
   const [search,      setSearch]      = useState('')
   const [expanded,    setExpanded]    = useState(null)
   const [filterPlan,  setFilterPlan]  = useState('all')
+  const [activeTab,   setActiveTab]   = useState('customers')  // customers | pricing | coupons
 
   useEffect(() => { loadCustomers() }, [])
 
@@ -488,8 +559,28 @@ export default function SuperAdminPage({ onBack }) {
         </div>
       </div>
 
+      {/* ── TABS ── */}
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'0 20px', marginBottom:0 }}>
+        <div style={{ display:'flex', gap:4, background:'rgba(255,255,255,0.06)', borderRadius:12, padding:4, marginBottom:20 }}>
+          {[
+            { key:'customers', label:'👥 Customers' },
+            { key:'pricing',   label:'💰 Pricing'   },
+          ].map(tab => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+              flex:1, padding:'9px', fontSize:13, fontWeight:600, border:'none', borderRadius:9,
+              background: activeTab===tab.key ? '#fff' : 'transparent',
+              color: activeTab===tab.key ? '#111827' : '#A5B4FC',
+              cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
+            }}>{tab.label}</button>
+          ))}
+        </div>
+
+        {/* Pricing tab */}
+        {activeTab === 'pricing' && <PricingPanel/>}
+      </div>
+
       {/* ── CUSTOMER LIST ── */}
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'0 20px' }}>
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'0 20px', display: activeTab==='customers' ? 'block' : 'none' }}>
 
         {/* Search + filter */}
         <div style={{ display:'flex', gap:10, marginBottom:14 }}>

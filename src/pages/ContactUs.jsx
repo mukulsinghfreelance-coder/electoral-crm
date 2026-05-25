@@ -32,11 +32,27 @@ export default function ContactUs({ onBack }) {
     width:'100%', padding:'12px 14px', fontSize:14,
     background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border2}`,
     borderRadius:10, color:C.white, fontFamily:font, outline:'none',
-    boxSizing:'border-box',
+    boxSizing:'border-box', colorScheme:'dark',
   }
 
   return (
     <div style={{ background:C.bg, minHeight:'100vh', fontFamily:font, color:C.text }}>
+      <style>{`
+        /* Fix browser autofill white background */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 30px #1a1930 inset !important;
+          -webkit-text-fill-color: #F1F0FF !important;
+          caret-color: #F1F0FF;
+        }
+        /* Fix select dropdown */
+        select option {
+          background: #16152A;
+          color: #F1F0FF;
+        }
+      `}</style>
       {/* Header */}
       <div style={{ background:'rgba(15,14,26,0.95)', borderBottom:`1px solid ${C.border}`, padding:'16px 24px', position:'sticky', top:0, zIndex:100 }}>
         <div style={{ maxWidth:900, margin:'0 auto', display:'flex', alignItems:'center', gap:16 }}>
@@ -90,7 +106,7 @@ export default function ContactUs({ onBack }) {
               <div style={{ fontSize:24, flexShrink:0 }}>💬</div>
               <div>
                 <div style={{ fontSize:14, fontWeight:700, color:C.white, marginBottom:4 }}>WhatsApp Support</div>
-                <div style={{ fontSize:13, color:'#25D366', fontWeight:600 }}>+91 98450 19977</div>
+                <div style={{ fontSize:13, color:'#25D366', fontWeight:600 }}>+91 99999 99999</div>
                 <div style={{ fontSize:12, color:C.gray2, marginTop:2 }}>Mon–Sat, 10am–6pm IST</div>
               </div>
             </div>
@@ -142,7 +158,7 @@ export default function ContactUs({ onBack }) {
                   </div>
                   <div>
                     <label style={{ display:'block', fontSize:11, fontWeight:600, color:C.gray, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.06em' }}>Subject</label>
-                    <select value={form.subject} onChange={e => setForm(f => ({...f, subject:e.target.value}))} style={{ ...inp, cursor:'pointer' }}>
+                    <select value={form.subject} onChange={e => setForm(f => ({...f, subject:e.target.value}))} style={{ ...inp, cursor:'pointer', background:'#16152A', colorScheme:'dark' }}>
                       <option value="">Select a topic...</option>
                       <option value="Technical Support">Technical Support</option>
                       <option value="Billing & Payment">Billing & Payment</option>

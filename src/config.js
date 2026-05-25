@@ -23,6 +23,37 @@ export const APP = {
 // Also set VITE_SUPER_ADMIN_EMAIL in your .env file
 export const SUPER_ADMIN_EMAIL = 'mukulsingh.freelance@gmail.com'
 
+// ─── PRICING LOADER ───────────────────────────────────────────────────────────
+// Loads live pricing from DB — falls back to defaults if DB unavailable
+// Call loadPricing() once on app start, then use PLANS normally
+
+let _pricingLoaded = false
+
+export async function loadPricing(supabase) {
+  if (_pricingLoaded) return
+  try {
+    const { data } = await supabase
+      .from('pricing_config')
+      .select('key, value')
+
+    if (!data?.length) return
+
+    const p = Object.fromEntries(data.map(r => [r.key, Number(r.value)]))
+
+    // Update PLANS with live DB values
+    if (p.free_contact_limit)  PLANS.free.contacts        = p.free_contact_limit
+    if (p.single_base_price)   PLANS.single.basePrice     = p.single_base_price
+    if (p.multiple_base_price) PLANS.multiple.basePrice   = p.multiple_base_price
+    if (p.multiple_extra_vs)   PLANS.multiple.extraVS     = p.multiple_extra_vs
+    if (p.gst_rate)            BILLING.gstRate            = p.gst_rate / 100
+
+    _pricingLoaded = true
+    console.log('✅ Pricing loaded from DB:', p)
+  } catch(e) {
+    console.warn('Pricing DB load failed, using defaults:', e.message)
+  }
+}
+
 // ─── SUBSCRIPTION PLANS ───────────────────────────────────────────────────────
 // label      → Display name shown in UI
 // vs         → Max Vidhan Sabhas allowed (Infinity = no limit)
