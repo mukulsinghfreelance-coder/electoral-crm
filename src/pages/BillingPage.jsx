@@ -22,7 +22,8 @@ const STATUS_STYLE = {
 }
 
 export default function BillingPage({ onBack, workspaceCount = 1 }) {
-  const { customer, plan, planLimits } = useAuth()
+  const { customer, plan, planLimits, livePlans } = useAuth()
+  const activePlanConfig = (livePlans || {})[plan] || planLimits
   const [history,       setHistory]       = useState([])
   const [loading,       setLoading]       = useState(true)
   const [showUpgrade,   setShowUpgrade]   = useState(false)
@@ -86,7 +87,7 @@ export default function BillingPage({ onBack, workspaceCount = 1 }) {
               )}
               {plan === 'free' && !isGifted && (
                 <div style={{ fontSize:12, color:C.gray }}>
-                  {planLimits?.contacts?.toLocaleString('en-IN')} contact limit · Upgrade to unlock unlimited
+                  {planLimits?.contacts === Infinity ? 'Unlimited' : Number(planLimits?.contacts || 0).toLocaleString('en-IN')} contact limit · Upgrade to unlock unlimited
                 </div>
               )}
             </div>
@@ -111,7 +112,7 @@ export default function BillingPage({ onBack, workspaceCount = 1 }) {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10, marginTop:16, paddingTop:16, borderTop:`1px solid ${C.border}` }}>
             {[
               ['Vidhan Sabhas', planConfig.vs === Infinity ? 'Unlimited' : planConfig.vs],
-              ['Contacts', planConfig.contacts === Infinity ? 'Unlimited' : planConfig.contacts?.toLocaleString('en-IN')],
+              ['Contacts', planConfig.contacts === Infinity ? 'Unlimited' : Number(planConfig.contacts || 0).toLocaleString('en-IN')],
               ['Billing', isGifted ? 'Gifted' : plan === 'free' ? 'Free' : 'Monthly'],
             ].map(([label, value]) => (
               <div key={label} style={{ textAlign:'center' }}>

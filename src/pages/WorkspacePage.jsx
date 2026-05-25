@@ -52,8 +52,11 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
 
-  const planConfig = PLANS[customer.plan] || PLANS.free
-  const planLimit  = planConfig.vs
+  // Get live plans from AuthContext — avoids stale PLANS reference
+  const { livePlans } = useAuth()
+  const MODAL_PLANS   = livePlans || PLANS_DEFAULT
+  const planConfig    = MODAL_PLANS[customer.plan] || MODAL_PLANS.free
+  const planLimit     = planConfig.vs
 
   useEffect(() => { fetchStates().then(setStates).catch(console.error) }, [])
 
@@ -72,7 +75,7 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
     if (existingConstituencyIds.includes(selVS.id)) { setError(`${selVS.vidhan_sabha} is already added.`); return }
     if (existingVSNames.map(n => n.toLowerCase()).includes(selVS.vidhan_sabha.toLowerCase())) { setError(`${selVS.vidhan_sabha} is already added.`); return }
     if (planLimit !== Infinity && currentCount >= planLimit) {
-      setError(`Your ${PLANS[customer.plan]?.label || customer.plan} plan allows only ${planLimit} constituency. Please upgrade.`)
+      setError(`Your ${MODAL_PLANS[customer.plan]?.label || customer.plan} plan allows only ${planLimit} constituency. Please upgrade.`)
       return
     }
     setLoading(true); setError('')
@@ -93,7 +96,7 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
           <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
         </div>
         <div style={{ background:C.primaryLight, borderRadius:10, padding:'10px 12px', marginBottom:16, fontSize:12, color:C.primary }}>
-          Plan: <strong>{PLANS[customer.plan]?.label || customer.plan}</strong> · {currentCount} VS used
+          Plan: <strong>{MODAL_PLANS[customer.plan]?.label || customer.plan}</strong> · {currentCount} VS used
           {planLimit !== Infinity && ` of ${planLimit}`}
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:16 }}>

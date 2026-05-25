@@ -68,9 +68,9 @@ function ConfirmDialog({ message, subtext, onConfirm, onCancel, danger }) {
 
 // ─── PLAN CHANGE MODAL ────────────────────────────────────────────────────────
 function PlanModal({ customer, onClose, onSaved }) {
-  const [plan,    setPlan]    = useState(customer.plan)
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState('')
+  const [plan,   setPlan]  = useState(customer.plan)
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState('')
 
   const handleSave = async () => {
     setSaving(true); setError('')
@@ -79,85 +79,78 @@ function PlanModal({ customer, onClose, onSaved }) {
       onSaved(plan)
     } catch(e) {
       let msg = e?.message || 'Failed to update plan'
-      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
-        msg = '🌐 Network error — please check your internet connection.'
-      }
+      if (msg.includes('Failed to fetch') || msg.includes('network')) msg = '🌐 Network error'
       setError(msg)
     }
     setSaving(false)
   }
 
+  const DESC = {
+    free:     '1 VS · Limited contacts',
+    single:   '1 VS · Unlimited contacts',
+    multiple: 'Unlimited VS · Unlimited contacts',
+  }
+
   return createPortal(
-    <div onClick={onClose} style={{
-      position:'fixed', inset:0, background:'rgba(17,24,39,.7)',
-      display:'flex', alignItems:'center', justifyContent:'center',
-      zIndex:99999, padding:20,
-    }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        background:C.white, borderRadius:20, padding:'28px 24px',
-        maxWidth:420, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.25)',
-      }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div style={{ fontSize:17, fontWeight:800, color:C.gray900 }}>Change Plan</div>
-          <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:24, maxWidth:360, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.25)' }}>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          <div style={{ fontSize:16, fontWeight:800, color:C.gray900 }}>Change Plan</div>
+          <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:30, height:30, cursor:'pointer', fontSize:14 }}>✕</button>
         </div>
 
-        <div style={{ background:C.gray100, borderRadius:10, padding:'10px 14px', marginBottom:16, fontSize:13, color:C.gray600 }}>
-          Customer: <strong style={{ color:C.gray900 }}>{customer.name || customer.email}</strong>
+        <div style={{ background:C.gray100, borderRadius:8, padding:'8px 12px', marginBottom:16, fontSize:13, color:C.gray600 }}>
+          👤 <strong style={{ color:C.gray900 }}>{customer.name || customer.email}</strong>
         </div>
 
-        <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
-          {Object.entries(PLANS).map(([key, p]) => (
-            <div
-              key={key}
-              onClick={() => setPlan(key)}
-              style={{
-                border:`2px solid ${plan === key ? C.primary : C.gray200}`,
-                borderRadius:12, padding:'14px 16px', cursor:'pointer',
-                background: plan === key ? C.primaryLight : C.white,
-                transition:'all .15s',
-              }}
-            >
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
+          {Object.entries(PLANS).map(([key, p]) => {
+            const isCurrent  = customer.plan === key
+            const isSelected = plan === key
+            return (
+              <div key={key} onClick={() => setPlan(key)} style={{
+                border:`2px solid ${isSelected ? C.primary : C.gray200}`,
+                borderRadius:10, padding:'12px 14px', cursor:'pointer',
+                background: isSelected ? C.primaryLight : C.white,
+                display:'flex', alignItems:'center', justifyContent:'space-between',
+              }}>
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div style={{ fontSize:15, fontWeight:800, color:C.gray900 }}>{p.label}</div>
-                    {customer.plan === key && (
-                      <span style={{ fontSize:10, background:C.successLight, color:C.success, padding:'2px 8px', borderRadius:20, fontWeight:700 }}>CURRENT</span>
-                    )}
+                    <div style={{ fontSize:14, fontWeight:700, color:C.gray900 }}>{p.label}</div>
+                    {isCurrent && <span style={{ fontSize:10, background:C.successLight, color:C.success, padding:'2px 8px', borderRadius:20, fontWeight:700 }}>CURRENT</span>}
                   </div>
-                  <div style={{ fontSize:11, color:C.gray400, marginTop:4 }}>
-                    {p.vs === Infinity ? 'Unlimited' : p.vs} VS ·{' '}
-                    {p.contacts === Infinity ? 'Unlimited contacts' : `${Number(p.contacts).toLocaleString('en-IN')} contacts`}
-                  </div>
+                  <div style={{ fontSize:12, color:C.gray400, marginTop:2 }}>{DESC[key]}</div>
                 </div>
-                <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:16, fontWeight:800, color: plan === key ? C.primary : C.gray900 }}>
-                    {p.basePrice === 0 ? '₹0' : `₹${p.basePrice.toLocaleString('en-IN')}/mo`}
-                  </div>
-                  {plan === key && <div style={{ fontSize:18, marginTop:2 }}>✓</div>}
+                <div style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${isSelected ? C.primary : C.gray200}`, background: isSelected ? C.primary : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  {isSelected && <div style={{ width:7, height:7, borderRadius:'50%', background:C.white }}/>}
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
-        {error && <div style={{ color:C.red, fontSize:12, marginBottom:12 }}>⚠ {error}</div>}
+        {error && <div style={{ color:C.red, fontSize:12, marginBottom:10 }}>⚠ {error}</div>}
 
-        <button onClick={handleSave} disabled={saving || plan === customer.plan} style={{
-          width:'100%', padding:'12px', fontSize:14, fontWeight:700,
-          background: (saving || plan === customer.plan) ? C.gray200 : `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-          color: (saving || plan === customer.plan) ? C.gray400 : C.white,
-          border:'none', borderRadius:10, cursor: (saving || plan === customer.plan) ? 'not-allowed' : 'pointer',
-          fontFamily:'inherit',
-        }}>
-          {saving ? '⏳ Saving…' : plan === customer.plan ? 'No change' : `Save — Switch to ${PLANS[plan]?.label}`}
-        </button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={onClose} style={{ flex:1, padding:'10px', fontSize:13, fontWeight:600, background:C.gray100, border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit', color:C.gray600 }}>
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving || plan === customer.plan} style={{
+            flex:2, padding:'10px', fontSize:13, fontWeight:700,
+            background: (saving || plan === customer.plan) ? C.gray200 : `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
+            color: (saving || plan === customer.plan) ? C.gray400 : C.white,
+            border:'none', borderRadius:8, cursor: (saving || plan === customer.plan) ? 'not-allowed' : 'pointer', fontFamily:'inherit',
+          }}>
+            {saving ? '⏳ Saving…' : plan === customer.plan ? 'No change' : `Switch to ${PLANS[plan]?.label}`}
+          </button>
+        </div>
       </div>
     </div>,
     document.body
   )
 }
+
 
 // ─── CUSTOMER ROW (expanded detail) ──────────────────────────────────────────
 function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) {
