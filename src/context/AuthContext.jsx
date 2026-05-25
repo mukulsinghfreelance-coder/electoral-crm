@@ -192,6 +192,7 @@ export function AuthProvider({ children }) {
   // gifted_forever overrides plan — full Multiple access, no payment screens
   const effectivePlan = customer?.gifted_forever ? 'multiple' : (customer?.plan || 'free')
   const plan          = effectivePlan
+  // Read fresh from PLANS every render so pricing changes are reflected immediately
   const planLimits    = getPlanLimits(effectivePlan)
   const planConfig    = PLANS[effectivePlan] || PLANS.free
   const isGifted      = customer?.gifted_forever || false
@@ -202,7 +203,11 @@ export function AuthProvider({ children }) {
       customer, session, loading, workspace, authError,
       loginWithOTP, verifyOTP, loginWithGoogle, devLogin, logout,
       switchWorkspace, exitWorkspace,
-      plan, planLimits, planConfig, isSuperAdmin, isGifted, calcMonthlyPrice,
+      plan,
+      // Always read fresh so admin pricing changes reflect without code deploy
+      get planLimits() { return getPlanLimits(effectivePlan) },
+      get planConfig() { return PLANS[effectivePlan] || PLANS.free },
+      isSuperAdmin, isGifted, calcMonthlyPrice,
     }}>
       {children}
     </AuthContext.Provider>

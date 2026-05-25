@@ -27,10 +27,9 @@ export const SUPER_ADMIN_EMAIL = 'mukulsingh.freelance@gmail.com'
 // Loads live pricing from DB — falls back to defaults if DB unavailable
 // Call loadPricing() once on app start, then use PLANS normally
 
-let _pricingLoaded = false
-
 export async function loadPricing(supabase) {
-  if (_pricingLoaded) return
+  // Always load fresh on app start — no caching flag
+  // Each page reload fetches latest prices from DB
   try {
     const { data } = await supabase
       .from('pricing_config')
@@ -47,7 +46,6 @@ export async function loadPricing(supabase) {
     if (p.multiple_extra_vs)   PLANS.multiple.extraVS     = p.multiple_extra_vs
     if (p.gst_rate)            BILLING.gstRate            = p.gst_rate / 100
 
-    _pricingLoaded = true
     console.log('✅ Pricing loaded from DB:', p)
   } catch(e) {
     console.warn('Pricing DB load failed, using defaults:', e.message)
