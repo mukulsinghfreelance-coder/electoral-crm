@@ -69,8 +69,17 @@ export async function openRazorpayCheckout({ order, customer, plan, vsCount, onS
   const loaded = await loadRazorpayScript()
   if (!loaded) throw new Error('Failed to load Razorpay. Check your internet connection.')
 
+  // Read key directly - most reliable approach
+  const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID
+  console.log('Razorpay Key:', rzpKey ? rzpKey.substring(0,10) + '...' : 'MISSING')
+
+  if (!rzpKey) {
+    onFailure?.('Razorpay API key is not configured. Please check VITE_RAZORPAY_KEY_ID in .env')
+    return
+  }
+
   const options = {
-    key:         BILLING.razorpayKeyId,
+    key:         rzpKey,
     amount:      order.amount,        // in paise
     currency:    order.currency || 'INR',
     name:        'Sampark.AI',
