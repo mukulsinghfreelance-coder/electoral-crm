@@ -1,5 +1,10 @@
 import { useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { useAuth } from '../context/AuthContext'
+const PrivacyPolicy  = lazy(() => import('./PrivacyPolicy'))
+const TermsOfService = lazy(() => import('./TermsOfService'))
+const ContactUs      = lazy(() => import('./ContactUs'))
+import { PLANS, calcMonthlyPrice } from '../config'
 
 // ─── TRANSLATIONS ─────────────────────────────────────────────────────────────
 const T = {
@@ -40,9 +45,9 @@ const T = {
       title: 'Start free. Scale as you grow.',
       subtitle: 'No hidden fees. No long-term contracts.',
       plans: [
-        { name:'Free', price:'₹0', period:'', desc:'Perfect to get started', vs:'1 Vidhan Sabha', contacts:'1,000 contacts', features:['Contact management','Booth tracking','Basic reports'], cta:'Get Started Free', highlight:false },
-        { name:'Single', price:'₹2,999', period:'/month', desc:'For serious campaigners', vs:'1 Vidhan Sabha', contacts:'Unlimited contacts', features:['Everything in Free','Unlimited contacts','Advanced analytics','Priority support'], cta:'Start Single Plan', highlight:false },
-        { name:'Multiple', price:'₹2,999', period:'/month', desc:'For leaders managing multiple VSs', vs:'Unlimited Vidhan Sabhas', contacts:'Unlimited contacts', features:['Everything in Single','Unlimited constituencies','₹2,249/mo per extra VS','Dedicated support'], cta:'Start Multiple Plan', highlight:true, badge:'Most Popular' },
+        { name:'Free', price:'₹0', period:'', desc:'Perfect to get started', vs:`${PLANS.free.vs} Vidhan Sabha`, contacts:`${PLANS.free.contacts.toLocaleString('en-IN')} contacts`, features:['Contact management','Booth tracking','Basic reports'], cta:'Get Started Free', highlight:false },
+        { name:'Single', price:`₹${PLANS.single.basePrice.toLocaleString('en-IN')}`, period:'/month', desc:'For serious campaigners', vs:`${PLANS.single.vs} Vidhan Sabha`, contacts:'Unlimited contacts', features:['Everything in Free','Unlimited contacts','Advanced analytics','Priority support'], cta:'Start Single Plan', highlight:false },
+        { name:'Multiple', price:`₹${PLANS.multiple.basePrice.toLocaleString('en-IN')}`, period:'/month', desc:'For leaders managing multiple VSs', vs:'Unlimited Vidhan Sabhas', contacts:'Unlimited contacts', features:['Everything in Single','Unlimited constituencies',`₹${PLANS.multiple.extraVS.toLocaleString('en-IN')}/mo per extra VS`,'Dedicated support'], cta:'Start Multiple Plan', highlight:true, badge:'Most Popular' },
       ]
     },
     cta: {
@@ -95,9 +100,9 @@ const T = {
       title: 'मुफ्त शुरू करें। जरूरत के साथ बढ़ें।',
       subtitle: 'कोई छुपी फीस नहीं। कोई लंबा अनुबंध नहीं।',
       plans: [
-        { name:'फ्री', price:'₹0', period:'', desc:'शुरुआत के लिए बिल्कुल सही', vs:'1 विधान सभा', contacts:'1,000 संपर्क', features:['संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'], cta:'मुफ्त शुरू करें', highlight:false },
-        { name:'सिंगल', price:'₹2,999', period:'/माह', desc:'गंभीर प्रचारकों के लिए', vs:'1 विधान सभा', contacts:'असीमित संपर्क', features:['फ्री की सब सुविधाएं','असीमित संपर्क','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता'], cta:'सिंगल प्लान शुरू करें', highlight:false },
-        { name:'मल्टीपल', price:'₹2,999', period:'/माह', desc:'एकाधिक क्षेत्र मैनेज करने वालों के लिए', vs:'असीमित विधान सभाएं', contacts:'असीमित संपर्क', features:['सिंगल की सब सुविधाएं','असीमित क्षेत्र','₹2,249/माह प्रति अतिरिक्त VS','डेडिकेटेड सहायता'], cta:'मल्टीपल प्लान शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
+        { name:'फ्री', price:'₹0', period:'', desc:'शुरुआत के लिए बिल्कुल सही', vs:`${PLANS.free.vs} विधान सभा`, contacts:`${PLANS.free.contacts.toLocaleString('en-IN')} संपर्क`, features:['संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'], cta:'मुफ्त शुरू करें', highlight:false },
+        { name:'सिंगल', price:`₹${PLANS.single.basePrice.toLocaleString('en-IN')}`, period:'/माह', desc:'गंभीर प्रचारकों के लिए', vs:'1 विधान सभा', contacts:'असीमित संपर्क', features:['फ्री की सब सुविधाएं','असीमित संपर्क','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता'], cta:'सिंगल प्लान शुरू करें', highlight:false },
+        { name:'मल्टीपल', price:`₹${PLANS.multiple.basePrice.toLocaleString('en-IN')}`, period:'/माह', desc:'एकाधिक क्षेत्र मैनेज करने वालों के लिए', vs:'असीमित विधान सभाएं', contacts:'असीमित संपर्क', features:['सिंगल की सब सुविधाएं','असीमित क्षेत्र',`₹${PLANS.multiple.extraVS.toLocaleString('en-IN')}/माह प्रति अतिरिक्त VS`,'डेडिकेटेड सहायता'], cta:'मल्टीपल प्लान शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
       ]
     },
     cta: {
@@ -269,6 +274,7 @@ export default function LandingPage() {
   const { loginWithGoogle, loginWithOTP, verifyOTP } = useAuth()
   const [lang, setLang]         = useState('en')
   const [showAuth, setShowAuth] = useState(false)
+  const [showPage, setShowPage] = useState(null)  // 'privacy' | 'terms' | 'contact'
   const [authStep, setAuthStep] = useState('email') // email | otp
   const [email, setEmail]       = useState('')
   const [otp, setOtp]           = useState('')
@@ -312,6 +318,18 @@ export default function LandingPage() {
   }
 
   const font = "system-ui,-apple-system,'Segoe UI',sans-serif"
+
+  // Show legal pages
+  if (showPage) {
+    const onBack = () => setShowPage(null)
+    return (
+      <Suspense fallback={<div style={{ minHeight:'100vh', background:'#0F0E1A', display:'flex', alignItems:'center', justifyContent:'center', color:'#A5B4FC' }}>⏳ Loading...</div>}>
+        {showPage === 'privacy'  && <PrivacyPolicy  onBack={onBack}/>}
+        {showPage === 'terms'    && <TermsOfService onBack={onBack}/>}
+        {showPage === 'contact'  && <ContactUs      onBack={onBack}/>}
+      </Suspense>
+    )
+  }
 
   return (
     <div style={{ background:C.bg, minHeight:'100vh', fontFamily:font, color:C.text }}>
@@ -515,12 +533,16 @@ export default function LandingPage() {
             </div>
           </div>
           <div style={{ display:'flex', gap:20 }}>
-            {t.footer.links.map(l => (
-              <a key={l} href="#" style={{ fontSize:12, color:C.textSub, textDecoration:'none' }}
+            {[
+              { label: t.footer.links[0], page:'privacy' },
+              { label: t.footer.links[1], page:'terms' },
+              { label: t.footer.links[2], page:'contact' },
+            ].map(({ label, page }) => (
+              <button key={page} onClick={() => setShowPage(page)} style={{ background:'none', border:'none', fontSize:12, color:C.textSub, cursor:'pointer', fontFamily:font, padding:0 }}
                 onMouseEnter={e => e.target.style.color=C.white}
                 onMouseLeave={e => e.target.style.color=C.textSub}>
-                {l}
-              </a>
+                {label}
+              </button>
             ))}
           </div>
           <div style={{ fontSize:12, color:C.gray2 }}>{t.footer.copy}</div>
