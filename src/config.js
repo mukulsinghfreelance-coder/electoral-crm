@@ -28,16 +28,25 @@ export const SUPER_ADMIN_EMAIL = 'mukulsingh.freelance@gmail.com'
 // Call loadPricing() once on app start, then use PLANS normally
 
 export async function loadPricing(supabase) {
-  // Always load fresh on app start — no caching flag
-  // Each page reload fetches latest prices from DB
   try {
-    const { data } = await supabase
+    console.log('🔄 Loading pricing from DB...')
+    const { data, error } = await supabase
       .from('pricing_config')
       .select('key, value')
 
-    if (!data?.length) return
+    console.log('📦 Pricing data:', data, 'Error:', error)
+
+    if (error) {
+      console.error('❌ Pricing load error:', error)
+      return
+    }
+    if (!data?.length) {
+      console.warn('⚠️ No pricing data returned from DB')
+      return
+    }
 
     const p = Object.fromEntries(data.map(r => [r.key, Number(r.value)]))
+    console.log('📊 Parsed pricing:', p)
 
     // Update PLANS with live DB values
     if (p.free_contact_limit)  PLANS.free.contacts        = p.free_contact_limit
@@ -46,9 +55,14 @@ export async function loadPricing(supabase) {
     if (p.multiple_extra_vs)   PLANS.multiple.extraVS     = p.multiple_extra_vs
     if (p.gst_rate)            BILLING.gstRate            = p.gst_rate / 100
 
-    console.log('✅ Pricing loaded from DB:', p)
+    console.log('✅ PLANS after update:', {
+      freeContacts: PLANS.free.contacts,
+      singlePrice:  PLANS.single.basePrice,
+      multiplePrice: PLANS.multiple.basePrice,
+      extraVS:      PLANS.multiple.extraVS,
+    })
   } catch(e) {
-    console.warn('Pricing DB load failed, using defaults:', e.message)
+    console.warn('❌ Pricing load exception:', e.message)
   }
 }
 
