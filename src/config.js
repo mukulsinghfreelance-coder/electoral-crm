@@ -40,7 +40,7 @@ export const PLANS = {
     basePrice:   0,
     extraVS:     0,
     highlight:   false,
-    description: 'Get started with 1 constituency, 1000 contacts',
+    description: 'Get started with 1 constituency',
     badge:       { bg: '#F3F4F6', cl: '#4B5563' },
   },
   single: {
@@ -87,11 +87,41 @@ export function getPlanLimits(plan) {
   return { vs: p.vs, contacts: p.contacts, label: p.label }
 }
 
+// ─── TAX & BILLING ────────────────────────────────────────────────────────────
+export const BILLING = {
+  gstRate:        0.18,   // 18% GST — change if rate changes
+  currency:       'INR',
+  currencySymbol: '₹',
+  // Razorpay
+  razorpayKeyId:  import.meta.env.VITE_RAZORPAY_KEY_ID || '',
+  // Plan renewal
+  billingCycle:   'monthly',   // monthly only for now
+  gracePeriodDays: 3,          // days after expiry before restricting access
+}
+
+// Calculate price breakdown for a given plan + VS count
+export function calcPriceBreakdown(plan, vsCount = 1, discountPct = 0) {
+  const base    = calcMonthlyPrice(plan, vsCount)  // in rupees
+  const disc    = Math.round(base * discountPct / 100)
+  const after   = base - disc
+  const gst     = Math.round(after * BILLING.gstRate)
+  const total   = after + gst
+  return {
+    base,           // ₹ before discount
+    discount: disc, // ₹ discount
+    afterDiscount: after,
+    gst,            // ₹ GST
+    total,          // ₹ total to pay
+    // in paise (Razorpay uses paise)
+    totalPaise: total * 100,
+  }
+}
+
 // ─── FEATURE FLAGS ────────────────────────────────────────────────────────────
 export const FEATURES = {
   googleAuth:       true,    // enable Google OAuth login
   otpAuth:          true,    // enable OTP email login
-  razorpay:         false,   // enable Razorpay payment (set true when ready)
+  razorpay:         true,    // enable Razorpay payment
   superAdminPanel:  true,    // enable super admin panel for your email
   volunteerModule:  true,    // enable volunteer management
   sheetsSync:       true,    // enable Google Sheets sync
@@ -104,7 +134,7 @@ export const DEFAULTS = {
   lokSabha:  'Patna Sahib',
   vs:        'Bankipur',
   adminPin:  '1234',
-  parties:   ['BJP+', 'Congress+', 'Third Front'],
+  parties:   ['BJP+', 'Congress+', 'Others+'],
   elections: ['Election 2015', 'Election 2020', 'Election 2024'],
   castes:    ['Yadav', 'Brahmin', 'Kurmi', 'Bhumihar', 'Rajput', 'Muslim', 'Koeri', 'Dusadh'],
   labels: {

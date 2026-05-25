@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAuth } from './context/AuthContext'
+import UpgradeModal from './components/UpgradeModal'
 import {
   fetchSettings, saveSettings,
   fetchContacts, insertContact, updateContact, deleteContact, bulkDeleteContacts,
@@ -1066,6 +1067,13 @@ export default function App() {
       <SheetsModal open={showSheets} onClose={()=>setShowSheets(false)} settings={settings} setSettings={setSettingsState}/>
       <VolunteerModal open={showVolunteers} onClose={()=>setShowVolunteers(false)} workspaceId={workspace?.id} orgId={user?.id}/>
       <Toast msg={toast.msg} type={toast.type}/>
+      {showUpgrade && (
+        <UpgradeModal
+          onClose={() => setShowUpgrade(false)}
+          currentVSCount={1}
+          triggerReason={upgradeReason}
+        />
+      )}
     </div>
   );
 }

@@ -438,3 +438,79 @@ export async function adminFetchWorkspaceContactCount(workspaceId) {
     .eq('workspace_id', workspaceId)
   return count || 0
 }
+
+// ─── GIFT / COUPON ADMIN FUNCTIONS ────────────────────────────────────────────
+
+export async function adminGiftCustomer(customerId, note, giftedBy) {
+  const { error } = await supabase
+    .from('customers')
+    .update({
+      plan:           'multiple',
+      plan_status:    'gifted',
+      gifted_forever: true,
+      gifted_note:    note || '',
+      gifted_by:      giftedBy || '',
+      gifted_at:      new Date().toISOString(),
+    })
+    .eq('id', customerId)
+  if (error) throw error
+}
+
+export async function adminRevokeGift(customerId) {
+  const { error } = await supabase
+    .from('customers')
+    .update({
+      plan:           'free',
+      plan_status:    'active',
+      gifted_forever: false,
+      gifted_note:    null,
+      gifted_by:      null,
+      gifted_at:      null,
+    })
+    .eq('id', customerId)
+  if (error) throw error
+}
+
+export async function adminFetchCoupons() {
+  const { data, error } = await supabase
+    .from('coupons')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function adminCreateCoupon({ code, discountPct, freeMonths, planLock, maxUses, validUntil, createdBy }) {
+  const { data, error } = await supabase
+    .from('coupons')
+    .insert({
+      code:         code.toUpperCase().trim(),
+      discount_pct: discountPct,
+      free_months:  freeMonths || 0,
+      plan_lock:    planLock || null,
+      max_uses:     maxUses || 1,
+      valid_until:  validUntil || null,
+      created_by:   createdBy,
+      active:       true,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function adminToggleCoupon(couponId, active) {
+  const { error } = await supabase
+    .from('coupons')
+    .update({ active })
+    .eq('id', couponId)
+  if (error) throw error
+}
+
+export async function adminDeleteCoupon(couponId) {
+  const { error } = await supabase
+    .from('coupons')
+    .delete()
+    .eq('id', couponId)
+  if (error) throw error
+}

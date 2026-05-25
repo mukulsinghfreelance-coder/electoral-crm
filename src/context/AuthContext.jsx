@@ -189,17 +189,20 @@ export function AuthProvider({ children }) {
   const switchWorkspace = (ws) => setWorkspace(ws)
   const exitWorkspace   = ()   => setWorkspace(null)
 
-  const plan         = customer?.plan || 'free'
-  const planLimits   = getPlanLimits(plan)
-  const planConfig   = PLANS[plan] || PLANS.free
-  const isSuperAdmin = customer?.email === SUPER_ADMIN_EMAIL
+  // gifted_forever overrides plan — full Multiple access, no payment screens
+  const effectivePlan = customer?.gifted_forever ? 'multiple' : (customer?.plan || 'free')
+  const plan          = effectivePlan
+  const planLimits    = getPlanLimits(effectivePlan)
+  const planConfig    = PLANS[effectivePlan] || PLANS.free
+  const isGifted      = customer?.gifted_forever || false
+  const isSuperAdmin  = customer?.email === SUPER_ADMIN_EMAIL
 
   return (
     <AuthContext.Provider value={{
       customer, session, loading, workspace, authError,
       loginWithOTP, verifyOTP, loginWithGoogle, devLogin, logout,
       switchWorkspace, exitWorkspace,
-      plan, planLimits, planConfig, isSuperAdmin, calcMonthlyPrice,
+      plan, planLimits, planConfig, isSuperAdmin, isGifted, calcMonthlyPrice,
     }}>
       {children}
     </AuthContext.Provider>

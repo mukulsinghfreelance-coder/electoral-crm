@@ -240,7 +240,9 @@ export default function WorkspacePage() {
   const [totalStats,  setTotalStats]  = useState({ contacts:0, booths:0, vsCount:0 })
   const [showAdd,     setShowAdd]     = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [upgradeReason, setUpgradeReason] = useState('')
   const [showAdmin,   setShowAdmin]   = useState(false)
+  const [showBilling, setShowBilling] = useState(false)
 
   useEffect(() => { if (customer?.id) loadWorkspaces() }, [customer?.id])
 
@@ -284,6 +286,14 @@ export default function WorkspacePage() {
     )
   }
 
+  if (showBilling) {
+    return (
+      <Suspense fallback={<div style={{ minHeight:'100vh', background:'#0F0E1A', display:'flex', alignItems:'center', justifyContent:'center', color:'#A5B4FC' }}>⏳ Loading…</div>}>
+        <BillingPage onBack={() => setShowBilling(false)} workspaceCount={workspaces.length} />
+      </Suspense>
+    )
+  }
+
   return (
     <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#1E1B4B 0%,#312E81 50%,#4F46E5 100%)', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", padding:'0 0 60px', isolation:'auto' }}>
 
@@ -301,6 +311,11 @@ export default function WorkspacePage() {
             {isSuperAdmin && (
               <button onClick={() => setShowAdmin(true)} style={{ padding:'7px 14px', fontSize:11, fontWeight:700, background:'rgba(220,38,38,.3)', border:'1px solid rgba(220,38,38,.5)', borderRadius:8, color:'#FCA5A5', cursor:'pointer', fontFamily:'inherit' }}>
                 🛡️ Admin Panel
+              </button>
+            )}
+            {!isGifted && !isSuperAdmin && (
+              <button onClick={() => setShowBilling(true)} style={{ padding:'7px 14px', fontSize:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>
+                💳 Billing
               </button>
             )}
             <button onClick={logout} style={{ padding:'7px 14px', fontSize:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>
@@ -321,6 +336,11 @@ export default function WorkspacePage() {
             {isSuperAdmin && (
               <span style={{ background:'rgba(220,38,38,.2)', color:'#FCA5A5', padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700, border:'1px solid rgba(220,38,38,.3)' }}>
                 Super Admin
+              </span>
+            )}
+            {isGifted && !isSuperAdmin && (
+              <span style={{ background:'rgba(245,158,11,0.2)', color:'#F59E0B', padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700, border:'1px solid rgba(245,158,11,0.3)' }}>
+                🎁 Gifted
               </span>
             )}
           </div>
@@ -358,7 +378,7 @@ export default function WorkspacePage() {
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             {isFreeAtLimit && (
               <div
-                onClick={e => { e.stopPropagation(); setShowUpgrade(true) }}
+                onClick={e => { e.stopPropagation(); setUpgradeReason('Free plan allows 1 VS only. Upgrade to add more.'); setShowUpgrade(true) }}
                 style={{ fontSize:11, background:'linear-gradient(135deg,#FEF3C7,#FDE68A)', color:'#92400E', padding:'7px 14px', borderRadius:8, border:'1px solid #F59E0B', fontWeight:600, cursor:'pointer' }}
               >
                 ⚡ Upgrade to add more
@@ -468,7 +488,13 @@ export default function WorkspacePage() {
         />
       )}
 
-      {showUpgrade && <UpgradeModal plan={plan} onClose={() => setShowUpgrade(false)} />}
+      {showUpgrade && (
+        <UpgradeModal
+          onClose={() => setShowUpgrade(false)}
+          currentVSCount={workspaces.length}
+          triggerReason={upgradeReason}
+        />
+      )}
     </div>
   )
 }

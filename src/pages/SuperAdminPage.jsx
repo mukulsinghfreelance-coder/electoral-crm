@@ -8,13 +8,18 @@ import {
   adminUpdateCustomerPlan,
   adminDeleteWorkspace,
   adminPurgeCustomer,
+  adminGiftCustomer,
+  adminRevokeGift,
+  adminFetchCoupons,
+  adminCreateCoupon,
+  adminToggleCoupon,
 } from '../lib/supabase'
 
 const C = {
   primary:'#4F46E5', primaryDark:'#3730A3', primaryLight:'#EEF2FF',
   success:'#059669', successLight:'#D1FAE5',
   red:'#DC2626', redLight:'#FEE2E2',
-  amber:'#D97706', amberLight:'#FEF3C7',
+  amber:'#D97706', amberLight:'#FEF3C7', gold:'#F59E0B',
   gray100:'#F3F4F6', gray200:'#E5E7EB', gray400:'#9CA3AF',
   gray600:'#4B5563', gray900:'#111827', white:'#FFFFFF',
 }
@@ -154,7 +159,7 @@ function PlanModal({ customer, onClose, onSaved }) {
 }
 
 // ─── CUSTOMER ROW (expanded detail) ──────────────────────────────────────────
-function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
+function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) {
   const [workspaces, setWorkspaces] = useState(null)
   const [loading,    setLoading]    = useState(false)
   const [confirm,    setConfirm]    = useState(null)
@@ -168,6 +173,40 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [customer.id])
+
+  const [giftNote, setGiftNote] = useState('')
+  const [showGiftNote, setShowGiftNote] = useState(false)
+
+  const handleGift = async () => {
+    if (customer.gifted_forever) {
+      // Revoke gift
+      setConfirm({
+        message: `Revoke gift for ${customer.name || customer.email}?`,
+        subtext: 'Their plan will drop to Free.',
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await adminRevokeGift(customer.id)
+            onPlanChanged(customer.id, 'free')
+            customer.gifted_forever = false
+          } catch(e) { setDeleteError(e.message) }
+          setConfirm(null)
+        }
+      })
+    } else {
+      setShowGiftNote(true)
+    }
+  }
+
+  const confirmGift = async () => {
+    try {
+      await adminGiftCustomer(customer.id, giftNote, me?.email)
+      onPlanChanged(customer.id, 'multiple')
+      customer.gifted_forever = true
+      setShowGiftNote(false)
+      setGiftNote('')
+    } catch(e) { setDeleteError(e.message) }
+  }
 
   const handleDeleteWS = (ws) => {
     setConfirm({
@@ -242,6 +281,15 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
           }}>
             ✏️ Change Plan
           </button>
+          <button onClick={handleGift} style={{
+            padding:'6px 14px', fontSize:12, fontWeight:700,
+            background: customer.gifted_forever ? C.amberLight : C.successLight,
+            color: customer.gifted_forever ? C.amber : C.success,
+            border:`1px solid ${customer.gifted_forever ? C.amber : C.success}33`,
+            borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+          }}>
+            {customer.gifted_forever ? '🎁 Revoke Gift' : '🎁 Gift Forever'}
+          </button>
           <button onClick={handlePurge} style={{
             padding:'6px 14px', fontSize:12, fontWeight:700,
             background:C.redLight, color:C.red,
@@ -289,6 +337,27 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged }) {
             </div>
           ))}
         </div>
+      )}
+
+      {showGiftNote && createPortal(
+        <div onClick={() => setShowGiftNote(false)} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:'#fff', borderRadius:16, padding:28, maxWidth:380, width:'100%' }}>
+            <div style={{ fontSize:16, fontWeight:800, color:'#111', marginBottom:6 }}>🎁 Gift Forever</div>
+            <div style={{ fontSize:13, color:'#6B7280', marginBottom:16 }}>
+              Gifting <strong>{customer.name || customer.email}</strong> unlimited Multiple plan access permanently.
+            </div>
+            <input
+              placeholder="Note (e.g. Campaign partner - 6 months)"
+              value={giftNote} onChange={e => setGiftNote(e.target.value)}
+              style={{ width:'100%', padding:'10px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, fontFamily:'inherit', boxSizing:'border-box', marginBottom:16 }}
+            />
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => setShowGiftNote(false)} style={{ flex:1, padding:10, background:'#F3F4F6', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:13 }}>Cancel</button>
+              <button onClick={confirmGift} style={{ flex:1, padding:10, background:'#10B981', border:'none', borderRadius:8, color:'#fff', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:700 }}>Confirm Gift</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {confirm && (
@@ -510,6 +579,11 @@ export default function SuperAdminPage({ onBack }) {
                       <span style={{ background:pc.bg, color:pc.cl, padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
                         {PLANS[c.plan]?.label || c.plan}
                       </span>
+                      {c.gifted_forever && (
+                        <span style={{ background:'rgba(245,158,11,0.15)', color:'#F59E0B', padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
+                          🎁 Gifted
+                        </span>
+                      )}
                       <span style={{ fontSize:18, color:C.gray400, transition:'transform .2s', transform: isExpanded ? 'rotate(90deg)' : 'none' }}>›</span>
                     </div>
                   </div>
@@ -521,6 +595,7 @@ export default function SuperAdminPage({ onBack }) {
                       onPlanChanged={handlePlanChanged}
                       onWSDeleted={handleWSDeleted}
                       onPurged={handlePurged}
+                      me={me}
                     />
                   )}
                 </div>
