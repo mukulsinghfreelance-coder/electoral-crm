@@ -8,6 +8,16 @@ export { PLANS, calcMonthlyPrice }
 export function AuthProvider({ children }) {
   const [customer,  setCustomer]  = useState(null)
   const [livePlans, setLivePlans] = useState(null)  // DB pricing overrides
+
+  // ── Fetch live pricing from DB on mount ──────────────────────────────────
+  useEffect(() => {
+    fetchPricingFromDB(supabase).then(p => {
+      if (p) {
+        console.log('✅ Live pricing loaded into React state:', p)
+        setLivePlans(p)
+      }
+    })
+  }, [])
   const [session,   setSession]   = useState(null)
   const [workspace, setWorkspace] = useState(null)
   const [loading,   setLoading]   = useState(true)
