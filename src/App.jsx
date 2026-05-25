@@ -615,7 +615,9 @@ export default function App() {
   const [booths,    setBooths]        = useState([]);
   const [loading,   setLoading]       = useState(false);
   const [loadErr,   setLoadErr]       = useState(null);
-  const [saving,    setSaving]        = useState(false);
+  const [saving,      setSaving]        = useState(false);
+  const [showUpgrade,   setShowUpgrade]   = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState('');
   const [toast,     setToast]         = useState({msg:"",type:"success"});
 
   // ── UI state ──────────────────────────────────────────────────────────────

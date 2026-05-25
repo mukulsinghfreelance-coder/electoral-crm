@@ -1,7 +1,7 @@
 // ─── src/pages/BillingPage.jsx ────────────────────────────────────────────────
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { PLANS, calcPriceBreakdown } from '../config'
+import { PLANS as DEFAULT_PLANS, calcPriceBreakdown } from '../config'
 import { fetchBillingHistory, formatPaise } from '../lib/razorpay'
 import UpgradeModal from '../components/UpgradeModal'
 
@@ -37,6 +37,7 @@ export default function BillingPage({ onBack, workspaceCount = 1 }) {
   }, [customer?.id])
 
   const isGifted   = customer?.gifted_forever
+  const PLANS      = livePlans || DEFAULT_PLANS
   const planConfig = PLANS[plan] || PLANS.free
   const expiry     = customer?.plan_expiry ? new Date(customer.plan_expiry) : null
   const daysLeft   = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null
@@ -151,7 +152,7 @@ export default function BillingPage({ onBack, workspaceCount = 1 }) {
                     <div>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                         <div style={{ fontSize:13, fontWeight:600, color:C.white }}>
-                          {PLANS[h.plan]?.label || h.plan} Plan
+                          {DEFAULT_PLANS[h.plan]?.label || h.plan} Plan
                           {h.vs_count > 1 && ` (${h.vs_count} VS)`}
                         </div>
                         <span style={{ background:ss.bg, color:ss.cl, fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>{ss.label}</span>
