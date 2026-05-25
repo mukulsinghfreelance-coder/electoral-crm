@@ -1,500 +1,599 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { fetchStates, fetchLokSabhas, fetchVidhanSabhas } from '../lib/supabase'
-import { PLANS, calcMonthlyPrice, formatPrice, APP } from '../config'
 
-const C = {
-  primary:'#4F46E5', primaryDark:'#3730A3', primaryLight:'#EEF2FF',
-  success:'#059669', red:'#DC2626',
-  gray100:'#F3F4F6', gray200:'#E5E7EB', gray400:'#9CA3AF',
-  gray600:'#4B5563', gray900:'#111827', white:'#FFFFFF',
+// ─── TRANSLATIONS ─────────────────────────────────────────────────────────────
+const T = {
+  en: {
+    nav: { features:'Features', howItWorks:'How It Works', pricing:'Pricing', signIn:'Sign In' },
+    hero: {
+      badge: '🗳️ Electoral Intelligence Platform',
+      h1a: 'Win Every Booth.',
+      h1b: 'Know Every Voter.',
+      h1hi: 'जीतो हर बूथ। जानो हर वोटर।',
+      sub: 'Electoral Intelligence, Simplified.',
+      desc: 'Sampark.AI gives you complete command over your constituency — manage every contact, every booth, every ward — powered by intelligence.',
+      cta: 'Get Started Free',
+      ctaSub: 'No credit card required',
+      signIn: 'Already registered? Sign In →',
+    },
+    features: {
+      badge: 'Know the Ground. Win Your Seat.',
+      title: 'Everything you need to win',
+      subtitle: 'Built for leaders who understand that elections are won on the ground.',
+      items: [
+        { icon:'👥', title:'Smart Contact Management', hi:'संपर्क प्रबंधन', desc:'Tag every voter by loyalty, caste, booth and relationship. Know exactly who supports you and who needs attention.' },
+        { icon:'🏛️', title:'Booth-Level Intelligence', hi:'बूथ स्तर की जानकारी', desc:'Rate every booth A, B or C. Track karyakartas, voter turnout and booth-wise performance in real time.' },
+        { icon:'🗂️', title:'Caste & Community Analysis', hi:'जाति वर्गीकरण', desc:'Understand the community fabric of your constituency. Classify contacts and plan outreach with precision.' },
+      ]
+    },
+    howItWorks: {
+      badge: 'Simple. Powerful. Fast.',
+      title: 'Up and running in minutes',
+      steps: [
+        { n:'01', title:'Sign Up Free', desc:'Create your account in seconds. No forms, no paperwork. Just your email.' },
+        { n:'02', title:'Add Your Constituency', desc:'Select your Vidhan Sabha from 4000+ constituencies across India.' },
+        { n:'03', title:'Start Winning', desc:'Add contacts, manage booths, track your ground game — all in one place.' },
+      ]
+    },
+    pricing: {
+      badge: 'Simple Pricing',
+      title: 'Start free. Scale as you grow.',
+      subtitle: 'No hidden fees. No long-term contracts.',
+      plans: [
+        { name:'Free', price:'₹0', period:'', desc:'Perfect to get started', vs:'1 Vidhan Sabha', contacts:'1,000 contacts', features:['Contact management','Booth tracking','Basic reports'], cta:'Get Started Free', highlight:false },
+        { name:'Single', price:'₹2,999', period:'/month', desc:'For serious campaigners', vs:'1 Vidhan Sabha', contacts:'Unlimited contacts', features:['Everything in Free','Unlimited contacts','Advanced analytics','Priority support'], cta:'Start Single Plan', highlight:false },
+        { name:'Multiple', price:'₹2,999', period:'/month', desc:'For leaders managing multiple VSs', vs:'Unlimited Vidhan Sabhas', contacts:'Unlimited contacts', features:['Everything in Single','Unlimited constituencies','₹2,249/mo per extra VS','Dedicated support'], cta:'Start Multiple Plan', highlight:true, badge:'Most Popular' },
+      ]
+    },
+    cta: {
+      title: 'Connect with Every Voter.',
+      title2: 'Win Every Seat.',
+      sub: 'Electoral Intelligence, Simplified.',
+      btn: 'Start Free Today',
+      note: 'No credit card required · Set up in 2 minutes',
+    },
+    footer: {
+      tagline: 'Electoral Intelligence, Simplified.',
+      links: ['Privacy Policy','Terms of Service','Contact Us'],
+      copy: '© 2025 Sampark.AI. All rights reserved.',
+    }
+  },
+  hi: {
+    nav: { features:'विशेषताएं', howItWorks:'कैसे काम करता है', pricing:'मूल्य निर्धारण', signIn:'साइन इन' },
+    hero: {
+      badge: '🗳️ चुनावी इंटेलिजेंस प्लेटफॉर्म',
+      h1a: 'जीतो हर बूथ।',
+      h1b: 'जानो हर वोटर।',
+      h1hi: 'Win Every Booth. Know Every Voter.',
+      sub: 'चुनावी बुद्धिमत्ता, सरलीकृत।',
+      desc: 'Sampark.AI आपको अपने क्षेत्र पर पूरा नियंत्रण देता है — हर संपर्क, हर बूथ, हर वार्ड — बुद्धिमत्ता से संचालित।',
+      cta: 'मुफ्त शुरू करें',
+      ctaSub: 'क्रेडिट कार्ड की आवश्यकता नहीं',
+      signIn: 'पहले से पंजीकृत? साइन इन करें →',
+    },
+    features: {
+      badge: 'जमीन जानो। सीट जीतो।',
+      title: 'जीत के लिए सब कुछ',
+      subtitle: 'उन नेताओं के लिए बना जो जानते हैं कि चुनाव जमीन पर जीते जाते हैं।',
+      items: [
+        { icon:'👥', title:'स्मार्ट संपर्क प्रबंधन', hi:'Smart Contact Management', desc:'हर वोटर को वफादारी, जाति, बूथ और रिश्ते के आधार पर टैग करें।' },
+        { icon:'🏛️', title:'बूथ-स्तरीय जानकारी', hi:'Booth-Level Intelligence', desc:'हर बूथ को A, B या C रेट करें। कार्यकर्ताओं और वोटर टर्नआउट को ट्रैक करें।' },
+        { icon:'🗂️', title:'जाति एवं समुदाय विश्लेषण', hi:'Caste & Community Analysis', desc:'अपने क्षेत्र की सामुदायिक संरचना समझें और सटीक आउटरीच प्लान करें।' },
+      ]
+    },
+    howItWorks: {
+      badge: 'सरल। शक्तिशाली। तेज़।',
+      title: 'मिनटों में शुरू करें',
+      steps: [
+        { n:'01', title:'मुफ्त साइन अप', desc:'सेकंड में अकाउंट बनाएं। सिर्फ अपना ईमेल चाहिए।' },
+        { n:'02', title:'अपना क्षेत्र जोड़ें', desc:'भारत के 4000+ विधान सभा क्षेत्रों में से अपना चुनें।' },
+        { n:'03', title:'जीतना शुरू करें', desc:'संपर्क जोड़ें, बूथ मैनेज करें, ग्राउंड गेम ट्रैक करें।' },
+      ]
+    },
+    pricing: {
+      badge: 'सरल मूल्य निर्धारण',
+      title: 'मुफ्त शुरू करें। जरूरत के साथ बढ़ें।',
+      subtitle: 'कोई छुपी फीस नहीं। कोई लंबा अनुबंध नहीं।',
+      plans: [
+        { name:'फ्री', price:'₹0', period:'', desc:'शुरुआत के लिए बिल्कुल सही', vs:'1 विधान सभा', contacts:'1,000 संपर्क', features:['संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'], cta:'मुफ्त शुरू करें', highlight:false },
+        { name:'सिंगल', price:'₹2,999', period:'/माह', desc:'गंभीर प्रचारकों के लिए', vs:'1 विधान सभा', contacts:'असीमित संपर्क', features:['फ्री की सब सुविधाएं','असीमित संपर्क','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता'], cta:'सिंगल प्लान शुरू करें', highlight:false },
+        { name:'मल्टीपल', price:'₹2,999', period:'/माह', desc:'एकाधिक क्षेत्र मैनेज करने वालों के लिए', vs:'असीमित विधान सभाएं', contacts:'असीमित संपर्क', features:['सिंगल की सब सुविधाएं','असीमित क्षेत्र','₹2,249/माह प्रति अतिरिक्त VS','डेडिकेटेड सहायता'], cta:'मल्टीपल प्लान शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
+      ]
+    },
+    cta: {
+      title: 'हर वोटर से जुड़ें।',
+      title2: 'हर सीट जीतें।',
+      sub: 'चुनावी बुद्धिमत्ता, सरलीकृत।',
+      btn: 'आज मुफ्त शुरू करें',
+      note: 'क्रेडिट कार्ड की आवश्यकता नहीं · 2 मिनट में सेटअप',
+    },
+    footer: {
+      tagline: 'चुनावी बुद्धिमत्ता, सरलीकृत।',
+      links: ['गोपनीयता नीति','सेवा की शर्तें','संपर्क करें'],
+      copy: '© 2025 Sampark.AI. सर्वाधिकार सुरक्षित।',
+    }
+  }
 }
 
-const PLAN_INFO = Object.entries(PLANS).map(([key, p]) => ({
-  key,
-  name:      p.label,
-  vs:        p.vs === Infinity ? 'Unlimited' : p.vs,
-  contacts:  p.contacts === Infinity ? 'Unlimited' : p.contacts.toLocaleString('en-IN'),
-  price:     p.basePrice === 0 ? '₹0' : `₹${p.basePrice.toLocaleString('en-IN')}/mo`,
-  extraVS:   p.extraVS > 0 ? `+₹${p.extraVS.toLocaleString('en-IN')}/mo per extra VS` : null,
-  note:      p.description,
-  highlight: p.highlight,
-}))
+// ─── COLORS ───────────────────────────────────────────────────────────────────
+const C = {
+  bg:      '#0F0E1A',
+  bgCard:  '#16152A',
+  bgCard2: '#1C1B35',
+  border:  'rgba(255,255,255,0.08)',
+  border2: 'rgba(255,255,255,0.15)',
+  primary: '#6C63FF',
+  primaryD:'#4F46E5',
+  accent:  '#A78BFA',
+  gold:    '#F59E0B',
+  white:   '#FFFFFF',
+  gray:    '#A5B4FC',
+  gray2:   '#6B7280',
+  success: '#10B981',
+  text:    '#F1F0FF',
+  textSub: '#9CA3AF',
+}
 
-// ─── OTP LOGIN MODAL ──────────────────────────────────────────────────────────
-function OTPModal({ onClose, onSuccess }) {
-  const { loginWithOTP, verifyOTP, loginWithGoogle, devLogin } = useAuth()
-  const [step,    setStep]    = useState('email')
-  const [email,   setEmail]   = useState('')
-  const [otp,     setOtp]     = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState('')
-  const [resent,  setResent]  = useState(false)
-
-  const sendOTP = async () => {
-    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError('Enter a valid email'); return }
-    setLoading(true); setError('')
-    try {
-      await loginWithOTP(email.trim().toLowerCase())
-      setStep('otp')
-    } catch(e) {
-      if (e.message?.includes('429') || e.status === 429 || e.message?.toLowerCase().includes('rate limit') || e.message?.toLowerCase().includes('too many')) {
-        setError('Too many OTP requests. Please wait 60 seconds before trying again.')
-      } else {
-        setError(e.message || 'Failed to send OTP. Try again.')
-      }
-    }
-    setLoading(false)
-  }
-
-  const verify = async () => {
-    if (otp.length < 6) { setError('Enter the 6-digit OTP'); return }
-    setLoading(true); setError('')
-    try { await verifyOTP(email.trim().toLowerCase(), otp.trim()); onSuccess() }
-    catch(e) { setError('Invalid or expired OTP') }
-    setLoading(false)
-  }
-
+// ─── CONTACT MOCKUP ───────────────────────────────────────────────────────────
+function ContactMockup() {
+  const contacts = [
+    { name:'Ramesh Kumar', caste:'Yadav', booth:'B-12', tag:'Supporter', rating:'A', phone:'98765 43210' },
+    { name:'Sunita Devi', caste:'Kurmi', booth:'B-07', tag:'Key Voter', rating:'A', phone:'87654 32109' },
+    { name:'Arun Singh', caste:'Rajput', booth:'B-15', tag:'Karyakarta', rating:'B', phone:'76543 21098' },
+    { name:'Fatima Begum', caste:'Muslim', booth:'B-03', tag:'Neutral', rating:'B', phone:'65432 10987' },
+    { name:'Vijay Paswan', caste:'Dusadh', booth:'B-09', tag:'Supporter', rating:'A', phone:'54321 09876' },
+  ]
+  const tagColor = { 'Key Voter':'#10B981', 'Karyakarta':'#6C63FF', 'Supporter':'#3B82F6', 'Neutral':'#6B7280' }
+  const ratingColor = { A:'#10B981', B:'#F59E0B', C:'#EF4444' }
   return (
-    <div onClick={e => e.target === e.currentTarget && onClose()} style={{
-      position:'fixed', inset:0, background:'rgba(17,24,39,.7)',
-      display:'flex', alignItems:'center', justifyContent:'center',
-      zIndex:2000, padding:20, backdropFilter:'blur(4px)',
-    }}>
-      <div style={{ background:C.white, borderRadius:20, padding:'32px 28px', width:'100%', maxWidth:400, boxShadow:'0 24px 64px rgba(0,0,0,.25)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
-          <div style={{ fontSize:20, fontWeight:800, color:C.gray900 }}>
-            {step === 'email' ? 'Sign In / Sign Up' : 'Check your email 📧'}
-          </div>
-          <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16, color:C.gray600 }}>✕</button>
+    <div style={{ background:'#16152A', borderRadius:16, overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)', fontFamily:"inherit" }}>
+      {/* Header bar */}
+      <div style={{ background:'#1C1B35', padding:'12px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#EF4444' }}/>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#F59E0B' }}/>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#10B981' }}/>
         </div>
-
-        {step === 'email' ? (
-          <>
-            {/* Google */}
-            <button
-              onClick={loginWithGoogle}
-              style={{
-                width:'100%', padding:'12px', marginBottom:16, fontSize:14, fontWeight:600,
-                background:C.white, border:`2px solid ${C.gray200}`, borderRadius:10,
-                cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center',
-                justifyContent:'center', gap:10, color:C.gray900, transition:'all .15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = C.primary}
-              onMouseLeave={e => e.currentTarget.style.borderColor = C.gray200}
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18">
-                <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
-                <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-                <path fill="#FBBC05" d="M3.964 10.71C3.784 10.17 3.682 9.59 3.682 9c0-.59.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
-                <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/>
-              </svg>
-              Continue with Google
-            </button>
-
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-              <div style={{ flex:1, height:1, background:C.gray200 }}/>
-              <span style={{ fontSize:12, color:C.gray400, fontWeight:500 }}>or use email OTP</span>
-              <div style={{ flex:1, height:1, background:C.gray200 }}/>
-            </div>
-
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray400, marginBottom:6, textTransform:'uppercase', letterSpacing:'.06em' }}>Email address</label>
-            <input
-              type="email" value={email} autoFocus
-              onChange={e => { setEmail(e.target.value); setError('') }}
-              onKeyDown={e => e.key === 'Enter' && sendOTP()}
-              placeholder="yourname@gmail.com"
-              style={{ width:'100%', padding:'11px 13px', fontSize:14, border:`2px solid ${error ? C.red : C.gray200}`, borderRadius:10, outline:'none', color:C.gray900, boxSizing:'border-box', marginBottom:12, fontFamily:'inherit' }}
-            />
-            {error && <div style={{ color:C.red, fontSize:12, marginBottom:10 }}>⚠ {error}</div>}
-            <button onClick={sendOTP} disabled={loading} style={{
-              width:'100%', padding:13, background:loading ? C.gray400 : `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-              color:C.white, border:'none', borderRadius:10, fontSize:15, fontWeight:700,
-              cursor:loading ? 'not-allowed' : 'pointer', fontFamily:'inherit',
-            }}>
-              {loading ? '⏳ Sending…' : 'Send OTP →'}
-            </button>
-            <div style={{ background:C.primaryLight, borderRadius:8, padding:'10px 12px', marginTop:14, fontSize:12, color:C.primary, lineHeight:1.6 }}>
-              📌 New here? You'll be registered automatically. Select your constituencies first on this page before signing in.
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize:13, color:C.gray600, marginBottom:4 }}>We sent a 6-digit code to</div>
-            <div style={{ fontSize:14, fontWeight:700, color:C.primary, marginBottom:20 }}>{email}</div>
-            {resent && <div style={{ background:'#D1FAE5', borderRadius:8, padding:'8px 12px', marginBottom:12, fontSize:12, color:'#065F46', fontWeight:500 }}>✅ New OTP sent!</div>}
-            <input
-              type="text" value={otp} autoFocus maxLength={6}
-              onChange={e => { setOtp(e.target.value.replace(/\D/g,'')); setError('') }}
-              onKeyDown={e => e.key === 'Enter' && verify()}
-              placeholder="000000"
-              style={{ width:'100%', padding:'12px 14px', fontSize:24, fontWeight:700, letterSpacing:8, textAlign:'center', border:`2px solid ${error ? C.red : C.gray200}`, borderRadius:10, outline:'none', color:C.gray900, boxSizing:'border-box', marginBottom:12, fontFamily:'inherit' }}
-            />
-            {error && <div style={{ color:C.red, fontSize:12, marginBottom:10 }}>⚠ {error}</div>}
-            <button onClick={verify} disabled={loading || otp.length < 6} style={{
-              width:'100%', padding:13, fontSize:15, fontWeight:700, border:'none', borderRadius:10,
-              background:(loading || otp.length < 6) ? C.gray400 : `linear-gradient(135deg,${C.success},#047857)`,
-              color:C.white, cursor:(loading || otp.length < 6) ? 'not-allowed' : 'pointer', fontFamily:'inherit',
-            }}>
-              {loading ? '⏳ Verifying…' : '✓ Verify & Enter'}
-            </button>
-            {/* DEV MODE ONLY — remove before production */}
-            {import.meta.env.DEV && step === 'otp' && (
-              <div style={{ marginTop:16, background:'#FEF3C7', borderRadius:8, padding:'10px 12px', fontSize:12, color:'#92400E' }}>
-                <strong>🛠️ Dev Mode:</strong> Check Supabase Auth → Users for the OTP, or use{' '}
-                <button onClick={async () => { setLoading(true); try { await devLogin(email) } catch(e){ setError(e.message) } setLoading(false) }} style={{ background:'none', border:'none', color:'#92400E', fontWeight:700, cursor:'pointer', textDecoration:'underline', fontSize:12, fontFamily:'inherit', padding:0 }}>
-                  Password Login
-                </button>
-              </div>
-            )}
-            <div style={{ display:'flex', justifyContent:'space-between', marginTop:16 }}>
-              <button onClick={() => { setStep('email'); setOtp(''); setError('') }} style={{ background:'none', border:'none', color:C.gray600, fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>← Change email</button>
-              <button onClick={async () => { setLoading(true); setResent(false); try { await loginWithOTP(email); setResent(true); setOtp('') } catch(e){} setLoading(false) }} disabled={loading} style={{ background:'none', border:'none', color:C.primary, fontSize:13, cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>Resend OTP</button>
-            </div>
-          </>
-        )}
+        <div style={{ fontSize:11, color:'#6B7280', fontWeight:500 }}>Contacts — Bankipur VS</div>
+        <div style={{ fontSize:11, color:'#6C63FF', fontWeight:600 }}>+ Add Contact</div>
       </div>
+      {/* Search + filters */}
+      <div style={{ padding:'10px 16px', display:'flex', gap:8, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'6px 10px', fontSize:11, color:'#6B7280' }}>🔍 Search contacts...</div>
+        <div style={{ background:'rgba(108,99,255,0.15)', border:'1px solid rgba(108,99,255,0.3)', borderRadius:8, padding:'6px 10px', fontSize:11, color:'#A78BFA' }}>Filter ▾</div>
+      </div>
+      {/* Stats row */}
+      <div style={{ padding:'8px 16px', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        {[['Total','1,247'],['A-rated','523'],['Karyakartas','48'],['Booths','18']].map(([l,v]) => (
+          <div key={l} style={{ background:'rgba(255,255,255,0.04)', borderRadius:8, padding:'6px 8px', textAlign:'center' }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'#F1F0FF' }}>{v}</div>
+            <div style={{ fontSize:9, color:'#6B7280', marginTop:1 }}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {/* Contact list */}
+      {contacts.map((c,i) => (
+        <div key={i} style={{ padding:'10px 16px', display:'flex', alignItems:'center', gap:10, borderBottom:'1px solid rgba(255,255,255,0.04)', background: i===0 ? 'rgba(108,99,255,0.06)' : 'transparent' }}>
+          <div style={{ width:32, height:32, borderRadius:'50%', background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#fff', fontWeight:700, flexShrink:0 }}>
+            {c.name[0]}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ fontSize:12, fontWeight:600, color:'#F1F0FF' }}>{c.name}</div>
+              <span style={{ background:tagColor[c.tag]+'22', color:tagColor[c.tag], fontSize:9, padding:'1px 6px', borderRadius:10, fontWeight:600 }}>{c.tag}</span>
+              <span style={{ background:ratingColor[c.rating]+'22', color:ratingColor[c.rating], fontSize:9, padding:'1px 6px', borderRadius:10, fontWeight:700 }}>{c.rating}</span>
+            </div>
+            <div style={{ fontSize:10, color:'#6B7280', marginTop:2 }}>{c.caste} · {c.booth} · {c.phone}</div>
+          </div>
+          <div style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>›</div>
+        </div>
+      ))}
+      <div style={{ padding:'10px 16px', textAlign:'center', fontSize:10, color:'#6B7280' }}>1,247 contacts · Showing 5 of 1,247</div>
+    </div>
+  )
+}
+
+// ─── BOOTH MOCKUP ─────────────────────────────────────────────────────────────
+function BoothMockup() {
+  const booths = [
+    { id:'B-01', name:'Gandhi Nagar Primary School', voters:820, karyakartas:4, rating:'A', voted:612 },
+    { id:'B-02', name:'Nehru Park Community Hall', voters:650, karyakartas:3, rating:'B', voted:410 },
+    { id:'B-03', name:'Shiv Mandir, Sector 4', voters:910, karyakartas:5, rating:'A', voted:720 },
+    { id:'B-04', name:'Municipal Ward Office', voters:540, karyakartas:2, rating:'C', voted:280 },
+    { id:'B-05', name:'Rajiv Colony School', voters:780, karyakartas:4, rating:'B', voted:520 },
+  ]
+  const ratingBg  = { A:'rgba(16,185,129,0.15)', B:'rgba(245,158,11,0.15)', C:'rgba(239,68,68,0.15)' }
+  const ratingCl  = { A:'#10B981', B:'#F59E0B', C:'#EF4444' }
+  return (
+    <div style={{ background:'#16152A', borderRadius:16, overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)', fontFamily:'inherit' }}>
+      <div style={{ background:'#1C1B35', padding:'12px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#EF4444' }}/>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#F59E0B' }}/>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#10B981' }}/>
+        </div>
+        <div style={{ fontSize:11, color:'#6B7280', fontWeight:500 }}>Booths — Bankipur VS</div>
+        <div style={{ fontSize:11, color:'#6C63FF', fontWeight:600 }}>+ Add Booth</div>
+      </div>
+      {/* Summary */}
+      <div style={{ padding:'10px 16px', display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        {[['Total Booths','18'],['A-Rated','9'],['Avg Turnout','68%']].map(([l,v]) => (
+          <div key={l} style={{ background:'rgba(255,255,255,0.04)', borderRadius:8, padding:'8px', textAlign:'center' }}>
+            <div style={{ fontSize:16, fontWeight:700, color:'#F1F0FF' }}>{v}</div>
+            <div style={{ fontSize:9, color:'#6B7280', marginTop:2 }}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {/* Rating bar */}
+      <div style={{ padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ fontSize:10, color:'#6B7280', marginBottom:6 }}>Booth ratings distribution</div>
+        <div style={{ display:'flex', height:8, borderRadius:4, overflow:'hidden', gap:2 }}>
+          <div style={{ flex:9, background:'#10B981', borderRadius:4 }}/>
+          <div style={{ flex:6, background:'#F59E0B', borderRadius:4 }}/>
+          <div style={{ flex:3, background:'#EF4444', borderRadius:4 }}/>
+        </div>
+        <div style={{ display:'flex', gap:12, marginTop:6 }}>
+          {[['A — Strong','#10B981','9'],['B — Moderate','#F59E0B','6'],['C — Tough','#EF4444','3']].map(([l,c,n]) => (
+            <div key={l} style={{ display:'flex', alignItems:'center', gap:4 }}>
+              <div style={{ width:6, height:6, borderRadius:'50%', background:c }}/>
+              <span style={{ fontSize:9, color:'#6B7280' }}>{l} ({n})</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Booth list */}
+      {booths.map((b,i) => (
+        <div key={i} style={{ padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)', background: i===0 ? 'rgba(108,99,255,0.06)' : 'transparent' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:10, fontWeight:700, color:'#6B7280' }}>{b.id}</span>
+              <span style={{ fontSize:11, fontWeight:600, color:'#F1F0FF' }}>{b.name}</span>
+            </div>
+            <span style={{ background:ratingBg[b.rating], color:ratingCl[b.rating], fontSize:10, padding:'2px 8px', borderRadius:10, fontWeight:700 }}>Rating {b.rating}</span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ flex:1, height:4, background:'rgba(255,255,255,0.08)', borderRadius:2, overflow:'hidden' }}>
+              <div style={{ width:`${Math.round(b.voted/b.voters*100)}%`, height:'100%', background:ratingCl[b.rating], borderRadius:2 }}/>
+            </div>
+            <span style={{ fontSize:9, color:'#6B7280', flexShrink:0 }}>{b.voted}/{b.voters} · {b.karyakartas} karyakartas</span>
+          </div>
+        </div>
+      ))}
+      <div style={{ padding:'10px 16px', textAlign:'center', fontSize:10, color:'#6B7280' }}>18 booths · 14,820 total voters</div>
     </div>
   )
 }
 
 // ─── MAIN LANDING PAGE ────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const { loginWithGoogle } = useAuth()
+  const { loginWithGoogle, loginWithOTP, verifyOTP } = useAuth()
+  const [lang, setLang]         = useState('en')
+  const [showAuth, setShowAuth] = useState(false)
+  const [authStep, setAuthStep] = useState('email') // email | otp
+  const [email, setEmail]       = useState('')
+  const [otp, setOtp]           = useState('')
+  const [authLoading, setAuthLoading] = useState(false)
+  const [authError, setAuthError]     = useState('')
+  const [otpSent, setOtpSent]         = useState(false)
 
-  // Constituency selector state
-  const [states,       setStates]       = useState([])
-  const [lokSabhas,    setLokSabhas]    = useState([])
-  const [vidhanSabhas, setVidhanSabhas] = useState([])
-  const [selState,     setSelState]     = useState('')
-  const [selLS,        setSelLS]        = useState('')
-  const [selVS,        setSelVS]        = useState(null)   // { id, vidhan_sabha }
-  const [cart,         setCart]         = useState([])     // array of { id, state, ls, vs }
-  const [loadingData,  setLoadingData]  = useState(false)
-  const [showOTP,      setShowOTP]      = useState(false)
-  const [cartError,    setCartError]    = useState('')
+  const t = T[lang]
 
-  // Load states on mount
-  useEffect(() => {
-    fetchStates().then(setStates).catch(console.error)
-  }, [])
-
-  // Load LS when state changes
-  useEffect(() => {
-    if (!selState) { setLokSabhas([]); setSelLS(''); setVidhanSabhas([]); setSelVS(null); return }
-    setLoadingData(true)
-    fetchLokSabhas(selState).then(ls => { setLokSabhas(ls); setSelLS(''); setVidhanSabhas([]); setSelVS(null) }).finally(() => setLoadingData(false))
-  }, [selState])
-
-  // Load VS when LS changes
-  useEffect(() => {
-    if (!selState || !selLS) { setVidhanSabhas([]); setSelVS(null); return }
-    setLoadingData(true)
-    fetchVidhanSabhas(selState, selLS).then(vs => { setVidhanSabhas(vs); setSelVS(null) }).finally(() => setLoadingData(false))
-  }, [selState, selLS])
-
-  const addToCart = () => {
-    if (!selVS) return
-    setCartError('')
-    // No hard cap — Multiple plan is open-ended
-    if (cart.find(c => c.id === selVS.id)) { setCartError('Already added'); return }
-    // No LS restriction — any constituency can be added
-    setCart(prev => [...prev, { id: selVS.id, state: selState, ls: selLS, vs: selVS.vidhan_sabha }])
-    setSelVS(null)
-  }
-
-  const removeFromCart = (id) => setCart(prev => prev.filter(c => c.id !== id))
-
-  const handleGetStarted = () => {
-    if (cart.length === 0) { setCartError('Please select at least one constituency'); return }
-    // Store cart in sessionStorage so auth flow can pick it up
-    sessionStorage.setItem('pending_constituencies', JSON.stringify(cart))
-    setShowOTP(true)
-  }
-
-  const handleSignedIn = () => {
-    setShowOTP(false)
-    // AppRouter auto-redirects when auth state changes
-  }
-
-  const handleGoogleSignIn = () => {
-    if (cart.length > 0) {
-      sessionStorage.setItem('pending_constituencies', JSON.stringify(cart))
+  const sendOTP = async () => {
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setAuthError('Enter a valid email'); return }
+    setAuthLoading(true); setAuthError('')
+    try {
+      await loginWithOTP(email.trim().toLowerCase())
+      setAuthStep('otp'); setOtpSent(true)
+    } catch(e) {
+      const msg = e?.message || ''
+      if (msg.includes('429') || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many')) {
+        setAuthError('Too many requests. Please wait 60 seconds.')
+      } else {
+        setAuthError(msg || 'Failed to send OTP')
+      }
     }
-    loginWithGoogle()
+    setAuthLoading(false)
   }
 
-  const selStyle = {
-    width:'100%', padding:'11px 13px', fontSize:14,
-    border:`1.5px solid ${C.gray200}`, borderRadius:10,
-    background:C.white, color:C.gray900, outline:'none',
-    fontFamily:'inherit', cursor:'pointer',
+  const confirmOTP = async () => {
+    if (!otp.trim()) { setAuthError('Enter the OTP'); return }
+    setAuthLoading(true); setAuthError('')
+    try {
+      await verifyOTP(email.trim().toLowerCase(), otp.trim())
+      // SIGNED_IN fires → AuthContext loads customer → AppRouter redirects
+    } catch(e) {
+      setAuthError(e?.message || 'Invalid OTP')
+    }
+    setAuthLoading(false)
   }
+
+  const googleLogin = async () => {
+    try { await loginWithGoogle() } catch(e) { setAuthError(e?.message || 'Google login failed') }
+  }
+
+  const font = "system-ui,-apple-system,'Segoe UI',sans-serif"
 
   return (
-    <div style={{
-      minHeight:'100vh',
-      background:'linear-gradient(160deg,#0F0C29 0%,#1a1560 40%,#302b63 70%,#24243e 100%)',
-      fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
-      overflowX:'hidden',
-    }}>
+    <div style={{ background:C.bg, minHeight:'100vh', fontFamily:font, color:C.text }}>
 
-      {/* ── NAV ── */}
-      <nav style={{ padding:'18px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', maxWidth:1100, margin:'0 auto' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:38, height:38, borderRadius:10, background:'rgba(255,255,255,.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>📋</div>
-          <div>
-            <div style={{ fontSize:17, fontWeight:800, color:'#fff', lineHeight:1 }}>ContactBook</div>
-            <div style={{ fontSize:10, color:'#A5B4FC', fontWeight:500 }}>Electoral Manager</div>
+      {/* ── NAVBAR ────────────────────────────────────────────────────────────── */}
+      <nav style={{ position:'sticky', top:0, zIndex:100, background:'rgba(15,14,26,0.85)', backdropFilter:'blur(16px)', borderBottom:`1px solid ${C.border}`, padding:'0 24px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', height:64, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          {/* Logo */}
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🗳️</div>
+            <div>
+              <div style={{ fontSize:16, fontWeight:700, color:C.white, letterSpacing:'-0.02em' }}>Sampark<span style={{ color:C.accent }}>.AI</span></div>
+              <div style={{ fontSize:9, color:C.gray, letterSpacing:'0.05em' }}>संपर्क</div>
+            </div>
+          </div>
+          {/* Nav links */}
+          <div style={{ display:'flex', alignItems:'center', gap:24 }}>
+            {[['features','#features'],['howItWorks','#how'],['pricing','#pricing']].map(([k,href]) => (
+              <a key={k} href={href} style={{ fontSize:13, color:C.gray, textDecoration:'none', fontWeight:500 }}
+                onMouseEnter={e => e.target.style.color=C.white}
+                onMouseLeave={e => e.target.style.color=C.gray}>
+                {t.nav[k]}
+              </a>
+            ))}
+          </div>
+          {/* Right controls */}
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            {/* Language toggle */}
+            <div style={{ display:'flex', background:'rgba(255,255,255,0.06)', border:`1px solid ${C.border}`, borderRadius:8, overflow:'hidden' }}>
+              {['en','hi'].map(l => (
+                <button key={l} onClick={() => setLang(l)} style={{
+                  padding:'5px 10px', fontSize:11, fontWeight:600, border:'none', cursor:'pointer', fontFamily:font,
+                  background: lang===l ? C.primary : 'transparent',
+                  color: lang===l ? '#fff' : C.gray,
+                }}>{l==='en' ? 'EN' : 'हिं'}</button>
+              ))}
+            </div>
+            <button onClick={() => setShowAuth(true)} style={{ padding:'8px 18px', fontSize:13, fontWeight:600, background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, border:'none', borderRadius:8, color:'#fff', cursor:'pointer', fontFamily:font }}>
+              {t.nav.signIn}
+            </button>
           </div>
         </div>
-        <button
-          onClick={() => setShowOTP(true)}
-          style={{ padding:'9px 20px', fontSize:13, fontWeight:700, background:'rgba(255,255,255,.1)', border:'1.5px solid rgba(255,255,255,.25)', borderRadius:10, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit', transition:'all .2s' }}
-          onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,.2)' }}
-          onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,.1)' }}
-        >
-          Sign In →
-        </button>
       </nav>
 
-      {/* ── HERO ── */}
-      <div style={{ textAlign:'center', padding:'40px 24px 20px', maxWidth:700, margin:'0 auto' }}>
-        <div style={{
-          display:'inline-block', background:'rgba(99,102,241,.3)',
-          border:'1px solid rgba(165,180,252,.4)', borderRadius:30,
-          padding:'6px 16px', fontSize:12, color:'#A5B4FC', fontWeight:600,
-          marginBottom:20, letterSpacing:'.04em',
-        }}>
-          🗳️ INDIA'S ELECTORAL CONTACT MANAGEMENT PLATFORM
-        </div>
-        <h1 style={{
-          fontSize:'clamp(28px,5vw,52px)', fontWeight:900, color:'#fff',
-          margin:'0 0 16px', lineHeight:1.15, letterSpacing:'-.5px',
-        }}>
-          Manage Your Constituency<br/>
-          <span style={{ background:'linear-gradient(90deg,#818CF8,#C084FC)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-            Like a Pro
-          </span>
-        </h1>
-        <p style={{ fontSize:16, color:'#A5B4FC', lineHeight:1.7, margin:'0 0 32px', maxWidth:500, marginLeft:'auto', marginRight:'auto' }}>
-          Track voters, manage booths, organise your Karyakartas — all in one place. Trusted by leaders across India.
-        </p>
-      </div>
-
-      {/* ── MAIN CARD ── */}
-      <div style={{ maxWidth:580, margin:'0 auto', padding:'0 16px 60px' }}>
-        <div style={{
-          background:'rgba(255,255,255,.97)', borderRadius:24,
-          boxShadow:'0 32px 80px rgba(0,0,0,.4)',
-          overflow:'hidden',
-        }}>
-
-          {/* Card header */}
-          <div style={{ background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`, padding:'20px 24px' }}>
-            <div style={{ fontSize:18, fontWeight:800, color:'#fff' }}>Find your constituency</div>
-            <div style={{ fontSize:13, color:'#C7D2FE', marginTop:4 }}>Select your Vidhan Sabha to get started</div>
+      {/* ── HERO ──────────────────────────────────────────────────────────────── */}
+      <section style={{ padding:'80px 24px 60px', textAlign:'center', position:'relative', overflow:'hidden' }}>
+        {/* Background glow */}
+        <div style={{ position:'absolute', top:-200, left:'50%', transform:'translateX(-50%)', width:600, height:600, background:`radial-gradient(circle,${C.primary}22 0%,transparent 70%)`, pointerEvents:'none' }}/>
+        <div style={{ maxWidth:800, margin:'0 auto', position:'relative' }}>
+          {/* Badge */}
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(108,99,255,0.12)', border:`1px solid rgba(108,99,255,0.3)`, borderRadius:20, padding:'6px 14px', marginBottom:28, fontSize:12, color:C.accent, fontWeight:600 }}>
+            {t.hero.badge}
           </div>
-
-          <div style={{ padding:'24px' }}>
-
-            {/* ── SELECTORS ── */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-
-              {/* State */}
-              <div style={{ gridColumn:'1/-1' }}>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray400, marginBottom:6, textTransform:'uppercase', letterSpacing:'.06em' }}>State</label>
-                <select value={selState} onChange={e => setSelState(e.target.value)} style={selStyle}>
-                  <option value="">Select State…</option>
-                  {states.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-
-              {/* Lok Sabha */}
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray400, marginBottom:6, textTransform:'uppercase', letterSpacing:'.06em' }}>Lok Sabha</label>
-                <select value={selLS} onChange={e => setSelLS(e.target.value)} disabled={!lokSabhas.length} style={{ ...selStyle, opacity: lokSabhas.length ? 1 : .5 }}>
-                  <option value="">Select LS…</option>
-                  {lokSabhas.map(ls => <option key={ls} value={ls}>{ls}</option>)}
-                </select>
-              </div>
-
-              {/* Vidhan Sabha */}
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray400, marginBottom:6, textTransform:'uppercase', letterSpacing:'.06em' }}>Vidhan Sabha</label>
-                <select
-                  value={selVS?.id || ''}
-                  onChange={e => {
-                    const found = vidhanSabhas.find(v => v.id === e.target.value)
-                    setSelVS(found || null)
-                    setCartError('')
-                  }}
-                  disabled={!vidhanSabhas.length}
-                  style={{ ...selStyle, opacity: vidhanSabhas.length ? 1 : .5 }}
-                >
-                  <option value="">Select VS…</option>
-                  {vidhanSabhas.map(vs => (
-                    <option key={vs.id} value={vs.id} disabled={!!cart.find(c => c.id === vs.id)}>
-                      {vs.vidhan_sabha}{cart.find(c => c.id === vs.id) ? ' ✓' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {loadingData && <div style={{ fontSize:12, color:C.gray400, marginBottom:8 }}>⏳ Loading…</div>}
-
-            {/* Add button */}
-            <button
-              onClick={addToCart}
-              disabled={!selVS}
-              style={{
-                width:'100%', padding:'10px', fontSize:13, fontWeight:700,
-                background: selVS ? `linear-gradient(135deg,${C.success},#047857)` : C.gray200,
-                color: selVS ? C.white : C.gray400,
-                border:'none', borderRadius:10, cursor: selVS ? 'pointer' : 'not-allowed',
-                fontFamily:'inherit', marginBottom:16, transition:'all .2s',
-              }}
-            >
-              + Add to my list
+          {/* Headline */}
+          <h1 style={{ margin:'0 0 8px', fontSize:'clamp(36px,5vw,64px)', fontWeight:800, lineHeight:1.1, letterSpacing:'-0.03em', color:C.white }}>
+            {t.hero.h1a}<br/>{t.hero.h1b}
+          </h1>
+          <div style={{ fontSize:'clamp(14px,2vw,18px)', color:C.gray, marginBottom:8, fontStyle:'italic', letterSpacing:'0.01em' }}>
+            {t.hero.h1hi}
+          </div>
+          <div style={{ fontSize:'clamp(16px,2.5vw,22px)', fontWeight:700, color:C.accent, marginBottom:16, letterSpacing:'-0.01em' }}>
+            {t.hero.sub}
+          </div>
+          <p style={{ fontSize:'clamp(14px,2vw,17px)', color:C.textSub, lineHeight:1.7, maxWidth:600, margin:'0 auto 36px' }}>
+            {t.hero.desc}
+          </p>
+          {/* CTA */}
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+            <button onClick={() => setShowAuth(true)} style={{ padding:'16px 40px', fontSize:16, fontWeight:700, background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, border:'none', borderRadius:12, color:'#fff', cursor:'pointer', fontFamily:font, letterSpacing:'-0.01em', boxShadow:`0 8px 32px ${C.primary}44` }}>
+              {t.hero.cta} →
             </button>
-
-            {cartError && <div style={{ color:C.red, fontSize:12, marginBottom:12, fontWeight:500 }}>⚠ {cartError}</div>}
-
-            {/* ── CART ── */}
-            {cart.length > 0 && (
-              <div style={{ marginBottom:20 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:C.gray400, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>
-                  Your selected constituencies ({cart.length} selected)
-                </div>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                  {cart.map(c => (
-                    <div key={c.id} style={{
-                      display:'inline-flex', alignItems:'center', gap:6,
-                      background:C.primaryLight, border:`1.5px solid ${C.primary}33`,
-                      borderRadius:30, padding:'6px 12px 6px 14px',
-                      fontSize:13, fontWeight:700, color:C.primary,
-                    }}>
-                      🏛️ {c.vs}
-                      <button
-                        onClick={() => removeFromCart(c.id)}
-                        style={{ background:'none', border:'none', cursor:'pointer', color:C.primary, fontSize:14, lineHeight:1, padding:0, display:'flex', alignItems:'center' }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  {true && (
-                    <div style={{ display:'inline-flex', alignItems:'center', fontSize:12, color:C.gray400, padding:'6px 10px', border:`1.5px dashed ${C.gray200}`, borderRadius:30 }}>
-                      + Add more
-                    </div>
-                  )}
-                </div>
-
-                {/* Plan hint */}
-                {cart.length === 1 && (
-                  <div style={{ background:'#D1FAE5', borderRadius:8, padding:'8px 12px', marginTop:10, fontSize:12, color:'#065F46', fontWeight:500 }}>
-                    ✅ 1 VS — Free plan available, or Single at ₹2,999/mo for unlimited contacts.
-                  </div>
-                )}
-                {cart.length > 1 && (
-                  <div style={{ background:'#EEF2FF', borderRadius:8, padding:'8px 12px', marginTop:10, fontSize:12, color:'#3730A3', fontWeight:500 }}>
-                    ⚡ {cart.length} VSs — Multiple plan: ₹{(2999 + (cart.length-1)*2249).toLocaleString('en-IN')}/mo estimated
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── CTA ── */}
-            {/* Get Started — only show when cart has items */}
-            {cart.length > 0 && (
-              <button
-                onClick={handleGetStarted}
-                style={{
-                  width:'100%', padding:'14px', fontSize:16, fontWeight:800,
-                  background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-                  color:C.white, border:'none', borderRadius:12, cursor:'pointer',
-                  fontFamily:'inherit', boxShadow:`0 8px 24px rgba(79,70,229,.4)`,
-                  transition:'all .2s', marginBottom:12,
-                }}
-              >
-                🚀 Get Started — Sign Up / Sign In
-              </button>
-            )}
-
-            {/* Divider */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, margin: cart.length > 0 ? '4px 0 12px' : '0 0 12px' }}>
-              <div style={{ flex:1, height:1, background:C.gray200 }}/>
-              <span style={{ fontSize:11, color:C.gray400, fontWeight:500, whiteSpace:'nowrap' }}>
-                {cart.length > 0 ? 'or' : 'Already have an account?'}
-              </span>
-              <div style={{ flex:1, height:1, background:C.gray200 }}/>
-            </div>
-
-            {/* Sign In — always visible, prominent */}
-            <button
-              onClick={() => setShowOTP(true)}
-              style={{
-                width:'100%', padding:'13px', fontSize:15, fontWeight:700,
-                background: cart.length > 0 ? C.white : `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-                color: cart.length > 0 ? C.primary : C.white,
-                border: cart.length > 0 ? `2px solid ${C.primary}` : 'none',
-                borderRadius:12, cursor:'pointer', fontFamily:'inherit',
-                boxShadow: cart.length > 0 ? 'none' : `0 8px 24px rgba(79,70,229,.4)`,
-                transition:'all .2s',
-              }}
-            >
-              {cart.length > 0 ? '👤 Already registered? Sign In' : '👤 Sign In to your account'}
+            <div style={{ fontSize:12, color:C.gray2 }}>{t.hero.ctaSub}</div>
+            <button onClick={() => setShowAuth(true)} style={{ background:'none', border:'none', color:C.accent, fontSize:13, cursor:'pointer', fontFamily:font, fontWeight:600, marginTop:4 }}>
+              {t.hero.signIn}
             </button>
           </div>
         </div>
+      </section>
 
-        {/* ── PLANS ── */}
-        <div style={{ marginTop:48 }}>
-          <div style={{ textAlign:'center', fontSize:13, fontWeight:700, color:'#A5B4FC', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:20 }}>
-            Simple, transparent pricing
+      {/* ── PRODUCT SCREENSHOTS ───────────────────────────────────────────────── */}
+      <section style={{ padding:'20px 24px 80px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))', gap:24 }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:600, color:C.accent, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12, textAlign:'center' }}>👥 Contact Management</div>
+            <ContactMockup/>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
-            {PLAN_INFO.map(p => (
-              <div key={p.name} style={{
-                background: p.highlight ? 'rgba(79,70,229,.3)' : 'rgba(255,255,255,.08)',
-                backdropFilter:'blur(10px)',
-                border: p.highlight ? '1px solid rgba(165,180,252,.5)' : '1px solid rgba(255,255,255,.12)',
-                borderRadius:14, padding:'16px', textAlign:'center', position:'relative',
+          <div>
+            <div style={{ fontSize:11, fontWeight:600, color:C.accent, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12, textAlign:'center' }}>🏛️ Booth Management</div>
+            <BoothMockup/>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ──────────────────────────────────────────────────────────── */}
+      <section id="features" style={{ padding:'80px 24px', background:'rgba(255,255,255,0.02)' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:56 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:C.accent, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>{t.features.badge}</div>
+            <h2 style={{ margin:'0 0 12px', fontSize:'clamp(24px,4vw,40px)', fontWeight:800, color:C.white, letterSpacing:'-0.02em' }}>{t.features.title}</h2>
+            <p style={{ fontSize:16, color:C.textSub, maxWidth:500, margin:'0 auto' }}>{t.features.subtitle}</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:20 }}>
+            {t.features.items.map((f,i) => (
+              <div key={i} style={{ background:C.bgCard, border:`1px solid ${C.border}`, borderRadius:16, padding:28, transition:'border-color .2s',
+                onMouseEnter: e => e.currentTarget.style.borderColor=C.border2,
+                onMouseLeave: e => e.currentTarget.style.borderColor=C.border,
               }}>
-                {p.highlight && <div style={{ position:'absolute', top:-10, left:'50%', transform:'translateX(-50%)', background:'#818CF8', color:'#fff', fontSize:9, fontWeight:700, padding:'3px 10px', borderRadius:20, whiteSpace:'nowrap', letterSpacing:'.05em' }}>MOST POPULAR</div>}
-                <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', marginBottom:6, textTransform:'uppercase', letterSpacing:'.05em' }}>{p.name}</div>
-                <div style={{ fontSize:22, fontWeight:800, color:'#fff', marginBottom:2 }}>{p.price}</div>
-                {p.extraVS && <div style={{ fontSize:10, color:'#818CF8', marginBottom:4 }}>{p.extraVS}</div>}
-                <div style={{ fontSize:11, color:'#818CF8' }}>{p.note}</div>
+                <div style={{ fontSize:36, marginBottom:16 }}>{f.icon}</div>
+                <div style={{ fontSize:17, fontWeight:700, color:C.white, marginBottom:4 }}>{f.title}</div>
+                <div style={{ fontSize:12, color:C.accent, marginBottom:12, fontWeight:500 }}>{f.hi}</div>
+                <div style={{ fontSize:14, color:C.textSub, lineHeight:1.7 }}>{f.desc}</div>
               </div>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* ── FEATURES ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginTop:32 }}>
-          {[
-            ['📊','Booth Analytics','Track ratings, voters, caste data per booth'],
-            ['👥','Contact Manager','Manage Karyakartas, supporters & voters'],
-            ['🗺️','Multi-constituency','Manage multiple VSs from one dashboard'],
-            ['📱','Mobile Ready','Works perfectly on your phone, anytime'],
-          ].map(([ic, title, desc]) => (
-            <div key={title} style={{ background:'rgba(255,255,255,.06)', borderRadius:14, padding:16, border:'1px solid rgba(255,255,255,.1)' }}>
-              <div style={{ fontSize:24, marginBottom:8 }}>{ic}</div>
-              <div style={{ fontSize:13, fontWeight:700, color:'#fff', marginBottom:4 }}>{title}</div>
-              <div style={{ fontSize:11, color:'#818CF8', lineHeight:1.5 }}>{desc}</div>
+      {/* ── HOW IT WORKS ──────────────────────────────────────────────────────── */}
+      <section id="how" style={{ padding:'80px 24px' }}>
+        <div style={{ maxWidth:900, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:56 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:C.accent, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>{t.howItWorks.badge}</div>
+            <h2 style={{ margin:0, fontSize:'clamp(24px,4vw,40px)', fontWeight:800, color:C.white, letterSpacing:'-0.02em' }}>{t.howItWorks.title}</h2>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:20 }}>
+            {t.howItWorks.steps.map((s,i) => (
+              <div key={i} style={{ background:C.bgCard, border:`1px solid ${C.border}`, borderRadius:16, padding:28, textAlign:'center' }}>
+                <div style={{ fontSize:36, fontWeight:800, color:C.primary, marginBottom:16, letterSpacing:'-0.03em' }}>{s.n}</div>
+                <div style={{ fontSize:17, fontWeight:700, color:C.white, marginBottom:10 }}>{s.title}</div>
+                <div style={{ fontSize:14, color:C.textSub, lineHeight:1.7 }}>{s.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ───────────────────────────────────────────────────────────── */}
+      <section id="pricing" style={{ padding:'80px 24px', background:'rgba(255,255,255,0.02)' }}>
+        <div style={{ maxWidth:1000, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:56 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:C.accent, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>{t.pricing.badge}</div>
+            <h2 style={{ margin:'0 0 8px', fontSize:'clamp(24px,4vw,40px)', fontWeight:800, color:C.white, letterSpacing:'-0.02em' }}>{t.pricing.title}</h2>
+            <p style={{ fontSize:15, color:C.textSub, margin:0 }}>{t.pricing.subtitle}</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:20 }}>
+            {t.pricing.plans.map((p,i) => (
+              <div key={i} style={{ background: p.highlight ? `linear-gradient(135deg,rgba(108,99,255,0.2),rgba(79,70,229,0.1))` : C.bgCard, border:`${p.highlight ? 2 : 1}px solid ${p.highlight ? C.primary : C.border}`, borderRadius:20, padding:28, position:'relative', display:'flex', flexDirection:'column' }}>
+                {p.badge && (
+                  <div style={{ position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)', background:C.primary, color:'#fff', fontSize:10, fontWeight:700, padding:'3px 14px', borderRadius:20, whiteSpace:'nowrap', letterSpacing:'0.05em' }}>{p.badge}</div>
+                )}
+                <div style={{ fontSize:16, fontWeight:700, color:C.white, marginBottom:4 }}>{p.name}</div>
+                <div style={{ fontSize:12, color:C.textSub, marginBottom:20 }}>{p.desc}</div>
+                <div style={{ display:'flex', alignItems:'baseline', gap:4, marginBottom:4 }}>
+                  <span style={{ fontSize:36, fontWeight:800, color:C.white, letterSpacing:'-0.03em' }}>{p.price}</span>
+                  <span style={{ fontSize:14, color:C.textSub }}>{p.period}</span>
+                </div>
+                {i===2 && <div style={{ fontSize:11, color:C.accent, marginBottom:16 }}>+ ₹2,249/mo per additional VS</div>}
+                {i!==2 && <div style={{ marginBottom:16 }}/>}
+                <div style={{ fontSize:12, color:C.textSub, marginBottom:4 }}>📍 {p.vs}</div>
+                <div style={{ fontSize:12, color:C.textSub, marginBottom:20 }}>👥 {p.contacts}</div>
+                <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:16, marginBottom:20 }}>
+                  {p.features.map((f,j) => (
+                    <div key={j} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                      <span style={{ color:C.success, fontSize:12 }}>✓</span>
+                      <span style={{ fontSize:13, color:C.textSub }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => setShowAuth(true)} style={{ marginTop:'auto', padding:'12px', fontSize:14, fontWeight:700, background: p.highlight ? `linear-gradient(135deg,${C.primary},${C.primaryD})` : 'rgba(255,255,255,0.06)', border: p.highlight ? 'none' : `1px solid ${C.border2}`, borderRadius:10, color: p.highlight ? '#fff' : C.white, cursor:'pointer', fontFamily:font }}>
+                  {p.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── BOTTOM CTA ────────────────────────────────────────────────────────── */}
+      <section style={{ padding:'100px 24px', textAlign:'center', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', bottom:-200, left:'50%', transform:'translateX(-50%)', width:500, height:500, background:`radial-gradient(circle,${C.primaryD}33 0%,transparent 70%)`, pointerEvents:'none' }}/>
+        <div style={{ maxWidth:600, margin:'0 auto', position:'relative' }}>
+          <h2 style={{ margin:'0 0 8px', fontSize:'clamp(28px,5vw,52px)', fontWeight:800, color:C.white, letterSpacing:'-0.03em', lineHeight:1.1 }}>
+            {t.cta.title}<br/>{t.cta.title2}
+          </h2>
+          <div style={{ fontSize:18, color:C.accent, fontWeight:600, margin:'16px 0 36px', letterSpacing:'-0.01em' }}>{t.cta.sub}</div>
+          <button onClick={() => setShowAuth(true)} style={{ padding:'18px 48px', fontSize:17, fontWeight:700, background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, border:'none', borderRadius:14, color:'#fff', cursor:'pointer', fontFamily:font, boxShadow:`0 12px 40px ${C.primary}55`, letterSpacing:'-0.01em' }}>
+            {t.cta.btn} →
+          </button>
+          <div style={{ fontSize:13, color:C.gray2, marginTop:14 }}>{t.cta.note}</div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ────────────────────────────────────────────────────────────── */}
+      <footer style={{ borderTop:`1px solid ${C.border}`, padding:'32px 24px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ width:28, height:28, borderRadius:8, background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>🗳️</div>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.white }}>Sampark<span style={{ color:C.accent }}>.AI</span></div>
+              <div style={{ fontSize:10, color:C.textSub }}>{t.footer.tagline}</div>
             </div>
-          ))}
+          </div>
+          <div style={{ display:'flex', gap:20 }}>
+            {t.footer.links.map(l => (
+              <a key={l} href="#" style={{ fontSize:12, color:C.textSub, textDecoration:'none' }}
+                onMouseEnter={e => e.target.style.color=C.white}
+                onMouseLeave={e => e.target.style.color=C.textSub}>
+                {l}
+              </a>
+            ))}
+          </div>
+          <div style={{ fontSize:12, color:C.gray2 }}>{t.footer.copy}</div>
         </div>
+      </footer>
 
-        <div style={{ textAlign:'center', marginTop:32, fontSize:12, color:'rgba(165,180,252,.5)' }}>
-          © 2025 ContactBook Electoral Manager · Made in India 🇮🇳
+      {/* ── AUTH MODAL ────────────────────────────────────────────────────────── */}
+      {showAuth && (
+        <div
+          onClick={e => e.target === e.currentTarget && setShowAuth(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}
+        >
+          <div style={{ background:'#16152A', border:`1px solid ${C.border2}`, borderRadius:20, padding:32, width:'100%', maxWidth:400, boxShadow:'0 24px 80px rgba(0,0,0,0.5)' }}>
+            {/* Header */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
+              <div>
+                <div style={{ fontSize:20, fontWeight:800, color:C.white }}>Welcome to Sampark.AI</div>
+                <div style={{ fontSize:12, color:C.textSub, marginTop:2 }}>संपर्क · Electoral Intelligence</div>
+              </div>
+              <button onClick={() => setShowAuth(false)} style={{ background:'rgba(255,255,255,0.08)', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', color:C.gray, fontSize:16, fontFamily:font }}>✕</button>
+            </div>
+
+            {/* Google */}
+            <button onClick={googleLogin} style={{ width:'100%', padding:'12px', marginBottom:16, fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.border2}`, borderRadius:10, color:C.white, cursor:'pointer', fontFamily:font, display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
+              <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71C3.784 10.17 3.682 9.59 3.682 9c0-.59.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+              Continue with Google
+            </button>
+
+            {/* Divider */}
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+              <div style={{ flex:1, height:'1px', background:C.border }}/>
+              <span style={{ fontSize:12, color:C.gray2 }}>or continue with email</span>
+              <div style={{ flex:1, height:'1px', background:C.border }}/>
+            </div>
+
+            {authStep === 'email' ? (
+              <>
+                <input
+                  type="email" placeholder="Enter your email"
+                  value={email} onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key==='Enter' && sendOTP()}
+                  style={{ width:'100%', padding:'12px 14px', marginBottom:12, fontSize:14, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border2}`, borderRadius:10, color:C.white, fontFamily:font, boxSizing:'border-box', outline:'none' }}
+                />
+                {authError && <div style={{ color:'#EF4444', fontSize:12, marginBottom:10 }}>⚠ {authError}</div>}
+                <button onClick={sendOTP} disabled={authLoading} style={{ width:'100%', padding:'13px', fontSize:14, fontWeight:700, background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, border:'none', borderRadius:10, color:'#fff', cursor: authLoading ? 'not-allowed' : 'pointer', fontFamily:font, opacity: authLoading ? 0.7 : 1 }}>
+                  {authLoading ? '⏳ Sending...' : 'Send OTP →'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:13, color:C.textSub, marginBottom:12 }}>OTP sent to <strong style={{ color:C.white }}>{email}</strong></div>
+                <input
+                  type="text" placeholder="Enter 6-digit OTP" maxLength={6}
+                  value={otp} onChange={e => setOtp(e.target.value)}
+                  onKeyDown={e => e.key==='Enter' && confirmOTP()}
+                  style={{ width:'100%', padding:'12px 14px', marginBottom:12, fontSize:20, fontWeight:700, letterSpacing:'0.2em', textAlign:'center', background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border2}`, borderRadius:10, color:C.white, fontFamily:font, boxSizing:'border-box', outline:'none' }}
+                />
+                {authError && <div style={{ color:'#EF4444', fontSize:12, marginBottom:10 }}>⚠ {authError}</div>}
+                <button onClick={confirmOTP} disabled={authLoading} style={{ width:'100%', padding:'13px', fontSize:14, fontWeight:700, background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, border:'none', borderRadius:10, color:'#fff', cursor: authLoading ? 'not-allowed' : 'pointer', fontFamily:font, opacity: authLoading ? 0.7 : 1, marginBottom:10 }}>
+                  {authLoading ? '⏳ Verifying...' : 'Verify & Sign In →'}
+                </button>
+                <button onClick={() => { setAuthStep('email'); setOtp(''); setAuthError('') }} style={{ background:'none', border:'none', color:C.gray, fontSize:12, cursor:'pointer', fontFamily:font, width:'100%' }}>
+                  ← Change email
+                </button>
+              </>
+            )}
+
+            <div style={{ fontSize:11, color:C.gray2, textAlign:'center', marginTop:16, lineHeight:1.6 }}>
+              By continuing you agree to our Terms of Service and Privacy Policy.
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* ── OTP MODAL ── */}
-      {showOTP && <OTPModal onClose={() => setShowOTP(false)} onSuccess={handleSignedIn} />}
+      )}
     </div>
   )
 }
