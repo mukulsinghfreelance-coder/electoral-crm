@@ -512,7 +512,7 @@ export default function LandingPage() {
                   <span style={{ fontSize:36, fontWeight:800, color:C.white, letterSpacing:'-0.03em' }}>{p.price}</span>
                   <span style={{ fontSize:14, color:C.textSub }}>{p.period}</span>
                 </div>
-                {i===2 && <div style={{ fontSize:11, color:C.accent, marginBottom:16 }}>+ ₹2,249/mo per additional VS</div>}
+                {i===2 && <div style={{ fontSize:11, color:C.accent, marginBottom:16 }}>+ {multipleExtra}/mo per additional VS</div>}
                 {i!==2 && <div style={{ marginBottom:16 }}/>}
                 <div style={{ fontSize:12, color:C.textSub, marginBottom:4 }}>📍 {p.vs}</div>
                 <div style={{ fontSize:12, color:C.textSub, marginBottom:20 }}>👥 {p.contacts}</div>
