@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { lazy, Suspense } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { PLANS as DEFAULT_PLANS } from '../config'
 const PrivacyPolicy  = lazy(() => import('./PrivacyPolicy'))
 const TermsOfService = lazy(() => import('./TermsOfService'))
 const ContactUs      = lazy(() => import('./ContactUs'))
-import { PLANS, calcMonthlyPrice } from '../config'
+import { PLANS as DEFAULT_PLANS, calcMonthlyPrice } from '../config'
 
 // ─── TRANSLATIONS ─────────────────────────────────────────────────────────────
 const T = {
@@ -46,9 +45,9 @@ const T = {
       title: 'Start free. Scale as you grow.',
       subtitle: 'No hidden fees. No long-term contracts.',
       plans: [
-        { name:'Free', price:'₹0', period:'', desc:'Perfect to get started', vs:`${PLANS.free.vs} Vidhan Sabha`, contacts:`${PLANS.free.contacts.toLocaleString('en-IN')} contacts`, features:['Contact management','Booth tracking','Basic reports'], cta:'Get Started Free', highlight:false },
-        { name:'Single', price:`₹${PLANS.single.basePrice.toLocaleString('en-IN')}`, period:'/month', desc:'For serious campaigners', vs:`${PLANS.single.vs} Vidhan Sabha`, contacts:'Unlimited contacts', features:['Everything in Free','Unlimited contacts','Advanced analytics','Priority support'], cta:'Start Single Plan', highlight:false },
-        { name:'Multiple', price:`₹${PLANS.multiple.basePrice.toLocaleString('en-IN')}`, period:'/month', desc:'For leaders managing multiple VSs', vs:'Unlimited Vidhan Sabhas', contacts:'Unlimited contacts', features:['Everything in Single','Unlimited constituencies',`₹${PLANS.multiple.extraVS.toLocaleString('en-IN')}/mo per extra VS`,'Dedicated support'], cta:'Start Multiple Plan', highlight:true, badge:'Most Popular' },
+        { name:'Free', price:'₹0', period:'', desc:'Perfect to get started', vs:'FREE_VS', contacts:'FREE_CONTACTS', features:['Contact management','Booth tracking','Basic reports'], cta:'Get Started Free', highlight:false },
+        { name:'Single', price:'SINGLE_PRICE', period:'/month', desc:'For serious campaigners', vs:'1 Vidhan Sabha', contacts:'Unlimited contacts', features:['Everything in Free','Unlimited contacts','Advanced analytics','Priority support'], cta:'Start Single Plan', highlight:false },
+        { name:'Multiple', price:'MULTIPLE_PRICE', period:'/month', desc:'For leaders managing multiple VSs', vs:'Unlimited Vidhan Sabhas', contacts:'Unlimited contacts', features:['Everything in Single','Unlimited constituencies','MULTIPLE_EXTRA/mo per extra VS','Dedicated support'], cta:'Start Multiple Plan', highlight:true, badge:'Most Popular' },
       ]
     },
     cta: {
@@ -101,9 +100,9 @@ const T = {
       title: 'मुफ्त शुरू करें। जरूरत के साथ बढ़ें।',
       subtitle: 'कोई छुपी फीस नहीं। कोई लंबा अनुबंध नहीं।',
       plans: [
-        { name:'फ्री', price:'₹0', period:'', desc:'शुरुआत के लिए बिल्कुल सही', vs:`${PLANS.free.vs} विधान सभा`, contacts:`${PLANS.free.contacts.toLocaleString('en-IN')} संपर्क`, features:['संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'], cta:'मुफ्त शुरू करें', highlight:false },
-        { name:'सिंगल', price:`₹${PLANS.single.basePrice.toLocaleString('en-IN')}`, period:'/माह', desc:'गंभीर प्रचारकों के लिए', vs:'1 विधान सभा', contacts:'असीमित संपर्क', features:['फ्री की सब सुविधाएं','असीमित संपर्क','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता'], cta:'सिंगल प्लान शुरू करें', highlight:false },
-        { name:'मल्टीपल', price:`₹${PLANS.multiple.basePrice.toLocaleString('en-IN')}`, period:'/माह', desc:'एकाधिक क्षेत्र मैनेज करने वालों के लिए', vs:'असीमित विधान सभाएं', contacts:'असीमित संपर्क', features:['सिंगल की सब सुविधाएं','असीमित क्षेत्र',`₹${PLANS.multiple.extraVS.toLocaleString('en-IN')}/माह प्रति अतिरिक्त VS`,'डेडिकेटेड सहायता'], cta:'मल्टीपल प्लान शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
+        { name:'फ्री', price:'₹0', period:'', desc:'शुरुआत के लिए बिल्कुल सही', vs:'FREE_VS_HI', contacts:'FREE_CONTACTS_HI', features:['संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'], cta:'मुफ्त शुरू करें', highlight:false },
+        { name:'सिंगल', price:'SINGLE_PRICE', period:'/माह', desc:'गंभीर प्रचारकों के लिए', vs:'1 विधान सभा', contacts:'असीमित संपर्क', features:['फ्री की सब सुविधाएं','असीमित संपर्क','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता'], cta:'सिंगल प्लान शुरू करें', highlight:false },
+        { name:'मल्टीपल', price:'MULTIPLE_PRICE', period:'/माह', desc:'एकाधिक क्षेत्र मैनेज करने वालों के लिए', vs:'असीमित विधान सभाएं', contacts:'असीमित संपर्क', features:['सिंगल की सब सुविधाएं','असीमित क्षेत्र','MULTIPLE_EXTRA/माह प्रति अतिरिक्त VS','डेडिकेटेड सहायता'], cta:'मल्टीपल प्लान शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
       ]
     },
     cta: {
@@ -274,6 +273,12 @@ function BoothMockup() {
 export default function LandingPage() {
   const { loginWithGoogle, loginWithOTP, verifyOTP, livePlans } = useAuth()
   const PLANS = livePlans || DEFAULT_PLANS
+
+  // Dynamic pricing values — always from live DB pricing
+  const freeContacts    = PLANS.free.contacts === Infinity ? 'Unlimited' : Number(PLANS.free.contacts).toLocaleString('en-IN')
+  const singlePrice     = `₹${Number(PLANS.single.basePrice).toLocaleString('en-IN')}`
+  const multiplePrice   = `₹${Number(PLANS.multiple.basePrice).toLocaleString('en-IN')}`
+  const multipleExtra   = `₹${Number(PLANS.multiple.extraVS).toLocaleString('en-IN')}`
   const [lang, setLang]         = useState('en')
   const [showAuth, setShowAuth] = useState(false)
   const [showPage, setShowPage] = useState(null)  // 'privacy' | 'terms' | 'contact'
@@ -285,6 +290,25 @@ export default function LandingPage() {
   const [otpSent, setOtpSent]         = useState(false)
 
   const t = T[lang]
+
+  // Inject live pricing into plan cards
+  const injectPricing = (plans) => plans.map(p => ({
+    ...p,
+    contacts: p.contacts === 'FREE_CONTACTS' ? `${freeContacts} contacts`
+            : p.contacts === 'FREE_CONTACTS_HI' ? `${freeContacts} संपर्क`
+            : p.contacts,
+    vs: p.vs === 'FREE_VS' ? `${PLANS.free.vs} Vidhan Sabha`
+      : p.vs === 'FREE_VS_HI' ? `${PLANS.free.vs} विधान सभा`
+      : p.vs,
+    price: p.price === 'SINGLE_PRICE' ? singlePrice
+         : p.price === 'MULTIPLE_PRICE' ? multiplePrice
+         : p.price,
+    features: p.features.map(f =>
+      f === 'MULTIPLE_EXTRA/mo per extra VS' ? `${multipleExtra}/mo per extra VS`
+    : f === 'MULTIPLE_EXTRA/माह प्रति अतिरिक्त VS' ? `${multipleExtra}/माह प्रति अतिरिक्त VS`
+    : f
+    ),
+  }))
 
   const sendOTP = async () => {
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setAuthError('Enter a valid email'); return }
@@ -477,7 +501,7 @@ export default function LandingPage() {
             <p style={{ fontSize:15, color:C.textSub, margin:0 }}>{t.pricing.subtitle}</p>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:20 }}>
-            {t.pricing.plans.map((p,i) => (
+            {injectPricing(t.pricing.plans).map((p,i) => (
               <div key={i} style={{ background: p.highlight ? `linear-gradient(135deg,rgba(108,99,255,0.2),rgba(79,70,229,0.1))` : C.bgCard, border:`${p.highlight ? 2 : 1}px solid ${p.highlight ? C.primary : C.border}`, borderRadius:20, padding:28, position:'relative', display:'flex', flexDirection:'column' }}>
                 {p.badge && (
                   <div style={{ position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)', background:C.primary, color:'#fff', fontSize:10, fontWeight:700, padding:'3px 14px', borderRadius:20, whiteSpace:'nowrap', letterSpacing:'0.05em' }}>{p.badge}</div>
