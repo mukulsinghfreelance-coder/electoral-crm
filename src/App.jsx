@@ -719,9 +719,12 @@ export default function App() {
   const handleSaveContact=async f=>{
     setSaving(true);
     // Check plan contact limit
-    if(!editC && planLimits && contacts.length >= planLimits.contacts){
-      showToast(`Contact limit reached (${planLimits.contacts.toLocaleString()} for your plan). Please upgrade.`,"error");
-      setSaving(false); return;
+    console.log('Contact limit check:', contacts.length, '/', planLimits?.contacts, 'plan:', planLimits)
+    if(!editC && planLimits?.contacts !== Infinity && contacts.length >= planLimits.contacts){
+      setSaving(false)
+      setUpgradeReason(`You have reached the ${planLimits.contacts.toLocaleString()} contact limit on your Free plan.`)
+      setShowUpgrade(true)
+      return
     }
     try{
       if(editC){const updated=await updateContact(editC.id,f);setContacts(cs=>cs.map(c=>c.id===updated.id?updated:c));setSelC(updated);showToast("Contact updated ✓");}
