@@ -45,7 +45,6 @@ export async function validateCoupon(code, plan) {
 
 // ── Create Razorpay order via Edge Function ───────────────────────────────────
 export async function createOrder({ customerId, additionalVS, discountPct, couponCode, isAnnual }) {
-  console.log('🚀 createOrder sending:', { customerId, additionalVS, discountPct, isAnnual })
   const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
     body: { customerId, additionalVS, discountPct, couponCode, isAnnual }
   })

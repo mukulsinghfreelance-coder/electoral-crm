@@ -106,7 +106,6 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
   }
 
   const handlePay = async () => {
-    console.log('💳 handlePay called with additionalVS:', additionalVS, 'isAnnual:', isAnnual)
     setPayError(''); setPayLoading(true)
     await initiatePayment({
       customer,
