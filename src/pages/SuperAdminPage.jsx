@@ -26,9 +26,10 @@ const C = {
 }
 
 const PLAN_COLORS = {
-  free:     { bg:'#F3F4F6', cl:'#4B5563' },
-  single:   { bg:'#D1FAE5', cl:'#065F46' },
-  multiple: { bg:'#EEF2FF', cl:'#3730A3' },
+  free:         { bg:'#F3F4F6', cl:'#4B5563' },
+  single:       { bg:'#D1FAE5', cl:'#065F46' },
+  multiple:     { bg:'#EEF2FF', cl:'#3730A3' },
+  free_forever: { bg:'#FEF3C7', cl:'#92400E' },
 }
 
 // ─── CONFIRM DIALOG ───────────────────────────────────────────────────────────
@@ -86,9 +87,10 @@ function PlanModal({ customer, onClose, onSaved }) {
   }
 
   const DESC = {
-    free:     '1 VS · Limited contacts',
-    single:   '1 VS · Unlimited contacts',
-    multiple: 'Unlimited VS · Unlimited contacts',
+    free:         '1 VS · Limited contacts',
+    single:       '1 VS · Unlimited contacts',
+    multiple:     'Unlimited VS · Unlimited contacts',
+    free_forever: 'Up to 10 VS · Unlimited contacts · Complimentary',
   }
 
   return createPortal(
@@ -105,7 +107,7 @@ function PlanModal({ customer, onClose, onSaved }) {
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
-          {Object.entries(PLANS).map(([key, p]) => {
+          {Object.entries(PLANS).filter(([k]) => k !== 'free_forever').map(([key, p]) => {
             const isCurrent  = customer.plan === key
             const isSelected = plan === key
             return (
@@ -172,16 +174,17 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
   const [showGiftNote, setShowGiftNote] = useState(false)
 
   const handleGift = async () => {
-    if (customer.gifted_forever) {
+    if (customer.plan === 'free_forever') {
       // Revoke gift
       setConfirm({
-        message: `Revoke gift for ${customer.name || customer.email}?`,
-        subtext: 'Their plan will drop to Free.',
+        message: `Revoke Free Forever for ${customer.name || customer.email}?`,
+        subtext: 'Their plan will drop back to Free.',
         danger: true,
         onConfirm: async () => {
           try {
             await adminRevokeGift(customer.id)
             onPlanChanged(customer.id, 'free')
+            customer.plan = 'free'
             customer.gifted_forever = false
           } catch(e) { setDeleteError(e.message) }
           setConfirm(null)
@@ -195,7 +198,8 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
   const confirmGift = async () => {
     try {
       await adminGiftCustomer(customer.id, giftNote, me?.email)
-      onPlanChanged(customer.id, 'multiple')
+      onPlanChanged(customer.id, 'free_forever')
+      customer.plan = 'free_forever'
       customer.gifted_forever = true
       setShowGiftNote(false)
       setGiftNote('')
@@ -275,15 +279,18 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
           }}>
             ✏️ Change Plan
           </button>
-          <button onClick={handleGift} style={{
-            padding:'6px 14px', fontSize:12, fontWeight:700,
-            background: customer.gifted_forever ? C.amberLight : C.successLight,
-            color: customer.gifted_forever ? C.amber : C.success,
-            border:`1px solid ${customer.gifted_forever ? C.amber : C.success}33`,
-            borderRadius:8, cursor:'pointer', fontFamily:'inherit',
-          }}>
-            {customer.gifted_forever ? '🎁 Revoke Gift' : '🎁 Gift Forever'}
-          </button>
+          {/* Gift Forever only for Free accounts */}
+          {(customer.plan === 'free' || customer.plan === 'free_forever') && (
+            <button onClick={handleGift} style={{
+              padding:'6px 14px', fontSize:12, fontWeight:700,
+              background: customer.plan === 'free_forever' ? C.amberLight : C.successLight,
+              color: customer.plan === 'free_forever' ? C.amber : C.success,
+              border:`1px solid ${customer.plan === 'free_forever' ? C.amber : C.success}33`,
+              borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+            }}>
+              {customer.plan === 'free_forever' ? '🎁 Revoke Gift' : '🎁 Gift Forever'}
+            </button>
+          )}
           <button onClick={handlePurge} style={{
             padding:'6px 14px', fontSize:12, fontWeight:700,
             background:C.redLight, color:C.red,
@@ -497,10 +504,11 @@ export default function SuperAdminPage({ onBack }) {
 
   // Stats
   const stats = {
-    total:    customers.length,
-    free:     customers.filter(c => c?.plan === 'free').length,
-    single:   customers.filter(c => c?.plan === 'single').length,
-    multiple: customers.filter(c => c?.plan === 'multiple').length,
+    total:        customers.length,
+    free:         customers.filter(c => c?.plan === 'free').length,
+    single:       customers.filter(c => c?.plan === 'single').length,
+    multiple:     customers.filter(c => c?.plan === 'multiple').length,
+    free_forever: customers.filter(c => c?.plan === 'free_forever').length,
   }
 
   return (
@@ -532,13 +540,14 @@ export default function SuperAdminPage({ onBack }) {
 
         {/* ── STATS CARDS ── */}
         <div style={{
-          display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24,
+          display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:24,
         }}>
           {[
-            ['Total Users', stats.total,    '#818CF8', '👥'],
-            ['Free',        stats.free,     '#9CA3AF', '🆓'],
-            ['Single',      stats.single,   '#34D399', '1️⃣'],
-            ['Multiple',    stats.multiple, '#A78BFA', '🔢'],
+            ['Total',        stats.total,        '#818CF8', '👥'],
+            ['Free',         stats.free,         '#9CA3AF', '🆓'],
+            ['Single',       stats.single,       '#34D399', '1️⃣'],
+            ['Multiple',     stats.multiple,     '#A78BFA', '🔢'],
+            ['Free Forever', stats.free_forever, '#F59E0B', '🎁'],
           ].map(([label, val, color, icon]) => (
             <div key={label} style={{
               background:'rgba(255,255,255,.1)', backdropFilter:'blur(10px)',
@@ -663,9 +672,9 @@ export default function SuperAdminPage({ onBack }) {
                       <span style={{ background:pc.bg, color:pc.cl, padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
                         {PLANS[c.plan]?.label || c.plan}
                       </span>
-                      {c.gifted_forever && (
+                      {c.plan === 'free_forever' && (
                         <span style={{ background:'rgba(245,158,11,0.15)', color:'#F59E0B', padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
-                          🎁 Gifted
+                          🎁 Free Forever
                         </span>
                       )}
                       <span style={{ fontSize:18, color:C.gray400, transition:'transform .2s', transform: isExpanded ? 'rotate(90deg)' : 'none' }}>›</span>

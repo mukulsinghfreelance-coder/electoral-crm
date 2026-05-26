@@ -445,12 +445,13 @@ export async function adminGiftCustomer(customerId, note, giftedBy) {
   const { error } = await supabase
     .from('customers')
     .update({
-      plan:           'multiple',
+      plan:           'free_forever',
       plan_status:    'gifted',
       gifted_forever: true,
       gifted_note:    note || '',
       gifted_by:      giftedBy || '',
       gifted_at:      new Date().toISOString(),
+      paid_vs_count:  0,   // free_forever doesn't count paid VSs
     })
     .eq('id', customerId)
   if (error) throw error
@@ -466,6 +467,7 @@ export async function adminRevokeGift(customerId) {
       gifted_note:    null,
       gifted_by:      null,
       gifted_at:      null,
+      paid_vs_count:  0,
     })
     .eq('id', customerId)
   if (error) throw error

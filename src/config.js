@@ -54,7 +54,14 @@ export async function fetchPricingFromDB(supabase) {
         basePrice: p.multiple_base_price ?? PLANS.multiple.basePrice,
         extraVS:   p.multiple_extra_vs   ?? PLANS.multiple.extraVS,
       },
-      gstRate: (p.gst_rate ?? 18) / 100,
+      free_forever: {
+        ...PLANS.free_forever,
+        vs: p.free_forever_vs_limit ?? PLANS.free_forever.vs,
+      },
+      gstRate:              (p.gst_rate ?? 18) / 100,
+      annualBillingEnabled: (p.annual_billing_enabled ?? 1) === 1,
+      annualDiscountPct:    p.annual_discount_pct ?? 20,
+      freeForeverVsLimit:   p.free_forever_vs_limit ?? 10,
     }
   } catch(e) {
     console.warn('Pricing fetch failed, using defaults:', e.message)
@@ -107,11 +114,21 @@ export const PLANS = {
     label:       'Multiple',
     vs:          Infinity,
     contacts:    Infinity,
-    basePrice:   2999,      // price for first VS
-    extraVS:     2249,      // 25% discount on subsequent VSs (2999 × 0.75 = 2249.25 ≈ 2249)
-    highlight:   true,      // shown as "Most Popular"
+    basePrice:   2999,
+    extraVS:     2249,
+    highlight:   true,
     description: 'Multiple constituencies, unlimited contacts',
     badge:       { bg: '#EEF2FF', cl: '#3730A3' },
+  },
+  free_forever: {
+    label:       'Free Forever',
+    vs:          10,         // overridden by free_forever_vs_limit from DB
+    contacts:    Infinity,
+    basePrice:   0,
+    extraVS:     0,
+    highlight:   false,
+    description: 'Complimentary unlimited access',
+    badge:       { bg: '#FEF3C7', cl: '#92400E' },
   },
 }
 

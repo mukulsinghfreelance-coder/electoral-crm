@@ -29,9 +29,10 @@ const RATING_COLOR = {
 
 function planBadge(plan) {
   const map = {
-    free:     { bg:'#F3F4F6', cl:'#4B5563' },
-    single:   { bg:'#D1FAE5', cl:'#065F46' },
-    multiple: { bg:'#EEF2FF', cl:'#3730A3' },
+    free:         { bg:'#F3F4F6', cl:'#4B5563' },
+    single:       { bg:'#D1FAE5', cl:'#065F46' },
+    multiple:     { bg:'#EEF2FF', cl:'#3730A3' },
+    free_forever: { bg:'#FEF3C7', cl:'#92400E' },
   }
   return map[plan] || map.free
 }
@@ -152,7 +153,7 @@ function StatCard({ label, value, color, icon }) {
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function WorkspacePage() {
-  const { customer, switchWorkspace, exitWorkspace, logout, plan, planLimits, isSuperAdmin, isGifted, livePlans, calcMonthlyPrice } = useAuth()
+  const { customer, switchWorkspace, exitWorkspace, logout, plan, planLimits, isSuperAdmin, isGifted, livePlans, calcMonthlyPrice, paidVsCount, allowedVS } = useAuth()
   const PLANS = livePlans || PLANS_DEFAULT
   const [workspaces,  setWorkspaces]  = useState([])
   const [wsStats,     setWsStats]     = useState({})
@@ -196,7 +197,7 @@ export default function WorkspacePage() {
   const canAddMore = isSuperAdmin || (vsLimit === Infinity ? true : workspaces.length < vsLimit)
   const isAtLimit  = !isSuperAdmin && vsLimit !== Infinity && workspaces.length >= vsLimit
   const isFreeAtLimit = !isSuperAdmin && plan === 'free' && workspaces.length >= 1
-  const pb = planBadge(plan)
+  const pb = planBadge(plan === 'free_forever' ? 'free_forever' : plan)
 
   if (showAdmin) {
     return (
@@ -260,7 +261,7 @@ export default function WorkspacePage() {
             )}
             {isGifted && !isSuperAdmin && (
               <span style={{ background:'rgba(245,158,11,0.2)', color:'#F59E0B', padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700, border:'1px solid rgba(245,158,11,0.3)' }}>
-                🎁 Gifted
+                🎁 Free Forever
               </span>
             )}
           </div>

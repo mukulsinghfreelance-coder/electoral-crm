@@ -16,7 +16,7 @@ const font = "system-ui,-apple-system,'Segoe UI',sans-serif"
 
 export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReason = '', initialPlan = null }) {
   // ── ALL HOOKS FIRST — no functions before hooks ───────────────────────────
-  const { customer, livePlans } = useAuth()
+  const { customer, livePlans, plan, isGifted, annualBillingEnabled, annualDiscountPct, paidVsCount } = useAuth()
   const [selectedPlan, setSelectedPlan] = useState(initialPlan || 'single')
   const [coupon,       setCoupon]       = useState('')
   const [couponResult, setCouponResult] = useState(null)
@@ -35,7 +35,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
   const PLANS   = livePlans || DEFAULT_PLANS
   const gstRate = livePlans?.gstRate ?? BILLING.gstRate
 
-  const ANNUAL_DISCOUNT = 20  // 20% off for annual
+  const ANNUAL_DISCOUNT = annualDiscountPct ?? 20
 
   const calcBreakdown = (plan, vsCnt, discPct) => {
     const p = PLANS[plan]
@@ -115,8 +115,8 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
           <button onClick={onClose} style={{ background:'rgba(255,255,255,0.08)', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', color:C.gray, fontSize:16, fontFamily:font }}>✕</button>
         </div>
 
-        {/* Billing cycle toggle */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginBottom:20, background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 14px' }}>
+        {/* Billing cycle toggle — only show if enabled in Admin Panel */}
+        {annualBillingEnabled && <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginBottom:20, background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 14px' }}>
           <span style={{ fontSize:13, color: !isAnnual ? C.white : C.gray, fontWeight: !isAnnual ? 600 : 400 }}>Monthly</span>
           <div
             onClick={() => setIsAnnual(a => !a)}
@@ -127,11 +127,11 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
           <span style={{ fontSize:13, color: isAnnual ? C.white : C.gray, fontWeight: isAnnual ? 600 : 400 }}>
             Annual <span style={{ background:'rgba(16,185,129,0.2)', color:C.success, fontSize:10, padding:'2px 6px', borderRadius:10, fontWeight:700, marginLeft:4 }}>Save 20%</span>
           </span>
-        </div>
+        </div>}
 
         {/* Plan selector */}
         <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
-          {Object.entries(PLANS).filter(([k, v]) => ['single','multiple'].includes(k) && typeof v === 'object').map(([key, p]) => (
+          {Object.entries(PLANS).filter(([k, v]) => ['single','multiple'].includes(k) && v && typeof v === 'object' && v.basePrice > 0).map(([key, p]) => (
             <div
               key={key}
               onClick={() => setSelectedPlan(key)}

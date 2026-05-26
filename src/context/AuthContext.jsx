@@ -200,18 +200,36 @@ export function AuthProvider({ children }) {
   const switchWorkspace = (ws) => setWorkspace(ws)
   const exitWorkspace   = ()   => setWorkspace(null)
 
-  // gifted_forever overrides plan — full Multiple access, no payment screens
-  const effectivePlan = customer?.gifted_forever ? 'multiple' : (customer?.plan || 'free')
-  const plan          = effectivePlan
+  const activePlans = livePlans || PLANS
 
-  // Use live DB pricing if available, else fall back to config defaults
-  const activePlans   = livePlans || PLANS
-  const activeConfig  = activePlans[effectivePlan] || PLANS[effectivePlan] || PLANS.free
-  const planLimits    = { vs: activeConfig.vs, contacts: activeConfig.contacts, label: activeConfig.label }
+  // ── Plan resolution ───────────────────────────────────────────────────────
+  const plan         = customer?.plan || 'free'
+  const isGifted     = plan === 'free_forever'
+  const isSuperAdmin = customer?.email === SUPER_ADMIN_EMAIL
+
+  // paid_vs_count: how many VSs the customer has paid for
+  const paidVsCount  = customer?.paid_vs_count || 0
+
+  // allowedVS: how many VSs they can have without triggering upgrade
+  const freeForeverLimit = livePlans?.freeForeverVsLimit ?? 10
+  const allowedVS =
+    isSuperAdmin            ? Infinity
+    : plan === 'free_forever' ? freeForeverLimit
+    : plan === 'free'         ? 1
+    : paidVsCount             // single=1, multiple=n (paid count)
+
+  const activeConfig = activePlans[plan] || PLANS[plan] || PLANS.free
+  const planLimits   = {
+    vs:       allowedVS,
+    contacts: activeConfig.contacts,
+    label:    activeConfig.label,
+  }
   const planConfig    = activeConfig
   const activeGstRate = livePlans?.gstRate ?? BILLING.gstRate
-  const isGifted      = customer?.gifted_forever || false
-  const isSuperAdmin  = customer?.email === SUPER_ADMIN_EMAIL
+
+  // Annual billing settings from DB
+  const annualBillingEnabled = livePlans?.annualBillingEnabled ?? true
+  const annualDiscountPct    = livePlans?.annualDiscountPct ?? 20
 
   // calcMonthlyPrice using live pricing
   const calcLivePrice = (p, vsCount = 1) => {
@@ -229,7 +247,8 @@ export function AuthProvider({ children }) {
       switchWorkspace, exitWorkspace,
       plan, planLimits, planConfig,
       livePlans: activePlans,
-      isSuperAdmin, isGifted,
+      isSuperAdmin, isGifted, paidVsCount, allowedVS,
+      annualBillingEnabled, annualDiscountPct,
       calcMonthlyPrice: calcLivePrice,
     }}>
       {children}
