@@ -100,7 +100,7 @@ function LoadingScreen({message}) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",gap:16,background:C.white}}>
       <div style={{fontSize:40}}>📋</div>
-      <div style={{fontSize:16,fontWeight:800,color:C.gray900}}>ContactBook</div>
+      <div style={{fontSize:16,fontWeight:800,color:C.gray900}}>Sampark.AI</div>
       <div style={{fontSize:13,color:C.gray600,fontWeight:500}}>{message||"Loading…"}</div>
     </div>
   );
@@ -280,9 +280,18 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
   const remM=i=>{const m=[...s.mandals];m.splice(i,1);setS(p=>({...p,mandals:m}));setSelM(0);};
   const addP=()=>{const n=np.trim();if(!n||!s.mandals[selM])return;const m=[...s.mandals];if(!m[selM].panchayats.includes(n))m[selM]={...m[selM],panchayats:[...m[selM].panchayats,n]};setS(p=>({...p,mandals:m}));setNp("");};
   const remP=(mi,pi)=>{const m=[...s.mandals];m[mi]={...m[mi],panchayats:m[mi].panchayats.filter((_,i)=>i!==pi)};setS(p=>({...p,mandals:m}));};
-  const TABS=[["geo","🗺️ Geography"],["labels","🏷️ Labels"],["castes","👥 Castes"],["parties","🏛️ Parties"],["admin","🔐 Admin"]];
+  const TABS=[["geo","🗺️ Geography"],["labels","🏷️ Labels"],["castes","👥 Castes"],["parties","📊 Past Voting"]];
   return (
-    <Modal open={open} onClose={onClose} title="⚙️ Settings (Admin)" wide>
+    <Modal open={open} onClose={onClose} title="⚙️ Settings" wide>
+      {/* Onboarding checklist */}
+      {(s.mandals.length === 0 || s.castes.length === 0) && (
+        <div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'#92400E',lineHeight:1.8}}>
+          <b>📋 Complete these steps to start managing contacts:</b><br/>
+          {s.mandals.length === 0 && <span>⚠️ Add Mandals in <b>Geography</b> tab<br/></span>}
+          {s.castes.length === 0 && <span>⚠️ Add your constituency's Castes<br/></span>}
+          Review <b>Labels</b> to match your state's terminology
+        </div>
+      )}
       <div style={{display:"flex",gap:0,marginBottom:18,borderBottom:`2px solid ${C.gray200}`}}>
         {TABS.map(([k,v])=>(<button key={k} onClick={()=>setTab(k)} style={{border:"none",background:"none",padding:"8px 14px",fontSize:12,fontWeight:tab===k?700:500,color:tab===k?C.primary:C.gray400,borderBottom:tab===k?`2.5px solid ${C.primary}`:"2.5px solid transparent",cursor:"pointer",marginBottom:-2,fontFamily:"inherit"}}>{v}</button>))}
       </div>
@@ -328,7 +337,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
       </div>)}
       {tab==="parties"&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
         <div>
-          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Party alliances (max 3)</div>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Party alliances shown in booth data (max 3)</div>
           {s.parties.map((p,i)=>(<div key={i} style={{display:"flex",gap:6,marginBottom:8}}><Inp value={p} onChange={e=>{const ps=[...s.parties];ps[i]=e.target.value;setS(prev=>({...prev,parties:ps}));}}/><button onClick={()=>setS(prev=>({...prev,parties:prev.parties.filter((_,j)=>j!==i)}))} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:16}}>✕</button></div>))}
           {s.parties.length<3&&<div style={{display:"flex",gap:6}}><Inp value={npy} onChange={e=>setNpy(e.target.value)} placeholder="Add party…"/><Btn v="primary" onClick={()=>{const n=npy.trim();if(n&&s.parties.length<3){setS(p=>({...p,parties:[...p.parties,n]}));setNpy("");}}} style={{padding:"9px 14px"}}>+</Btn></div>}
         </div>
@@ -337,11 +346,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
           {elections.map((e,i)=>(<div key={i} style={{marginBottom:8}}><div style={{fontSize:10,color:C.gray400,fontWeight:600,marginBottom:4}}>E{i+1} {i===0?"(oldest)":i===2?"(latest)":""}</div><Inp value={e} onChange={ev=>{const el=[...elections];el[i]=ev.target.value;setElections(el);}}/></div>))}
         </div>
       </div>)}
-      {tab==="admin"&&(<div>
-        <div style={{background:"#FEF3C7",borderRadius:10,padding:"12px 14px",marginBottom:14,fontSize:12,color:"#92400E",fontWeight:500}}>⚠️ Simulated PIN for in-app admin actions. Login uses email OTP.</div>
-        <Fld label="New Admin PIN (4–6 digits)"><Inp type="password" value={newPin} onChange={e=>setNewPin(e.target.value)} placeholder="Enter new PIN"/></Fld>
-        <Btn v="primary" onClick={()=>{if(newPin.length>=4){setS(p=>({...p,adminPin:newPin}));alert("PIN updated!");setNewPin("");}else alert("PIN must be 4+ digits");}}>Update PIN</Btn>
-      </div>)}
+
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}}>
         <Btn v="ghost" onClick={onClose}>Cancel</Btn>
         <Btn v="primary" onClick={save} disabled={saving}>{saving?"⏳ Saving…":"✓ Save Settings"}</Btn>
@@ -606,9 +611,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
 export default function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const { customer: user, workspace, exitWorkspace, isSuperAdmin, planLimits, logout } = useAuth()
-  const isAdmin = true   // all customers are admins of their own data
-  const isVolunteer = false
-  const isMP = false     // no MP concept anymore — all customers are equal
+  const isAdmin = true
   // ── Data state ────────────────────────────────────────────────────────────
   const [settings,  setSettingsState] = useState(DEFAULT_SETTINGS);
   const [contacts,  setContacts]      = useState([]);
@@ -721,7 +724,6 @@ export default function App() {
   const handleSaveContact=async f=>{
     setSaving(true);
     // Check plan contact limit
-    console.log('Contact limit check:', contacts.length, '/', planLimits?.contacts, 'plan:', planLimits)
     if(!editC && planLimits?.contacts !== Infinity && contacts.length >= planLimits.contacts){
       setSaving(false)
       setUpgradeReason(`You have reached the ${planLimits.contacts.toLocaleString()} contact limit on your Free plan.`)
@@ -850,7 +852,7 @@ export default function App() {
           <div style={{padding:"10px 10px 8px",borderBottom:`1px solid ${C.gray200}`}}>
             <div style={{display:"flex",alignItems:"center",gap:7}}>
               <div style={{width:32,height:32,borderRadius:9,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 3px 10px rgba(79,70,229,.3)"}}>📋</div>
-              <div><div style={{fontSize:14,fontWeight:800,color:C.gray900}}>ContactBook</div><div style={{fontSize:10,color:C.gray400,fontWeight:500}}>Electoral Manager</div></div>
+              <div><div style={{fontSize:14,fontWeight:800,color:C.gray900}}>Sampark<span style={{color:C.primary}}>.AI</span></div><div style={{fontSize:10,color:C.gray400,fontWeight:500}}>Electoral Intelligence</div></div>
             </div>
           </div>
 
@@ -861,12 +863,13 @@ export default function App() {
               <button
                 onClick={() => exitWorkspace()}
                 style={{
-                  marginTop:6, width:"100%", padding:"5px 8px",
-                  fontSize:10, fontWeight:700,
-                  background:C.white, color:C.primary,
-                  border:`1.5px solid ${C.primary}`,
-                  borderRadius:6, cursor:"pointer",
+                  marginTop:8, width:"100%", padding:"8px 10px",
+                  fontSize:11, fontWeight:700,
+                  background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,
+                  color:C.white, border:"none",
+                  borderRadius:8, cursor:"pointer",
                   fontFamily:"inherit",
+                  boxShadow:"0 3px 10px rgba(79,70,229,.35)",
                 }}
               >
                 🔄 Switch Constituency
@@ -882,10 +885,15 @@ export default function App() {
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Modules</div>
-          <SBI icon="📍" label={`${L.booth||"Booth"} Mgmt`} count={booths.length} active={screen==="booths"} onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} color={C.teal}/>
-          {isAdmin&&<SBI icon="👥" label="Volunteers" active={false} onClick={()=>setShowVolunteers(true)}/>}
+          {settings.mandals.length === 0 && (
+            <div onClick={()=>setShowSettings(true)} style={{margin:"4px 8px",padding:"8px 12px",background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,fontSize:11,color:'#92400E',cursor:'pointer',fontWeight:600}}>
+              ⚠️ Setup required → Open Settings
+            </div>
+          )}
+          <SBI icon="📍" label={`${L.booth||"Booth"} Management`} count={booths.length} active={screen==="booths"} onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} color={C.teal} style={{fontWeight:700}}/>
+          {isAdmin&&<SBI icon="👥" label="Volunteers" active={false} onClick={()=>setShowVolunteers(true)} color={C.amber}/>}
           {isAdmin&&<SBI icon="🔗" label="Google Sheets" active={false} onClick={()=>setShowSheets(true)}/>}
-          {isAdmin&&<SBI icon="⚙️" label="Settings" active={false} onClick={()=>setShowSettings(true)}/>}
+          {isAdmin&&<SBI icon="⚙️" label="Settings" active={showSettings} onClick={()=>setShowSettings(true)}/>}
           <SBI icon="🚪" label="Logout" active={false} onClick={logout}/>
 
           <div style={{padding:"10px 8px",borderTop:`1px solid ${C.gray200}`,marginTop:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
@@ -1075,7 +1083,6 @@ export default function App() {
       {showUpgrade && (
         <UpgradeModal
           onClose={() => setShowUpgrade(false)}
-          currentVSCount={1}
           triggerReason={upgradeReason}
         />
       )}
