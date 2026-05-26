@@ -16,7 +16,7 @@ const font = "system-ui,-apple-system,'Segoe UI',sans-serif"
 
 export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReason = '', initialPlan = null }) {
   // ── ALL HOOKS FIRST — no functions before hooks ───────────────────────────
-  const { customer, livePlans, plan, isGifted, annualBillingEnabled, annualDiscountPct, paidVsCount } = useAuth()
+  const { customer, livePlans, plan, isGifted, annualBillingEnabled, annualDiscountPct, paidVsCount, allowedVS } = useAuth()
   const [selectedPlan, setSelectedPlan] = useState(initialPlan && initialPlan !== 'free' ? initialPlan : 'premium')
   const [coupon,       setCoupon]       = useState('')
   const [couponResult, setCouponResult] = useState(null)
@@ -24,12 +24,13 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
   const [payLoading,   setPayLoading]   = useState(false)
   const [payError,     setPayError]     = useState('')
   const [paySuccess,   setPaySuccess]   = useState(false)
-  const [vsCount,      setVsCount]      = useState(1)
+  const [vsCount,      setVsCount]      = useState(Math.max(paidVsCount + 1, 1))
   const [isAnnual,     setIsAnnual]     = useState(false)
 
   useEffect(() => {
-    setVsCount(selectedPlan === 'multiple' ? Math.max(currentVSCount, 2) : 1)
-  }, [selectedPlan, currentVSCount])
+    // Start from next unpaid VS
+    setVsCount(Math.max(paidVsCount + 1, 1))
+  }, [paidVsCount])
 
   // ── HELPERS (after hooks) ─────────────────────────────────────────────────
   const PLANS   = livePlans || DEFAULT_PLANS
@@ -171,20 +172,32 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
           ))}
         </div>
 
-        {/* VS count for Multiple */}
-        {selectedPlan === 'multiple' && (
-          <div style={{ background:'rgba(255,255,255,0.04)', border:`1px solid ${C.border}`, borderRadius:12, padding:'14px 16px', marginBottom:16 }}>
-            <div style={{ fontSize:13, color:C.gray, marginBottom:10 }}>Number of Vidhan Sabhas</div>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-              <button onClick={() => setVsCount(v => Math.max(2, v-1))} style={{ width:32, height:32, borderRadius:'50%', border:`1px solid ${C.border2}`, background:'transparent', color:C.white, fontSize:18, cursor:'pointer', fontFamily:font }}>−</button>
-              <div style={{ flex:1, textAlign:'center' }}>
-                <div style={{ fontSize:28, fontWeight:800, color:C.white }}>{vsCount}</div>
-                <div style={{ fontSize:11, color:C.gray2 }}>Vidhan Sabhas</div>
-              </div>
-              <button onClick={() => setVsCount(v => v+1)} style={{ width:32, height:32, borderRadius:'50%', border:`1px solid ${C.border2}`, background:'transparent', color:C.white, fontSize:18, cursor:'pointer', fontFamily:font }}>+</button>
-            </div>
+        {/* VS count selector — always shown for premium */}
+        <div style={{ background:'rgba(255,255,255,0.04)', border:`1px solid ${C.border}`, borderRadius:12, padding:'14px 16px', marginBottom:16 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
+            <div style={{ fontSize:13, color:C.gray }}>Total Vidhan Sabhas to pay for</div>
+            {paidVsCount > 0 && (
+              <div style={{ fontSize:11, color:C.accent }}>Currently have {paidVsCount} paid VS</div>
+            )}
           </div>
-        )}
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <button
+              onClick={() => setVsCount(v => Math.max(paidVsCount + 1, v - 1))}
+              disabled={vsCount <= Math.max(paidVsCount + 1, 1)}
+              style={{ width:32, height:32, borderRadius:'50%', border:`1px solid ${C.border2}`, background:'transparent', color: vsCount <= Math.max(paidVsCount+1,1) ? C.gray2 : C.white, fontSize:18, cursor: vsCount <= Math.max(paidVsCount+1,1) ? 'not-allowed' : 'pointer', fontFamily:font }}
+            >−</button>
+            <div style={{ flex:1, textAlign:'center' }}>
+              <div style={{ fontSize:32, fontWeight:800, color:C.white }}>{vsCount}</div>
+              <div style={{ fontSize:11, color:C.gray2 }}>
+                Vidhan Sabha{vsCount !== 1 ? 's' : ''} total
+                {vsCount > paidVsCount && paidVsCount > 0 && (
+                  <span style={{ color:C.success, marginLeft:6 }}>+{vsCount - paidVsCount} new</span>
+                )}
+              </div>
+            </div>
+            <button onClick={() => setVsCount(v => v + 1)} style={{ width:32, height:32, borderRadius:'50%', border:`1px solid ${C.border2}`, background:'transparent', color:C.white, fontSize:18, cursor:'pointer', fontFamily:font }}>+</button>
+          </div>
+        </div>
 
         {/* Coupon */}
         <div style={{ marginBottom:16 }}>
@@ -211,7 +224,12 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
           <div style={{ fontSize:13, fontWeight:600, color:C.white, marginBottom:12 }}>Price Breakdown</div>
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:C.gray }}>
-              <span>{PLANS[selectedPlan]?.label} Plan {selectedPlan==='multiple' ? `(${vsCount} VS)` : ''}</span>
+              <span>
+                {paidVsCount > 0
+                  ? `${vsCount - paidVsCount} additional VS × ₹${Number(PLANS.premium?.extraVS).toLocaleString('en-IN')}`
+                  : `${vsCount} VS (₹${Number(PLANS.premium?.basePrice).toLocaleString('en-IN')} + ${vsCount-1} × ₹${Number(PLANS.premium?.extraVS).toLocaleString('en-IN')})`
+                }
+              </span>
               <span>₹{Number(breakdown.base).toLocaleString('en-IN')}</span>
             </div>
             {breakdown.discount > 0 && (

@@ -289,13 +289,16 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
               {customer.plan === 'free_forever' ? '🎁 Revoke Gift' : '🎁 Gift Forever'}
             </button>
           )}
-          <button onClick={handlePurge} style={{
-            padding:'6px 14px', fontSize:12, fontWeight:700,
-            background:C.redLight, color:C.red,
-            border:`1px solid ${C.red}33`, borderRadius:8, cursor:'pointer', fontFamily:'inherit',
-          }}>
-            🗑️ Purge User
-          </button>
+          {/* Don't show Purge for gifted/free_forever accounts */}
+          {customer.plan !== 'free_forever' && (
+            <button onClick={handlePurge} style={{
+              padding:'6px 14px', fontSize:12, fontWeight:700,
+              background:C.redLight, color:C.red,
+              border:`1px solid ${C.red}33`, borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+            }}>
+              🗑️ Purge User
+            </button>
+          )}
         </div>
       </div>
 
@@ -411,6 +414,8 @@ function PricingPanel() {
       .update({ value: Number(value), updated_at: new Date().toISOString() })
       .eq('key', key)
     if (!error) {
+      // Update local state so toggle re-renders immediately
+      setPricing(prev => prev.map(p => p.key === key ? { ...p, value: Number(value) } : p))
       setSaved(key)
       setTimeout(() => setSaved(null), 2000)
     }
@@ -430,14 +435,25 @@ function PricingPanel() {
                 <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:2 }}>{meta.label}</div>
                 <div style={{ fontSize:12, color:'#6B7280' }}>{meta.desc}</div>
               </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <input
-                  type="number"
-                  defaultValue={p.value}
-                  onBlur={e => handleSave(p.key, e.target.value)}
-                  style={{ width:100, padding:'7px 10px', fontSize:14, fontWeight:600, border:'1px solid #E5E7EB', borderRadius:8, textAlign:'right', fontFamily:'inherit', outline:'none' }}
-                />
-                <span style={{ fontSize:12, color:'#6B7280', minWidth:50 }}>{meta.unit}</span>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                {meta.type === 'toggle' ? (
+                  <div
+                    onClick={() => handleSave(p.key, p.value === 1 ? 0 : 1)}
+                    style={{ width:48, height:26, borderRadius:13, background: p.value === 1 ? '#4F46E5' : '#E5E7EB', cursor:'pointer', position:'relative', transition:'background .2s', flexShrink:0 }}
+                  >
+                    <div style={{ width:20, height:20, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: p.value === 1 ? 25 : 3, transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
+                  </div>
+                ) : (
+                  <input
+                    type="number"
+                    defaultValue={p.value}
+                    onBlur={e => handleSave(p.key, e.target.value)}
+                    style={{ width:90, padding:'7px 10px', fontSize:14, fontWeight:600, border:'1px solid #E5E7EB', borderRadius:8, textAlign:'right', fontFamily:'inherit', outline:'none' }}
+                  />
+                )}
+                {meta.unit !== 'toggle' && (
+                  <span style={{ fontSize:12, color:'#6B7280', minWidth:50 }}>{meta.unit}</span>
+                )}
                 {saving === p.key && <span style={{ fontSize:12, color:'#6B7280' }}>⏳</span>}
                 {saved  === p.key && <span style={{ fontSize:12, color:'#10B981' }}>✓ Saved</span>}
               </div>

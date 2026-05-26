@@ -211,10 +211,10 @@ export function AuthProvider({ children }) {
   // allowedVS — how many VSs without triggering upgrade prompt
   const freeForeverLimit = livePlans?.freeForeverVsLimit ?? 10
   const allowedVS =
-    isSuperAdmin          ? Infinity
+    isSuperAdmin              ? Infinity
     : plan === 'free_forever' ? freeForeverLimit
-    : plan === 'premium'      ? paidVsCount
-    : 1  // free = 1
+    : plan === 'premium'      ? Math.max(paidVsCount, 1)  // at least 1
+    : 1  // free = always 1
 
   const activeConfig = activePlans[plan] || PLANS[plan] || PLANS.free
   const planLimits   = {

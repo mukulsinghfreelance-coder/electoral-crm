@@ -195,7 +195,8 @@ export default function WorkspacePage() {
   const vsLimit    = planLimits?.vs ?? 1
   const canAddMore = isSuperAdmin || (vsLimit === Infinity ? true : workspaces.length < vsLimit)
   const isAtLimit  = !isSuperAdmin && vsLimit !== Infinity && workspaces.length >= vsLimit
-  const isFreeAtLimit = !isSuperAdmin && plan === 'free' && workspaces.length >= 1
+  const isFreeAtLimit  = !isSuperAdmin && plan === 'free' && workspaces.length >= 1
+  const isPremiumLimit = !isSuperAdmin && plan === 'premium' && workspaces.length >= allowedVS
   const pb = planBadge(plan === 'free_forever' ? 'free_forever' : plan)
 
   if (showAdmin) {
@@ -286,7 +287,13 @@ export default function WorkspacePage() {
           </div>
           <div style={{ textAlign:'center' }}>
             <div style={{ fontSize:10, color:'#A5B4FC', fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>🏛️ Vidhan Sabhas</div>
-            <div style={{ fontSize:26, fontWeight:800, color:'#fff' }}>{loading ? '…' : vsLimit === Infinity ? totalStats.vsCount : `${totalStats.vsCount}/${vsLimit}`}</div>
+            <div style={{ fontSize:26, fontWeight:800, color:'#fff' }}>
+              {loading ? '…'
+                : isSuperAdmin || plan === 'free_forever' ? totalStats.vsCount
+                : plan === 'free' ? `${totalStats.vsCount}/1`
+                : `${totalStats.vsCount}/${allowedVS}`
+              }
+            </div>
           </div>
         </div>
       </div>
@@ -296,15 +303,25 @@ export default function WorkspacePage() {
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', textTransform:'uppercase', letterSpacing:'.06em' }}>Your Constituencies</div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            {/* Free plan at limit → Upgrade */}
             {isFreeAtLimit && (
               <div
-                onClick={e => { e.stopPropagation(); setUpgradeReason('Free plan allows 1 VS only. Upgrade to add more.'); setShowUpgrade(true) }}
+                onClick={e => { e.stopPropagation(); setUpgradeReason('Upgrade to Premium to add more constituencies.'); setShowUpgrade(true) }}
                 style={{ fontSize:11, background:'linear-gradient(135deg,#FEF3C7,#FDE68A)', color:'#92400E', padding:'7px 14px', borderRadius:8, border:'1px solid #F59E0B', fontWeight:600, cursor:'pointer' }}
               >
-                ⚡ Upgrade to add more
+                ⚡ Upgrade to Premium
               </div>
             )}
-            {canAddMore && !isFreeAtLimit && (
+            {/* Premium at paid_vs_count limit → Add More (pay) */}
+            {isPremiumLimit && (
+              <div
+                onClick={e => { e.stopPropagation(); setUpgradeReason(`You have used all ${allowedVS} paid VS. Pay for more constituencies.`); setShowUpgrade(true) }}
+                style={{ fontSize:11, background:'linear-gradient(135deg,#EEF2FF,#C7D2FE)', color:'#3730A3', padding:'7px 14px', borderRadius:8, border:'1px solid #818CF8', fontWeight:600, cursor:'pointer' }}
+              >
+                ⚡ Add More VS ↗
+              </div>
+            )}
+            {canAddMore && !isFreeAtLimit && !isPremiumLimit && (
               <button onClick={() => setShowAdd(true)} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, background:`linear-gradient(135deg,${C.success},#047857)`, border:'none', borderRadius:8, color:C.white, cursor:'pointer', fontFamily:'inherit' }}>
                 + Add Constituency
               </button>
