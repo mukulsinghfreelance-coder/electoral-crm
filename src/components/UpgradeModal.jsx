@@ -57,8 +57,10 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
   // ── ALL HOOKS FIRST ───────────────────────────────────────────────────────
   const { customer, livePlans, paidVsCount, annualBillingEnabled, annualDiscountPct } = useAuth()
 
+  const currentCycle = customer?.billing_cycle || 'monthly'
+
   const [additionalVS,  setAdditionalVS]  = useState(1)
-  const [isAnnual,      setIsAnnual]      = useState(false)
+  const [isAnnual, setIsAnnual] = useState(false)
   const [coupon,        setCoupon]        = useState('')
   const [couponResult,  setCouponResult]  = useState(null)
   const [couponLoading, setCouponLoading] = useState(false)
@@ -99,11 +101,11 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
   }
 
   const handlePay = async () => {
+    console.log('💳 handlePay called with additionalVS:', additionalVS, 'isAnnual:', isAnnual)
     setPayError(''); setPayLoading(true)
     await initiatePayment({
       customer,
-      plan:        'premium',
-      vsCount:     additionalVS,   // how many NEW VSs being bought
+      additionalVS,   // how many NEW VSs being bought
       discountPct: discPct,
       couponCode:  coupon,
       isAnnual,
