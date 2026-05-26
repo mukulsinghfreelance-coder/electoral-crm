@@ -57,17 +57,10 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
   // ── ALL HOOKS FIRST ───────────────────────────────────────────────────────
   const { customer, livePlans, paidVsCount, annualBillingEnabled, annualDiscountPct } = useAuth()
 
-  // Billing cycle is locked after first payment
-  const billingCycleLocked = paidVsCount > 0
-  const lockedCycle        = customer?.billing_cycle || 'monthly'
+  const currentCycle = customer?.billing_cycle || 'monthly'
 
   const [additionalVS,  setAdditionalVS]  = useState(1)
-  // Lock to existing billing cycle if already premium
-  const [isAnnual, setIsAnnual] = useState(
-    paidVsCount > 0
-      ? (customer?.billing_cycle === 'annual')
-      : false
-  )
+  const [isAnnual, setIsAnnual] = useState(false)
   const [coupon,        setCoupon]        = useState('')
   const [couponResult,  setCouponResult]  = useState(null)
   const [couponLoading, setCouponLoading] = useState(false)
@@ -108,6 +101,7 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
   }
 
   const handlePay = async () => {
+    console.log('💳 handlePay called with additionalVS:', additionalVS, 'isAnnual:', isAnnual)
     setPayError(''); setPayLoading(true)
     await initiatePayment({
       customer,
@@ -170,27 +164,16 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
           <button onClick={onClose} style={{ background:'rgba(255,255,255,0.08)', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', color:C.gray, fontSize:16, fontFamily:font, flexShrink:0 }}>✕</button>
         </div>
 
-        {/* Annual billing toggle — locked after first payment */}
+        {/* Annual billing toggle */}
         {annualBillingEnabled && (
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.04)', border:`1px solid ${C.border}`, borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
             <div>
-              <div style={{ fontSize:13, color:C.white, fontWeight:500 }}>
-                Annual billing
-                {billingCycleLocked && (
-                  <span style={{ marginLeft:8, fontSize:10, color:C.gold, background:'rgba(245,158,11,0.15)', padding:'2px 8px', borderRadius:10 }}>
-                    🔒 Locked to {lockedCycle}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize:11, color: billingCycleLocked ? C.gray2 : C.success }}>
-                {billingCycleLocked
-                  ? `Your billing cycle is fixed as ${lockedCycle}`
-                  : `Save ${annualDisc}% vs monthly`}
-              </div>
+              <div style={{ fontSize:13, color:C.white, fontWeight:500 }}>Annual billing</div>
+              <div style={{ fontSize:11, color:C.success }}>Save {annualDisc}% vs monthly</div>
             </div>
             <div
-              onClick={() => !billingCycleLocked && setIsAnnual(a => !a)}
-              style={{ width:44, height:24, borderRadius:12, background: isAnnual ? C.primary : 'rgba(255,255,255,0.15)', cursor: billingCycleLocked ? 'not-allowed' : 'pointer', position:'relative', transition:'background .2s', flexShrink:0, opacity: billingCycleLocked ? 0.6 : 1 }}
+              onClick={() => setIsAnnual(a => !a)}
+              style={{ width:44, height:24, borderRadius:12, background: isAnnual ? C.primary : 'rgba(255,255,255,0.15)', cursor:'pointer', position:'relative', transition:'background .2s', flexShrink:0 }}
             >
               <div style={{ width:18, height:18, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: isAnnual ? 23 : 3, transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/>
             </div>

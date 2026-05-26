@@ -51,6 +51,7 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
   const [selVS,        setSelVS]        = useState(null)
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
+  const [showConfirm,  setShowConfirm]  = useState(false)
 
   const { livePlans } = useAuth()
   const MODAL_PLANS   = livePlans || PLANS_DEFAULT
@@ -212,14 +213,9 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
             </div>
           )}
 
-          {/* Confirmation + Action */}
-          {selVS && !loading && (
-            <div style={{ background:'rgba(108,99,255,0.08)', border:'1px solid rgba(108,99,255,0.2)', borderRadius:12, padding:'12px 14px', fontSize:12, color:'#A78BFA', lineHeight:1.6 }}>
-              ℹ️ You are about to add <strong style={{ color:'#fff' }}>{selVS.vidhan_sabha}</strong> ({selState} · {selLS}) to your dashboard. This action cannot be undone without contacting support.
-            </div>
-          )}
+          {/* Action */}
           <button
-            onClick={handleAdd}
+            onClick={() => setShowConfirm(true)}
             disabled={!selVS || loading}
             style={{
               width:'100%', padding:'13px', fontSize:15, fontWeight:700,
@@ -232,8 +228,48 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
               transition:'all .2s',
             }}
           >
-            {loading ? '⏳ Adding…' : selVS ? `✓ Confirm & Add ${selVS.vidhan_sabha}` : 'Select a Vidhan Sabha'}
+            {selVS ? `Add ${selVS.vidhan_sabha} →` : 'Select a Vidhan Sabha'}
           </button>
+
+          {/* Separate confirmation dialog */}
+          {showConfirm && selVS && createPortal(
+            <div
+              onClick={() => setShowConfirm(false)}
+              style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999999, padding:20 }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{ background:'#16152A', border:'1px solid rgba(255,255,255,0.2)', borderRadius:16, padding:28, maxWidth:380, width:'100%', fontFamily:'inherit' }}
+              >
+                <div style={{ fontSize:20, marginBottom:12 }}>🏛️</div>
+                <div style={{ fontSize:16, fontWeight:800, color:'#fff', marginBottom:8 }}>Confirm Add Constituency</div>
+                <div style={{ fontSize:14, color:'#9CA3AF', marginBottom:20, lineHeight:1.7 }}>
+                  Are you sure you want to add<br/>
+                  <strong style={{ color:'#fff' }}>{selVS.vidhan_sabha}</strong><br/>
+                  <span style={{ fontSize:12 }}>{selState} · {selLS}</span>
+                </div>
+                <div style={{ fontSize:12, color:'rgba(245,158,11,0.8)', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:20 }}>
+                  ⚠ Once added, this cannot be removed without contacting support.
+                </div>
+                <div style={{ display:'flex', gap:10 }}>
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    style={{ flex:1, padding:'11px', fontSize:13, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:10, color:'#9CA3AF', cursor:'pointer', fontFamily:'inherit' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { setShowConfirm(false); handleAdd() }}
+                    disabled={loading}
+                    style={{ flex:2, padding:'11px', fontSize:13, fontWeight:700, background:'linear-gradient(135deg,#6C63FF,#4F46E5)', border:'none', borderRadius:10, color:'#fff', cursor:'pointer', fontFamily:'inherit' }}
+                  >
+                    {loading ? '⏳ Adding…' : '✓ Yes, Add Constituency'}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
         </div>
       </div>
     </div>,
