@@ -45,6 +45,7 @@ export async function validateCoupon(code, plan) {
 
 // ── Create Razorpay order via Edge Function ───────────────────────────────────
 export async function createOrder({ customerId, additionalVS, discountPct, couponCode, isAnnual }) {
+  console.log('🚀 createOrder sending:', { customerId, additionalVS, discountPct, isAnnual })
   const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
     body: { customerId, additionalVS, discountPct, couponCode, isAnnual }
   })
@@ -69,7 +70,7 @@ export async function openRazorpayCheckout({ order, customer, additionalVS, isAn
     currency:    order.currency || 'INR',
     name:        'Sampark.AI',
     description: `Premium Plan — ${additionalVS} VS`,
-    image:       '/logo.png',
+    // image: '/logo.png',  // removed - fails in dev
     order_id:    order.orderId,
     prefill: {
       name:    customer.name  || '',
