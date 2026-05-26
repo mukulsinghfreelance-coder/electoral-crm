@@ -124,7 +124,7 @@ export default function BillingPage({ onBack, workspaceCount = 1 }) {
           </div>
 
           {/* Upgrade button */}
-          {!isGifted && plan !== 'multiple' && (
+          {!isGifted && plan === 'free' && (
             <button onClick={() => setShowUpgrade(true)} style={{ marginTop:16, width:'100%', padding:'11px', fontSize:14, fontWeight:700, background:`linear-gradient(135deg,${C.primary},#4F46E5)`, border:'none', borderRadius:10, color:'#fff', cursor:'pointer', fontFamily:font }}>
               ⚡ Upgrade Plan
             </button>
@@ -152,7 +152,7 @@ export default function BillingPage({ onBack, workspaceCount = 1 }) {
                     <div>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                         <div style={{ fontSize:13, fontWeight:600, color:C.white }}>
-                          {DEFAULT_PLANS[h.plan]?.label || h.plan} Plan
+                          {h.plan === 'premium' ? 'Premium' : h.plan === 'free_forever' ? 'Free Forever' : 'Free'} Plan
                           {h.vs_count > 1 && ` (${h.vs_count} VS)`}
                         </div>
                         <span style={{ background:ss.bg, color:ss.cl, fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>{ss.label}</span>

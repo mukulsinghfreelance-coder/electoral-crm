@@ -27,8 +27,7 @@ const C = {
 
 const PLAN_COLORS = {
   free:         { bg:'#F3F4F6', cl:'#4B5563' },
-  single:       { bg:'#D1FAE5', cl:'#065F46' },
-  multiple:     { bg:'#EEF2FF', cl:'#3730A3' },
+  premium:      { bg:'#EEF2FF', cl:'#3730A3' },
   free_forever: { bg:'#FEF3C7', cl:'#92400E' },
 }
 
@@ -88,8 +87,7 @@ function PlanModal({ customer, onClose, onSaved }) {
 
   const DESC = {
     free:         '1 VS · Limited contacts',
-    single:       '1 VS · Unlimited contacts',
-    multiple:     'Unlimited VS · Unlimited contacts',
+    premium:      'Pay per VS · Unlimited contacts',
     free_forever: 'Up to 10 VS · Unlimited contacts · Complimentary',
   }
 
@@ -107,7 +105,7 @@ function PlanModal({ customer, onClose, onSaved }) {
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
-          {Object.entries(PLANS).filter(([k]) => k !== 'free_forever').map(([key, p]) => {
+          {Object.entries(PLANS).filter(([k]) => ['free','premium'].includes(k)).map(([key, p]) => {
             const isCurrent  = customer.plan === key
             const isSelected = plan === key
             return (
@@ -506,8 +504,7 @@ export default function SuperAdminPage({ onBack }) {
   const stats = {
     total:        customers.length,
     free:         customers.filter(c => c?.plan === 'free').length,
-    single:       customers.filter(c => c?.plan === 'single').length,
-    multiple:     customers.filter(c => c?.plan === 'multiple').length,
+    premium:      customers.filter(c => c?.plan === 'premium').length,
     free_forever: customers.filter(c => c?.plan === 'free_forever').length,
   }
 
@@ -540,13 +537,12 @@ export default function SuperAdminPage({ onBack }) {
 
         {/* ── STATS CARDS ── */}
         <div style={{
-          display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:24,
+          display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24,
         }}>
           {[
             ['Total',        stats.total,        '#818CF8', '👥'],
             ['Free',         stats.free,         '#9CA3AF', '🆓'],
-            ['Single',       stats.single,       '#34D399', '1️⃣'],
-            ['Multiple',     stats.multiple,     '#A78BFA', '🔢'],
+            ['Premium',      stats.premium,      '#A78BFA', '⭐'],
             ['Free Forever', stats.free_forever, '#F59E0B', '🎁'],
           ].map(([label, val, color, icon]) => (
             <div key={label} style={{

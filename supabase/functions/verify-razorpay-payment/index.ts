@@ -36,33 +36,14 @@ serve(async (req) => {
 
     // ── ACTIVATE PLAN ─────────────────────────────────────────────────────────
     const planExpiry = new Date()
-    planExpiry.setMonth(planExpiry.getMonth() + 1)
-
-    // Get current customer to compute new paid_vs_count
-    const { data: currentCustomer } = await supabase
-      .from('customers')
-      .select('plan, paid_vs_count')
-      .eq('id', customerId)
-      .single()
-
-    const currentPaidVs = currentCustomer?.paid_vs_count || 0
-    const newPaidVs     = vsCount  // vsCount from payment = total VSs now paid for
-
-    // Determine new plan
-    let newPlan = plan
-    if (plan === 'multiple' || vsCount > 1) {
-      newPlan = 'multiple'
-    } else if (vsCount === 1) {
-      newPlan = currentCustomer?.plan === 'multiple' ? 'multiple' : 'single'
-    }
+    planExpiry.setMonth(planExpiry.getMonth() + 1)  // +1 month
 
     const { error: updateErr } = await supabase
       .from('customers')
       .update({
-        plan:          newPlan,
-        plan_status:   'active',
-        plan_expiry:   planExpiry.toISOString(),
-        paid_vs_count: newPaidVs,
+        plan,
+        plan_status:  'active',
+        plan_expiry:  planExpiry.toISOString(),
       })
       .eq('id', customerId)
 
@@ -93,10 +74,9 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({
-      success:     true,
-      plan:        newPlan,
-      paidVsCount: newPaidVs,
-      message:     `${newPlan} plan activated! You now have ${newPaidVs} VS(s).`,
+      success: true,
+      plan,
+      message: `${plan} plan activated successfully!`,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch(e) {

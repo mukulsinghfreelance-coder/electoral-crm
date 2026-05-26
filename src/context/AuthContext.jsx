@@ -206,17 +206,15 @@ export function AuthProvider({ children }) {
   const plan         = customer?.plan || 'free'
   const isGifted     = plan === 'free_forever'
   const isSuperAdmin = customer?.email === SUPER_ADMIN_EMAIL
-
-  // paid_vs_count: how many VSs the customer has paid for
   const paidVsCount  = customer?.paid_vs_count || 0
 
-  // allowedVS: how many VSs they can have without triggering upgrade
+  // allowedVS — how many VSs without triggering upgrade prompt
   const freeForeverLimit = livePlans?.freeForeverVsLimit ?? 10
   const allowedVS =
-    isSuperAdmin            ? Infinity
+    isSuperAdmin          ? Infinity
     : plan === 'free_forever' ? freeForeverLimit
-    : plan === 'free'         ? 1
-    : paidVsCount             // single=1, multiple=n (paid count)
+    : plan === 'premium'      ? paidVsCount
+    : 1  // free = 1
 
   const activeConfig = activePlans[plan] || PLANS[plan] || PLANS.free
   const planLimits   = {
@@ -224,19 +222,15 @@ export function AuthProvider({ children }) {
     contacts: activeConfig.contacts,
     label:    activeConfig.label,
   }
-  const planConfig    = activeConfig
-  const activeGstRate = livePlans?.gstRate ?? BILLING.gstRate
-
-  // Annual billing settings from DB
-  const annualBillingEnabled = livePlans?.annualBillingEnabled ?? true
+  const planConfig           = activeConfig
+  const annualBillingEnabled = livePlans?.annualBillingEnabled ?? false
   const annualDiscountPct    = livePlans?.annualDiscountPct ?? 20
 
   // calcMonthlyPrice using live pricing
   const calcLivePrice = (p, vsCount = 1) => {
     const pc = activePlans[p] || PLANS[p]
     if (!pc || pc.basePrice === 0) return 0
-    if (p === 'single')   return pc.basePrice
-    if (p === 'multiple') return pc.basePrice + Math.max(0, vsCount - 1) * pc.extraVS
+    if (p === 'premium') return pc.basePrice + Math.max(0, vsCount - 1) * pc.extraVS
     return 0
   }
 

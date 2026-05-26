@@ -45,14 +45,10 @@ export async function fetchPricingFromDB(supabase) {
         ...PLANS.free,
         contacts: p.free_contact_limit ?? PLANS.free.contacts,
       },
-      single: {
-        ...PLANS.single,
-        basePrice: p.single_base_price ?? PLANS.single.basePrice,
-      },
-      multiple: {
-        ...PLANS.multiple,
-        basePrice: p.multiple_base_price ?? PLANS.multiple.basePrice,
-        extraVS:   p.multiple_extra_vs   ?? PLANS.multiple.extraVS,
+      premium: {
+        ...PLANS.premium,
+        basePrice: p.premium_base_price ?? PLANS.premium.basePrice,
+        extraVS:   p.premium_extra_vs   ?? PLANS.premium.extraVS,
       },
       free_forever: {
         ...PLANS.free_forever,
@@ -62,6 +58,7 @@ export async function fetchPricingFromDB(supabase) {
       annualBillingEnabled: (p.annual_billing_enabled ?? 1) === 1,
       annualDiscountPct:    p.annual_discount_pct ?? 20,
       freeForeverVsLimit:   p.free_forever_vs_limit ?? 10,
+      premiumExtraPct:      p.premium_extra_pct ?? 25,
     }
   } catch(e) {
     console.warn('Pricing fetch failed, using defaults:', e.message)
@@ -93,31 +90,21 @@ export const PLANS = {
   free: {
     label:       'Free',
     vs:          1,
-    contacts:    1000,
+    contacts:    500,        // overridden by free_contact_limit from DB
     basePrice:   0,
     extraVS:     0,
     highlight:   false,
     description: 'Get started with 1 constituency',
     badge:       { bg: '#F3F4F6', cl: '#4B5563' },
   },
-  single: {
-    label:       'Single',
-    vs:          1,
+  premium: {
+    label:       'Premium',
+    vs:          Infinity,   // unlimited — controlled by paid_vs_count
     contacts:    Infinity,
-    basePrice:   2999,
-    extraVS:     0,
-    highlight:   false,
-    description: '1 constituency, unlimited contacts',
-    badge:       { bg: '#D1FAE5', cl: '#065F46' },
-  },
-  multiple: {
-    label:       'Multiple',
-    vs:          Infinity,
-    contacts:    Infinity,
-    basePrice:   2999,
-    extraVS:     2249,
+    basePrice:   2999,       // overridden by premium_base_price from DB
+    extraVS:     2249,       // overridden by premium_extra_vs from DB
     highlight:   true,
-    description: 'Multiple constituencies, unlimited contacts',
+    description: 'Unlimited contacts · Pay per constituency',
     badge:       { bg: '#EEF2FF', cl: '#3730A3' },
   },
   free_forever: {
@@ -127,7 +114,7 @@ export const PLANS = {
     basePrice:   0,
     extraVS:     0,
     highlight:   false,
-    description: 'Complimentary unlimited access',
+    description: 'Complimentary access',
     badge:       { bg: '#FEF3C7', cl: '#92400E' },
   },
 }
@@ -137,8 +124,7 @@ export const PLANS = {
 export function calcMonthlyPrice(plan, vsCount = 1) {
   const p = PLANS[plan]
   if (!p || p.basePrice === 0) return 0
-  if (plan === 'single')   return p.basePrice
-  if (plan === 'multiple') return p.basePrice + Math.max(0, vsCount - 1) * p.extraVS
+  if (plan === 'premium') return p.basePrice + Math.max(0, vsCount - 1) * p.extraVS
   return 0
 }
 
@@ -153,6 +139,11 @@ export function getPlanLimits(plan) {
   const p = PLANS[plan] || PLANS.free
   return { vs: p.vs, contacts: p.contacts, label: p.label }
 }
+
+// Quick check helpers
+export function isPremium(plan) { return plan === 'premium' }
+export function isFreeForever(plan) { return plan === 'free_forever' }
+export function isPaid(plan) { return plan === 'premium' }
 
 // ─── TAX & BILLING ────────────────────────────────────────────────────────────
 export const BILLING = {

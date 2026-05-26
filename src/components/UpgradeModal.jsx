@@ -17,7 +17,7 @@ const font = "system-ui,-apple-system,'Segoe UI',sans-serif"
 export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReason = '', initialPlan = null }) {
   // ── ALL HOOKS FIRST — no functions before hooks ───────────────────────────
   const { customer, livePlans, plan, isGifted, annualBillingEnabled, annualDiscountPct, paidVsCount } = useAuth()
-  const [selectedPlan, setSelectedPlan] = useState(initialPlan || 'single')
+  const [selectedPlan, setSelectedPlan] = useState(initialPlan && initialPlan !== 'free' ? initialPlan : 'premium')
   const [coupon,       setCoupon]       = useState('')
   const [couponResult, setCouponResult] = useState(null)
   const [couponLoading,setCouponLoading]= useState(false)
@@ -131,7 +131,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
 
         {/* Plan selector */}
         <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
-          {Object.entries(PLANS).filter(([k, v]) => ['single','multiple'].includes(k) && v && typeof v === 'object' && v.basePrice > 0).map(([key, p]) => (
+          {Object.entries(PLANS).filter(([k, v]) => k === 'premium' && v && typeof v === 'object').map(([key, p]) => (
             <div
               key={key}
               onClick={() => setSelectedPlan(key)}

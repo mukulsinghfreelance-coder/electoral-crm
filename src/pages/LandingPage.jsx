@@ -45,9 +45,8 @@ const T = {
       title: 'Start free. Scale as you grow.',
       subtitle: 'No hidden fees. No long-term contracts.',
       plans: [
-        { key:'free',     name:'Free',     price:'₹0',           period:'',       desc:'Perfect to get started',              vs:'FREE_VS',             contacts:'FREE_CONTACTS', features:['Contact management','Booth tracking','Basic reports'],                                                           cta:'Get Started Free',     highlight:false },
-        { key:'single',   name:'Single',   price:'SINGLE_PRICE',   period:'/month', desc:'For serious campaigners',             vs:'1 Vidhan Sabha',      contacts:'Unlimited contacts', features:['Everything in Free','Unlimited contacts','Advanced analytics','Priority support'],              cta:'Start Single Plan',    highlight:false },
-        { key:'multiple', name:'Multiple', price:'MULTIPLE_PRICE',  period:'/month', desc:'For leaders managing multiple VSs',   vs:'Unlimited Vidhan Sabhas', contacts:'Unlimited contacts', features:['Everything in Single','Unlimited constituencies','MULTIPLE_EXTRA/mo per extra VS','Dedicated support'], cta:'Start Multiple Plan',  highlight:true, badge:'Most Popular' },
+        { key:'free',    name:'Free',    price:'₹0',            period:'',       desc:'Perfect to get started',             vs:'FREE_VS',             contacts:'FREE_CONTACTS', features:['1 Vidhan Sabha','Contact management','Booth tracking','Basic reports'],                                                        cta:'Get Started Free',  highlight:false },
+        { key:'premium', name:'Premium', price:'PREMIUM_PRICE',  period:'/month', desc:'Unlimited contacts · Pay per VS',    vs:'Pay per VS',          contacts:'Unlimited contacts', features:['Unlimited contacts','Multiple VSs','Advanced analytics','Priority support','PREMIUM_EXTRA/mo per extra VS'], cta:'Start Premium',     highlight:true, badge:'Most Popular' },
       ]
     },
     cta: {
@@ -100,9 +99,8 @@ const T = {
       title: 'मुफ्त शुरू करें। जरूरत के साथ बढ़ें।',
       subtitle: 'कोई छुपी फीस नहीं। कोई लंबा अनुबंध नहीं।',
       plans: [
-        { key:'free',     name:'फ्री',     price:'₹0',           period:'',      desc:'शुरुआत के लिए बिल्कुल सही',              vs:'FREE_VS_HI',          contacts:'FREE_CONTACTS_HI', features:['संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'],                                                         cta:'मुफ्त शुरू करें',       highlight:false },
-        { key:'single',   name:'सिंगल',   price:'SINGLE_PRICE',   period:'/माह',  desc:'गंभीर प्रचारकों के लिए',                vs:'1 विधान सभा',         contacts:'असीमित संपर्क', features:['फ्री की सब सुविधाएं','असीमित संपर्क','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता'],              cta:'सिंगल प्लान शुरू करें', highlight:false },
-        { key:'multiple', name:'मल्टीपल', price:'MULTIPLE_PRICE',  period:'/माह',  desc:'एकाधिक क्षेत्र मैनेज करने वालों के लिए', vs:'असीमित विधान सभाएं', contacts:'असीमित संपर्क', features:['सिंगल की सब सुविधाएं','असीमित क्षेत्र','MULTIPLE_EXTRA/माह प्रति अतिरिक्त VS','डेडिकेटेड सहायता'], cta:'मल्टीपल प्लान शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
+        { key:'free',    name:'फ्री',    price:'₹0',            period:'',      desc:'शुरुआत के लिए बिल्कुल सही',          vs:'FREE_VS_HI',          contacts:'FREE_CONTACTS_HI', features:['1 विधान सभा','संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'],                                                      cta:'मुफ्त शुरू करें',  highlight:false },
+        { key:'premium', name:'प्रीमियम', price:'PREMIUM_PRICE', period:'/माह',  desc:'असीमित संपर्क · प्रति VS भुगतान',     vs:'प्रति VS भुगतान',    contacts:'असीमित संपर्क', features:['असीमित संपर्क','एकाधिक VS','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता','PREMIUM_EXTRA/माह प्रति अतिरिक्त VS'], cta:'प्रीमियम शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
       ]
     },
     cta: {
@@ -275,10 +273,9 @@ export default function LandingPage() {
   const PLANS = livePlans || DEFAULT_PLANS
 
   // Dynamic pricing values — always from live DB pricing
-  const freeContacts    = PLANS.free.contacts === Infinity ? 'Unlimited' : Number(PLANS.free.contacts).toLocaleString('en-IN')
-  const singlePrice     = `₹${Number(PLANS.single.basePrice).toLocaleString('en-IN')}`
-  const multiplePrice   = `₹${Number(PLANS.multiple.basePrice).toLocaleString('en-IN')}`
-  const multipleExtra   = `₹${Number(PLANS.multiple.extraVS).toLocaleString('en-IN')}`
+  const freeContacts  = PLANS.free?.contacts === Infinity ? 'Unlimited' : Number(PLANS.free?.contacts || 500).toLocaleString('en-IN')
+  const premiumPrice  = `₹${Number(PLANS.premium?.basePrice || 2999).toLocaleString('en-IN')}`
+  const premiumExtra  = `₹${Number(PLANS.premium?.extraVS || 2249).toLocaleString('en-IN')}`
   const [lang, setLang]         = useState('en')
   const [showAuth,       setShowAuth]       = useState(false)
   const [intendedPlan,   setIntendedPlan]   = useState(null)
@@ -301,12 +298,10 @@ export default function LandingPage() {
     vs: p.vs === 'FREE_VS' ? `${PLANS.free.vs} Vidhan Sabha`
       : p.vs === 'FREE_VS_HI' ? `${PLANS.free.vs} विधान सभा`
       : p.vs,
-    price: p.price === 'SINGLE_PRICE' ? singlePrice
-         : p.price === 'MULTIPLE_PRICE' ? multiplePrice
-         : p.price,
+    price: p.price === 'PREMIUM_PRICE' ? premiumPrice : p.price,
     features: p.features.map(f =>
-      f === 'MULTIPLE_EXTRA/mo per extra VS' ? `${multipleExtra}/mo per extra VS`
-    : f === 'MULTIPLE_EXTRA/माह प्रति अतिरिक्त VS' ? `${multipleExtra}/माह प्रति अतिरिक्त VS`
+      f === 'PREMIUM_EXTRA/mo per extra VS' ? `${premiumExtra}/mo per extra VS`
+    : f === 'PREMIUM_EXTRA/माह प्रति अतिरिक्त VS' ? `${premiumExtra}/माह प्रति अतिरिक्त VS`
     : f
     ),
   }))

@@ -30,8 +30,7 @@ const RATING_COLOR = {
 function planBadge(plan) {
   const map = {
     free:         { bg:'#F3F4F6', cl:'#4B5563' },
-    single:       { bg:'#D1FAE5', cl:'#065F46' },
-    multiple:     { bg:'#EEF2FF', cl:'#3730A3' },
+    premium:      { bg:'#EEF2FF', cl:'#3730A3' },
     free_forever: { bg:'#FEF3C7', cl:'#92400E' },
   }
   return map[plan] || map.free
@@ -97,7 +96,7 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
           <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
         </div>
         <div style={{ background:C.primaryLight, borderRadius:10, padding:'10px 12px', marginBottom:16, fontSize:12, color:C.primary }}>
-          Plan: <strong>{MODAL_PLANS[customer.plan]?.label || customer.plan}</strong> · {currentCount} VS used
+          Plan: <strong>{MODAL_PLANS[customer.plan]?.label || (customer.plan === 'premium' ? 'Premium' : customer.plan)}</strong> · {currentCount} VS used
           {planLimit !== Infinity && ` of ${planLimit}`}
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:16 }}>
