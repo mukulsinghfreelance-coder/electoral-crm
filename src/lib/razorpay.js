@@ -93,6 +93,7 @@ export async function openRazorpayCheckout({ order, customer, additionalVS, onSu
             razorpay_signature:  response.razorpay_signature,
             additionalVS,
             customerId: customer.id,
+            isAnnual,
           }
         })
         if (error) throw new Error(error.message)
@@ -143,6 +144,7 @@ export async function initiatePayment({
           razorpay_signature:  'free',
           additionalVS,
           customerId: customer.id,
+          isAnnual,
           isFree:     true,
         }
       })

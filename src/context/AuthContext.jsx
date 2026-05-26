@@ -243,6 +243,7 @@ export function AuthProvider({ children }) {
       livePlans: activePlans,
       isSuperAdmin, isGifted, paidVsCount, allowedVS,
       annualBillingEnabled, annualDiscountPct,
+      billingCycle: customer?.billing_cycle || 'monthly',
       calcMonthlyPrice: calcLivePrice,
     }}>
       {children}

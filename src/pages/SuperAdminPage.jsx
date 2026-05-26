@@ -280,16 +280,7 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
         />
       )}
 
-      {showPlan && (
-        <PlanModal
-          customer={customer}
-          onClose={() => setShowPlan(false)}
-          onSaved={(newPlan) => {
-            setShowPlan(false)
-            onPlanChanged(customer.id, newPlan)
-          }}
-        />
-      )}
+
     </div>
   )
 }
