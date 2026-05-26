@@ -39,10 +39,13 @@ export default function AppRouter() {
     sessionStorage.removeItem('intended_plan')
 
     // Only show payment if customer is on free plan
-    // (they may have already paid before)
+    // If already premium (just paid), skip — don't reopen modal
     if (customer.plan === 'free' && !customer.gifted_forever) {
       setIntendedPlan(plan)
       setShowPayment(true)
+    } else {
+      // Already paid — clear storage, go to dashboard
+      sessionStorage.removeItem('intended_plan')
     }
   }, [customer?.id])
 

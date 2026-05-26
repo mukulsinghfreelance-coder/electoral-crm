@@ -53,7 +53,7 @@ export async function createOrder({ customerId, additionalVS, discountPct, coupo
 }
 
 // ── Open Razorpay checkout ────────────────────────────────────────────────────
-export async function openRazorpayCheckout({ order, customer, additionalVS, onSuccess, onFailure }) {
+export async function openRazorpayCheckout({ order, customer, additionalVS, isAnnual = false, onSuccess, onFailure }) {
   const loaded = await loadRazorpayScript()
   if (!loaded) throw new Error('Failed to load Razorpay. Check your internet connection.')
 
@@ -159,6 +159,7 @@ export async function initiatePayment({
       order,
       customer,
       additionalVS,
+      isAnnual,
       onSuccess,
       onFailure,
     })
