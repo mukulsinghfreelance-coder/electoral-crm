@@ -395,11 +395,14 @@ function PricingPanel() {
   const [saved,   setSaved]   = useState(null)
 
   const LABELS = {
-    free_contact_limit:  { label:'Free Plan — Contact Limit', unit:'contacts', desc:'Max contacts a Free user can have' },
-    single_base_price:   { label:'Single Plan — Monthly Price', unit:'₹/month', desc:'Base price for Single plan' },
-    multiple_base_price: { label:'Multiple Plan — First VS Price', unit:'₹/month', desc:'Price for first Vidhan Sabha' },
-    multiple_extra_vs:   { label:'Multiple Plan — Extra VS Price', unit:'₹/month', desc:'Price per additional VS (25% discount)' },
-    gst_rate:            { label:'GST Rate', unit:'%', desc:'GST percentage applied to all paid plans' },
+    free_contact_limit:    { label:'Free Plan — Contact Limit',      unit:'contacts',     desc:'Max contacts for Free users',                  type:'number' },
+    premium_base_price:    { label:'Premium — First VS Price',       unit:'₹/month',      desc:'Price for first paid constituency',             type:'number' },
+    premium_extra_vs:      { label:'Premium — Extra VS Price',       unit:'₹/month',      desc:'Price per additional constituency',             type:'number' },
+    premium_extra_pct:     { label:'Premium — Extra VS Discount',    unit:'%',            desc:'Discount % shown to customers (display only)', type:'number' },
+    gst_rate:              { label:'GST Rate',                       unit:'%',            desc:'GST on all paid plans',                        type:'number' },
+    free_forever_vs_limit: { label:'Free Forever — Max VS',          unit:'Vidhan Sabha', desc:'Max constituencies for gifted accounts',       type:'number' },
+    annual_billing_enabled:{ label:'Annual Billing — Enable',        unit:'toggle',       desc:'Show annual billing toggle to customers',      type:'toggle' },
+    annual_discount_pct:   { label:'Annual Billing — Discount',      unit:'%',            desc:'Discount for annual billing',                  type:'number' },
   }
 
   useEffect(() => {
