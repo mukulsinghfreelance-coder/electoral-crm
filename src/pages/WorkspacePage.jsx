@@ -224,7 +224,7 @@ export default function WorkspacePage() {
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <div style={{ width:42, height:42, borderRadius:11, background:'rgba(255,255,255,.15)', border:'2px solid rgba(255,255,255,.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>📋</div>
             <div>
-              <div style={{ fontSize:18, fontWeight:800, color:'#fff' }}>ContactBook</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#fff' }}>Sampark.AI</div>
               <div style={{ fontSize:11, color:'#A5B4FC' }}>Electoral Manager</div>
             </div>
           </div>
@@ -303,25 +303,22 @@ export default function WorkspacePage() {
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', textTransform:'uppercase', letterSpacing:'.06em' }}>Your Constituencies</div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            {/* Free plan at limit → Upgrade */}
-            {isFreeAtLimit && (
+            {/* One button: Add Constituency OR X/Y Used — Upgrade */}
+            {isFreeAtLimit ? (
               <div
                 onClick={e => { e.stopPropagation(); setUpgradeReason('Upgrade to Premium to add more constituencies.'); setShowUpgrade(true) }}
                 style={{ fontSize:11, background:'linear-gradient(135deg,#FEF3C7,#FDE68A)', color:'#92400E', padding:'7px 14px', borderRadius:8, border:'1px solid #F59E0B', fontWeight:600, cursor:'pointer' }}
               >
-                ⚡ Upgrade to Premium
+                1/1 Used — Upgrade ↗
               </div>
-            )}
-            {/* Premium at paid_vs_count limit → Add More (pay) */}
-            {isPremiumLimit && (
+            ) : isPremiumLimit ? (
               <div
                 onClick={e => { e.stopPropagation(); setUpgradeReason(`You have used all ${allowedVS} paid VS. Pay for more constituencies.`); setShowUpgrade(true) }}
                 style={{ fontSize:11, background:'linear-gradient(135deg,#EEF2FF,#C7D2FE)', color:'#3730A3', padding:'7px 14px', borderRadius:8, border:'1px solid #818CF8', fontWeight:600, cursor:'pointer' }}
               >
-                ⚡ Add More VS ↗
+                {allowedVS}/{allowedVS} Used — Add More ↗
               </div>
-            )}
-            {canAddMore && !isFreeAtLimit && !isPremiumLimit && (
+            ) : canAddMore ? (
               <button onClick={() => setShowAdd(true)} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, background:`linear-gradient(135deg,${C.success},#047857)`, border:'none', borderRadius:8, color:C.white, cursor:'pointer', fontFamily:'inherit' }}>
                 + Add Constituency
               </button>

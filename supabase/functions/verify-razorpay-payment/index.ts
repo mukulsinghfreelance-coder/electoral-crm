@@ -15,8 +15,7 @@ serve(async (req) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      plan,
-      vsCount,
+      vsCount,      // total VSs customer is paying for
       customerId,
     } = await req.json()
 
@@ -27,23 +26,35 @@ serve(async (req) => {
     )
 
     // ── VERIFY SIGNATURE ──────────────────────────────────────────────────────
-    const body      = razorpay_order_id + '|' + razorpay_payment_id
-    const expected  = createHmac('sha256', KEY_SECRET).update(body).digest('hex')
+    const body     = razorpay_order_id + '|' + razorpay_payment_id
+    const expected = createHmac('sha256', KEY_SECRET).update(body).digest('hex')
 
     if (expected !== razorpay_signature) {
       throw new Error('Payment signature verification failed')
     }
 
+    // ── GET CURRENT CUSTOMER ──────────────────────────────────────────────────
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('plan, paid_vs_count')
+      .eq('id', customerId)
+      .single()
+
+    const currentPaidVs = customer?.paid_vs_count || 0
+    // vsCount = total VSs paid for after this payment
+    const newPaidVs = Math.max(vsCount, currentPaidVs + 1)
+
     // ── ACTIVATE PLAN ─────────────────────────────────────────────────────────
     const planExpiry = new Date()
-    planExpiry.setMonth(planExpiry.getMonth() + 1)  // +1 month
+    planExpiry.setMonth(planExpiry.getMonth() + 1)
 
     const { error: updateErr } = await supabase
       .from('customers')
       .update({
-        plan,
-        plan_status:  'active',
-        plan_expiry:  planExpiry.toISOString(),
+        plan:          'premium',
+        plan_status:   'active',
+        plan_expiry:   planExpiry.toISOString(),
+        paid_vs_count: newPaidVs,   // ← KEY: update paid VS count
       })
       .eq('id', customerId)
 
@@ -67,19 +78,17 @@ serve(async (req) => {
       .maybeSingle()
 
     if (billing?.coupon_used) {
-      await supabase
-        .from('coupons')
-        .update({ used_count: supabase.rpc('increment', { row_id: billing.coupon_used }) })
-        .eq('code', billing.coupon_used)
+      await supabase.rpc('increment_coupon_usage', { coupon_code: billing.coupon_used })
     }
 
     return new Response(JSON.stringify({
-      success: true,
-      plan,
-      message: `${plan} plan activated successfully!`,
+      success:     true,
+      plan:        'premium',
+      paidVsCount: newPaidVs,
+      message:     `Premium plan activated! You now have ${newPaidVs} VS(s).`,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
-  } catch(e) {
+  } catch(e: any) {
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

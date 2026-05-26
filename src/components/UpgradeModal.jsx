@@ -72,9 +72,13 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
       discountPct,
       couponCode:  coupon,
       onLoading:   setPayLoading,
-      onSuccess:   () => {
+      onSuccess:   (data) => {
         setPaySuccess(true)
-        setTimeout(() => { onClose(); window.location.reload() }, 2000)
+        // Reload after short delay so DB has time to update
+        setTimeout(() => {
+          onClose()
+          window.location.reload()
+        }, 2000)
       },
       onFailure: (msg) => {
         let err = msg || 'Payment failed'
@@ -126,7 +130,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
             <div style={{ width:18, height:18, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: isAnnual ? 23 : 3, transition:'left .2s' }}/>
           </div>
           <span style={{ fontSize:13, color: isAnnual ? C.white : C.gray, fontWeight: isAnnual ? 600 : 400 }}>
-            Annual <span style={{ background:'rgba(16,185,129,0.2)', color:C.success, fontSize:10, padding:'2px 6px', borderRadius:10, fontWeight:700, marginLeft:4 }}>Save 20%</span>
+            Annual <span style={{ background:'rgba(16,185,129,0.2)', color:C.success, fontSize:10, padding:'2px 6px', borderRadius:10, fontWeight:700, marginLeft:4 }}>Save {ANNUAL_DISCOUNT}%</span>
           </span>
         </div>}
 
