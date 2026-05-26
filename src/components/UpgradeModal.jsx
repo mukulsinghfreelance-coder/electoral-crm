@@ -1,7 +1,7 @@
-// ─── src/components/UpgradeModal.jsx ─────────────────────────────────────────
+// src/components/UpgradeModal.jsx
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { PLANS as DEFAULT_PLANS, BILLING, calcPriceBreakdown } from '../config'
+import { PLANS as DEFAULT_PLANS, BILLING } from '../config'
 import { validateCoupon, initiatePayment } from '../lib/razorpay'
 import { useAuth } from '../context/AuthContext'
 
@@ -12,24 +12,11 @@ const C = {
   gray:'#9CA3AF', gray2:'#6B7280', success:'#10B981',
   red:'#EF4444', gold:'#F59E0B', text:'#F1F0FF',
 }
-
 const font = "system-ui,-apple-system,'Segoe UI',sans-serif"
 
 export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReason = '', initialPlan = null }) {
-  const { customer, planLimits, livePlans } = useAuth()
-  const PLANS = livePlans || DEFAULT_PLANS
-
-  // Live price breakdown using DB pricing
-  const calcLiveBreakdown = (plan, vsCount, discPct) => {
-    const p = PLANS[plan]
-    if (!p || p.basePrice === 0) return { base:0, discount:0, afterDiscount:0, gst:0, total:0, totalPaise:0 }
-    let base = plan === 'single' ? p.basePrice : p.basePrice + Math.max(0, vsCount-1) * p.extraVS
-    const disc  = Math.round(base * discPct / 100)
-    const after = base - disc
-    const gst   = Math.round(after * (livePlans?.gstRate ?? BILLING.gstRate))
-    const total = after + gst
-    return { base, discount:disc, afterDiscount:after, gst, total, totalPaise:total*100 }
-  }
+  // ── ALL HOOKS FIRST — no functions before hooks ───────────────────────────
+  const { customer, livePlans } = useAuth()
   const [selectedPlan, setSelectedPlan] = useState(initialPlan || 'single')
   const [coupon,       setCoupon]       = useState('')
   const [couponResult, setCouponResult] = useState(null)
@@ -37,17 +24,30 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
   const [payLoading,   setPayLoading]   = useState(false)
   const [payError,     setPayError]     = useState('')
   const [paySuccess,   setPaySuccess]   = useState(false)
-  const [vsCount,      setVsCount]      = useState(
-    selectedPlan === 'multiple' ? Math.max(currentVSCount, 2) : 1
-  )
+  const [vsCount,      setVsCount]      = useState(1)
 
   useEffect(() => {
     setVsCount(selectedPlan === 'multiple' ? Math.max(currentVSCount, 2) : 1)
   }, [selectedPlan, currentVSCount])
 
+  // ── HELPERS (after hooks) ─────────────────────────────────────────────────
+  const PLANS   = livePlans || DEFAULT_PLANS
+  const gstRate = livePlans?.gstRate ?? BILLING.gstRate
+
+  const calcBreakdown = (plan, vsCnt, discPct) => {
+    const p = PLANS[plan]
+    if (!p || p.basePrice === 0) return { base:0, discount:0, afterDiscount:0, gst:0, total:0, totalPaise:0 }
+    const base  = plan === 'single' ? p.basePrice : p.basePrice + Math.max(0, vsCnt - 1) * p.extraVS
+    const disc  = Math.round(base * discPct / 100)
+    const after = base - disc
+    const gst   = Math.round(after * gstRate)
+    const total = after + gst
+    return { base, discount:disc, afterDiscount:after, gst, total, totalPaise: total * 100 }
+  }
+
   const discountPct = couponResult?.valid ? couponResult.discountPct : 0
-  const breakdown   = calcLiveBreakdown(selectedPlan, vsCount, discountPct)
-  const isFree      = breakdown.total === 0 || couponResult?.freeMonths > 0
+  const breakdown   = calcBreakdown(selectedPlan, vsCount, discountPct)
+  const isFree      = breakdown.total === 0 || (couponResult?.freeMonths > 0)
 
   const handleCoupon = async () => {
     if (!coupon.trim()) return
@@ -70,13 +70,16 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
         setPaySuccess(true)
         setTimeout(() => { onClose(); window.location.reload() }, 2000)
       },
-      onFailure:   (msg) => {
-        setPayError(msg || 'Payment failed. Please try again.')
+      onFailure: (msg) => {
+        let err = msg || 'Payment failed'
+        if (err.includes('Failed to fetch') || err.includes('network')) err = '🌐 Network error — check your internet connection'
+        setPayError(err)
         setPayLoading(false)
       },
     })
   }
 
+  // ── SUCCESS STATE ─────────────────────────────────────────────────────────
   if (paySuccess) return createPortal(
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999 }}>
       <div style={{ background:C.bg, border:`1px solid ${C.border2}`, borderRadius:20, padding:40, textAlign:'center', maxWidth:360 }}>
@@ -88,6 +91,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
     document.body
   )
 
+  // ── MAIN MODAL ────────────────────────────────────────────────────────────
   return createPortal(
     <div
       onClick={e => e.target === e.currentTarget && onClose()}
@@ -116,7 +120,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
                 border:`2px solid ${selectedPlan===key ? C.primary : C.border}`,
                 borderRadius:12, padding:'14px 16px', cursor:'pointer',
                 background: selectedPlan===key ? 'rgba(108,99,255,0.12)' : 'rgba(255,255,255,0.03)',
-                transition:'all .15s', position:'relative',
+                position:'relative',
               }}
             >
               {p.highlight && (
@@ -130,13 +134,13 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
                   </div>
                   <div style={{ fontSize:12, color:C.gray }}>{p.description}</div>
                   <div style={{ fontSize:11, color:C.gray2, marginTop:6 }}>
-                    {p.vs === Infinity ? 'Unlimited' : p.vs} VS · {p.contacts === Infinity ? 'Unlimited' : p.contacts.toLocaleString('en-IN')} contacts
-                    {p.extraVS > 0 && ` · +₹${p.extraVS.toLocaleString('en-IN')}/mo per extra VS`}
+                    {p.vs === Infinity ? 'Unlimited' : p.vs} VS · {p.contacts === Infinity ? 'Unlimited' : Number(p.contacts).toLocaleString('en-IN')} contacts
+                    {p.extraVS > 0 && ` · +₹${Number(p.extraVS).toLocaleString('en-IN')}/mo per extra VS`}
                   </div>
                 </div>
                 <div style={{ textAlign:'right', minWidth:80, paddingLeft:12 }}>
                   <div style={{ fontSize:18, fontWeight:800, color: selectedPlan===key ? C.accent : C.white }}>
-                    ₹{p.basePrice.toLocaleString('en-IN')}
+                    ₹{Number(p.basePrice).toLocaleString('en-IN')}
                   </div>
                   <div style={{ fontSize:10, color:C.gray2 }}>/month</div>
                 </div>
@@ -169,7 +173,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
               value={coupon} onChange={e => { setCoupon(e.target.value.toUpperCase()); setCouponResult(null) }}
               style={{ flex:1, padding:'10px 12px', fontSize:13, background:'rgba(255,255,255,0.05)', border:`1px solid ${couponResult?.valid ? C.success : couponResult ? C.red : C.border}`, borderRadius:8, color:C.white, fontFamily:font, outline:'none' }}
             />
-            <button onClick={handleCoupon} disabled={couponLoading || !coupon.trim()} style={{ padding:'10px 16px', fontSize:13, fontWeight:600, background: couponLoading ? 'rgba(255,255,255,0.05)' : 'rgba(108,99,255,0.2)', border:`1px solid ${C.border2}`, borderRadius:8, color:C.accent, cursor:'pointer', fontFamily:font }}>
+            <button onClick={handleCoupon} disabled={couponLoading || !coupon.trim()} style={{ padding:'10px 16px', fontSize:13, fontWeight:600, background:'rgba(108,99,255,0.2)', border:`1px solid ${C.border2}`, borderRadius:8, color:C.accent, cursor:'pointer', fontFamily:font }}>
               {couponLoading ? '...' : 'Apply'}
             </button>
           </div>
@@ -186,23 +190,23 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:C.gray }}>
               <span>{PLANS[selectedPlan]?.label} Plan {selectedPlan==='multiple' ? `(${vsCount} VS)` : ''}</span>
-              <span>₹{breakdown.base.toLocaleString('en-IN')}</span>
+              <span>₹{Number(breakdown.base).toLocaleString('en-IN')}</span>
             </div>
             {breakdown.discount > 0 && (
               <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:C.success }}>
                 <span>Discount ({discountPct}%)</span>
-                <span>−₹{breakdown.discount.toLocaleString('en-IN')}</span>
+                <span>−₹{Number(breakdown.discount).toLocaleString('en-IN')}</span>
               </div>
             )}
             <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:C.gray }}>
-              <span>GST (18%)</span>
-              <span>₹{breakdown.gst.toLocaleString('en-IN')}</span>
+              <span>GST ({Math.round(gstRate * 100)}%)</span>
+              <span>₹{Number(breakdown.gst).toLocaleString('en-IN')}</span>
             </div>
             <div style={{ height:'1px', background:C.border, margin:'6px 0' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', fontSize:16, fontWeight:800, color:C.white }}>
               <span>Total</span>
               <span style={{ color:C.accent }}>
-                {isFree ? '₹0' : `₹${breakdown.total.toLocaleString('en-IN')}`}
+                {isFree ? '₹0' : `₹${Number(breakdown.total).toLocaleString('en-IN')}`}
                 <span style={{ fontSize:11, fontWeight:400, color:C.gray2 }}>/month</span>
               </span>
             </div>
@@ -222,12 +226,14 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
           style={{
             width:'100%', padding:'14px', fontSize:15, fontWeight:700,
             background: payLoading ? 'rgba(255,255,255,0.08)' : `linear-gradient(135deg,${C.primary},${C.primaryD})`,
-            border:'none', borderRadius:12, color: payLoading ? C.gray : C.white,
-            cursor: payLoading ? 'not-allowed' : 'pointer', fontFamily:font,
+            border:'none', borderRadius:12,
+            color: payLoading ? C.gray : C.white,
+            cursor: payLoading ? 'not-allowed' : 'pointer',
+            fontFamily:font,
             boxShadow: payLoading ? 'none' : `0 8px 24px rgba(108,99,255,0.4)`,
           }}
         >
-          {payLoading ? '⏳ Processing...' : isFree ? '🎁 Activate Free Plan' : `Pay ₹${breakdown.total.toLocaleString('en-IN')} →`}
+          {payLoading ? '⏳ Processing...' : isFree ? '🎁 Activate Free Plan' : `Pay ₹${Number(breakdown.total).toLocaleString('en-IN')} →`}
         </button>
 
         <div style={{ fontSize:11, color:C.gray2, textAlign:'center', marginTop:12, lineHeight:1.6 }}>
