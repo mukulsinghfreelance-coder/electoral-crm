@@ -1,24 +1,19 @@
-// ─── src/lib/razorpay.js ──────────────────────────────────────────────────────
-// Razorpay Orders API integration
-// All payment creation goes through Supabase Edge Function (server-side)
-// to keep KEY_SECRET safe
-
+// src/lib/razorpay.js
 import { supabase } from './supabase'
-import { BILLING, PLANS } from '../config'
 
-// ── Load Razorpay script dynamically ─────────────────────────────────────────
+// ── Load Razorpay script ──────────────────────────────────────────────────────
 function loadRazorpayScript() {
   return new Promise((resolve) => {
     if (window.Razorpay) { resolve(true); return }
-    const script = document.createElement('script')
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.onload  = () => resolve(true)
-    script.onerror = () => resolve(false)
+    const script      = document.createElement('script')
+    script.src        = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload     = () => resolve(true)
+    script.onerror    = () => resolve(false)
     document.body.appendChild(script)
   })
 }
 
-// ── Validate coupon code ──────────────────────────────────────────────────────
+// ── Validate coupon ───────────────────────────────────────────────────────────
 export async function validateCoupon(code, plan) {
   const { data, error } = await supabase
     .from('coupons')
@@ -29,20 +24,14 @@ export async function validateCoupon(code, plan) {
 
   if (error || !data) return { valid: false, message: 'Invalid coupon code' }
 
-  // Check expiry
-  if (data.valid_until && new Date(data.valid_until) < new Date()) {
+  if (data.valid_until && new Date(data.valid_until) < new Date())
     return { valid: false, message: 'Coupon has expired' }
-  }
 
-  // Check usage limit
-  if (data.max_uses !== -1 && data.used_count >= data.max_uses) {
+  if (data.max_uses !== -1 && data.used_count >= data.max_uses)
     return { valid: false, message: 'Coupon usage limit reached' }
-  }
 
-  // Check plan lock
-  if (data.plan_lock && data.plan_lock !== plan) {
-    return { valid: false, message: `This coupon is only valid for the ${PLANS[data.plan_lock]?.label} plan` }
-  }
+  if (data.plan_lock && data.plan_lock !== plan)
+    return { valid: false, message: `This coupon is only valid for the ${data.plan_lock} plan` }
 
   return {
     valid:       true,
@@ -51,39 +40,35 @@ export async function validateCoupon(code, plan) {
     message:     data.discount_pct === 100
       ? `${data.free_months || 1} month(s) free!`
       : `${data.discount_pct}% discount applied!`,
-    data,
   }
 }
 
-// ── Create Razorpay order via Supabase Edge Function ─────────────────────────
-export async function createOrder({ plan, vsCount, discountPct, couponCode, customerId }) {
+// ── Create Razorpay order via Edge Function ───────────────────────────────────
+export async function createOrder({ customerId, additionalVS, discountPct, couponCode, isAnnual }) {
   const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
-    body: { plan, vsCount, discountPct, couponCode, customerId }
+    body: { customerId, additionalVS, discountPct, couponCode, isAnnual }
   })
   if (error) throw new Error(error.message || 'Failed to create order')
-  return data  // { orderId, amount, currency, receipt }
+  return data
 }
 
 // ── Open Razorpay checkout ────────────────────────────────────────────────────
-export async function openRazorpayCheckout({ order, customer, plan, vsCount, onSuccess, onFailure }) {
+export async function openRazorpayCheckout({ order, customer, additionalVS, onSuccess, onFailure }) {
   const loaded = await loadRazorpayScript()
   if (!loaded) throw new Error('Failed to load Razorpay. Check your internet connection.')
 
-  // Read key directly - most reliable approach
   const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID
-  console.log('Razorpay Key:', rzpKey ? rzpKey.substring(0,10) + '...' : 'MISSING')
-
   if (!rzpKey) {
-    onFailure?.('Razorpay API key is not configured. Please check VITE_RAZORPAY_KEY_ID in .env')
+    onFailure?.('Razorpay API key is not configured.')
     return
   }
 
   const options = {
     key:         rzpKey,
-    amount:      order.amount,        // in paise
+    amount:      order.amount,
     currency:    order.currency || 'INR',
     name:        'Sampark.AI',
-    description: `${PLANS[plan]?.label} Plan — ${vsCount} VS`,
+    description: `Premium Plan — ${additionalVS} VS`,
     image:       '/logo.png',
     order_id:    order.orderId,
     prefill: {
@@ -92,24 +77,21 @@ export async function openRazorpayCheckout({ order, customer, plan, vsCount, onS
       contact: customer.phone || '',
     },
     notes: {
-      plan,
-      vs_count:    vsCount,
-      customer_id: customer.id,
+      customer_id:   customer.id,
+      additional_vs: additionalVS,
     },
     theme: { color: '#6C63FF' },
     modal: {
       ondismiss: () => onFailure?.('Payment cancelled'),
     },
     handler: async (response) => {
-      // Verify payment via Edge Function
       try {
         const { data, error } = await supabase.functions.invoke('verify-razorpay-payment', {
           body: {
             razorpay_order_id:   response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature:  response.razorpay_signature,
-            plan,
-            vsCount,
+            additionalVS,
             customerId: customer.id,
           }
         })
@@ -122,34 +104,59 @@ export async function openRazorpayCheckout({ order, customer, plan, vsCount, onS
   }
 
   const rzp = new window.Razorpay(options)
-  rzp.on('payment.failed', (response) => {
-    onFailure?.(response.error?.description || 'Payment failed')
+  rzp.on('payment.failed', (res) => {
+    onFailure?.(res.error?.description || 'Payment failed')
   })
   rzp.open()
 }
 
-// ── Full payment flow (create order + open checkout) ─────────────────────────
-export async function initiatePayment({ customer, plan, vsCount, discountPct = 0, couponCode = '', onSuccess, onFailure, onLoading }) {
+// ── Full payment flow ─────────────────────────────────────────────────────────
+export async function initiatePayment({
+  customer,
+  additionalVS = 1,
+  discountPct  = 0,
+  couponCode   = '',
+  isAnnual     = false,
+  onSuccess,
+  onFailure,
+  onLoading,
+}) {
   try {
     onLoading?.(true)
 
-    // Create order on server
     const order = await createOrder({
-      plan,
-      vsCount,
+      customerId:  customer.id,
+      additionalVS,
       discountPct,
       couponCode,
-      customerId: customer.id,
+      isAnnual,
     })
+
+    // Handle 100% coupon (free)
+    if (order.isFree) {
+      onLoading?.(false)
+      // Activate directly via verify endpoint with free order
+      const { data, error } = await supabase.functions.invoke('verify-razorpay-payment', {
+        body: {
+          razorpay_order_id:   order.orderId,
+          razorpay_payment_id: 'free_' + Date.now(),
+          razorpay_signature:  'free',
+          additionalVS,
+          customerId: customer.id,
+          isFree:     true,
+        }
+      })
+      if (error) throw new Error(error.message)
+      onSuccess?.(data)
+      return
+    }
 
     onLoading?.(false)
 
-    // Open Razorpay checkout
     await openRazorpayCheckout({
       order,
       customer,
-      plan,
-      vsCount,
+      additionalVS,
       onSuccess,
       onFailure,
     })
@@ -159,7 +166,7 @@ export async function initiatePayment({ customer, plan, vsCount, discountPct = 0
   }
 }
 
-// ── Fetch billing history for a customer ─────────────────────────────────────
+// ── Fetch billing history ─────────────────────────────────────────────────────
 export async function fetchBillingHistory(customerId) {
   const { data, error } = await supabase
     .from('billing_history')
@@ -170,8 +177,7 @@ export async function fetchBillingHistory(customerId) {
   return data || []
 }
 
-// ── Format paise to rupees display ───────────────────────────────────────────
+// ── Format paise to rupees ────────────────────────────────────────────────────
 export function formatPaise(paise) {
-  const rupees = paise / 100
-  return `₹${rupees.toLocaleString('en-IN')}`
+  return `₹${(paise / 100).toLocaleString('en-IN')}`
 }

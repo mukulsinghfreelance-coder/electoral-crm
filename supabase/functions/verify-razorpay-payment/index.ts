@@ -15,7 +15,7 @@ serve(async (req) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      vsCount,      // total VSs customer is paying for
+      additionalVS,   // how many NEW VSs were bought in this payment
       customerId,
     } = await req.json()
 
@@ -25,7 +25,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // ── VERIFY SIGNATURE ──────────────────────────────────────────────────────
+    // ── Verify signature ──────────────────────────────────────────────────
     const body     = razorpay_order_id + '|' + razorpay_payment_id
     const expected = createHmac('sha256', KEY_SECRET).update(body).digest('hex')
 
@@ -33,18 +33,19 @@ serve(async (req) => {
       throw new Error('Payment signature verification failed')
     }
 
-    // ── GET CURRENT CUSTOMER ──────────────────────────────────────────────────
-    const { data: customer } = await supabase
+    // ── Get current customer ──────────────────────────────────────────────
+    const { data: customer, error: fetchErr } = await supabase
       .from('customers')
-      .select('plan, paid_vs_count')
+      .select('paid_vs_count, plan')
       .eq('id', customerId)
       .single()
 
-    const currentPaidVs = customer?.paid_vs_count || 0
-    // vsCount = total VSs paid for after this payment
-    const newPaidVs = Math.max(vsCount, currentPaidVs + 1)
+    if (fetchErr) throw fetchErr
 
-    // ── ACTIVATE PLAN ─────────────────────────────────────────────────────────
+    const prevPaidVs = customer?.paid_vs_count || 0
+    const newPaidVs  = prevPaidVs + additionalVS  // cumulative total
+
+    // ── Activate plan ─────────────────────────────────────────────────────
     const planExpiry = new Date()
     planExpiry.setMonth(planExpiry.getMonth() + 1)
 
@@ -54,23 +55,24 @@ serve(async (req) => {
         plan:          'premium',
         plan_status:   'active',
         plan_expiry:   planExpiry.toISOString(),
-        paid_vs_count: newPaidVs,   // ← KEY: update paid VS count
+        paid_vs_count: newPaidVs,   // ← cumulative VS count
       })
       .eq('id', customerId)
 
     if (updateErr) throw updateErr
 
-    // ── UPDATE BILLING RECORD ─────────────────────────────────────────────────
+    // ── Mark billing paid ─────────────────────────────────────────────────
     await supabase
       .from('billing_history')
       .update({
         razorpay_payment_id,
-        status:  'paid',
-        paid_at: new Date().toISOString(),
+        status:   'paid',
+        paid_at:  new Date().toISOString(),
+        vs_count: additionalVS,
       })
       .eq('razorpay_order_id', razorpay_order_id)
 
-    // ── UPDATE COUPON USAGE ───────────────────────────────────────────────────
+    // ── Update coupon usage ───────────────────────────────────────────────
     const { data: billing } = await supabase
       .from('billing_history')
       .select('coupon_used')
@@ -78,14 +80,19 @@ serve(async (req) => {
       .maybeSingle()
 
     if (billing?.coupon_used) {
-      await supabase.rpc('increment_coupon_usage', { coupon_code: billing.coupon_used })
+      await supabase
+        .from('coupons')
+        .update({ used_count: supabase.rpc('increment', { x: 1 }) })
+        .eq('code', billing.coupon_used)
     }
 
     return new Response(JSON.stringify({
       success:     true,
       plan:        'premium',
-      paidVsCount: newPaidVs,
-      message:     `Premium plan activated! You now have ${newPaidVs} VS(s).`,
+      prevPaidVs,
+      additionalVS,
+      newPaidVs,
+      message:     `Premium activated! You now have ${newPaidVs} VS available.`,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch(e: any) {
