@@ -9,7 +9,7 @@ import { PLANS as PLANS_DEFAULT, getPlanLimits } from '../config'
 import UpgradeModalFull from '../components/UpgradeModal'
 
 const SuperAdminPage = lazy(() => import('./SuperAdminPage'))
-const BillingPage    = lazy(() => import('./BillingPage'))
+const PaymentHistory = lazy(() => import('./BillingPage'))
 
 const C = {
   primary:'#4F46E5', primaryDark:'#3730A3', primaryLight:'#EEF2FF',
@@ -81,9 +81,11 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
     setLoading(true); setError('')
     try {
       const ws = await createWorkspace({
-        state: selState, lok_sabha: selLS,
-        vidhan_sabha: selVS.vidhan_sabha,
-        constituency_id: selVS.id,
+        customerId:      customer.id,
+        state:           selState,
+        ls:              selLS,
+        vs:              selVS.vidhan_sabha,
+        constituencyId:  selVS.id,
       })
       onAdded(ws)
       onClose()
@@ -304,7 +306,7 @@ export default function WorkspacePage() {
   if (showBilling) {
     return (
       <Suspense fallback={<div style={{ minHeight:'100vh', background:'#0F0E1A', display:'flex', alignItems:'center', justifyContent:'center', color:'#A5B4FC' }}>⏳ Loading…</div>}>
-        <BillingPage onBack={() => setShowBilling(false)} workspaceCount={workspaces.length} />
+        <PaymentHistory onBack={() => setShowBilling(false)} />
       </Suspense>
     )
   }
@@ -330,7 +332,7 @@ export default function WorkspacePage() {
             )}
             {!isGifted && !isSuperAdmin && (
               <button onClick={() => setShowBilling(true)} style={{ padding:'7px 14px', fontSize:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>
-                💳 Billing
+                📜 Payments
               </button>
             )}
             <button onClick={logout} style={{ padding:'7px 14px', fontSize:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>

@@ -66,98 +66,12 @@ function ConfirmDialog({ message, subtext, onConfirm, onCancel, danger }) {
   )
 }
 
-// ─── PLAN CHANGE MODAL ────────────────────────────────────────────────────────
-function PlanModal({ customer, onClose, onSaved }) {
-  const [plan,   setPlan]  = useState(customer.plan)
-  const [saving, setSaving] = useState(false)
-  const [error,  setError]  = useState('')
-
-  const handleSave = async () => {
-    setSaving(true); setError('')
-    try {
-      await adminUpdateCustomerPlan(customer.id, plan)
-      onSaved(plan)
-    } catch(e) {
-      let msg = e?.message || 'Failed to update plan'
-      if (msg.includes('Failed to fetch') || msg.includes('network')) msg = '🌐 Network error'
-      setError(msg)
-    }
-    setSaving(false)
-  }
-
-  const DESC = {
-    free:         '1 VS · Limited contacts',
-    premium:      'Pay per VS · Unlimited contacts',
-    free_forever: 'Up to 10 VS · Unlimited contacts · Complimentary',
-  }
-
-  return createPortal(
-    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:24, maxWidth:360, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.25)' }}>
-
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <div style={{ fontSize:16, fontWeight:800, color:C.gray900 }}>Change Plan</div>
-          <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:30, height:30, cursor:'pointer', fontSize:14 }}>✕</button>
-        </div>
-
-        <div style={{ background:C.gray100, borderRadius:8, padding:'8px 12px', marginBottom:16, fontSize:13, color:C.gray600 }}>
-          👤 <strong style={{ color:C.gray900 }}>{customer.name || customer.email}</strong>
-        </div>
-
-        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
-          {Object.entries(PLANS).filter(([k]) => ['free','premium'].includes(k)).map(([key, p]) => {
-            const isCurrent  = customer.plan === key
-            const isSelected = plan === key
-            return (
-              <div key={key} onClick={() => setPlan(key)} style={{
-                border:`2px solid ${isSelected ? C.primary : C.gray200}`,
-                borderRadius:10, padding:'12px 14px', cursor:'pointer',
-                background: isSelected ? C.primaryLight : C.white,
-                display:'flex', alignItems:'center', justifyContent:'space-between',
-              }}>
-                <div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div style={{ fontSize:14, fontWeight:700, color:C.gray900 }}>{p.label}</div>
-                    {isCurrent && <span style={{ fontSize:10, background:C.successLight, color:C.success, padding:'2px 8px', borderRadius:20, fontWeight:700 }}>CURRENT</span>}
-                  </div>
-                  <div style={{ fontSize:12, color:C.gray400, marginTop:2 }}>{DESC[key]}</div>
-                </div>
-                <div style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${isSelected ? C.primary : C.gray200}`, background: isSelected ? C.primary : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  {isSelected && <div style={{ width:7, height:7, borderRadius:'50%', background:C.white }}/>}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {error && <div style={{ color:C.red, fontSize:12, marginBottom:10 }}>⚠ {error}</div>}
-
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={onClose} style={{ flex:1, padding:'10px', fontSize:13, fontWeight:600, background:C.gray100, border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit', color:C.gray600 }}>
-            Cancel
-          </button>
-          <button onClick={handleSave} disabled={saving || plan === customer.plan} style={{
-            flex:2, padding:'10px', fontSize:13, fontWeight:700,
-            background: (saving || plan === customer.plan) ? C.gray200 : `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-            color: (saving || plan === customer.plan) ? C.gray400 : C.white,
-            border:'none', borderRadius:8, cursor: (saving || plan === customer.plan) ? 'not-allowed' : 'pointer', fontFamily:'inherit',
-          }}>
-            {saving ? '⏳ Saving…' : plan === customer.plan ? 'No change' : `Switch to ${PLANS[plan]?.label}`}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  )
-}
-
 
 // ─── CUSTOMER ROW (expanded detail) ──────────────────────────────────────────
 function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) {
   const [workspaces, setWorkspaces] = useState(null)
   const [loading,    setLoading]    = useState(false)
   const [confirm,    setConfirm]    = useState(null)
-  const [showPlan,   setShowPlan]   = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
@@ -270,13 +184,7 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
           </span>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button onClick={() => setShowPlan(true)} style={{
-            padding:'6px 14px', fontSize:12, fontWeight:700,
-            background:C.primaryLight, color:C.primary,
-            border:`1px solid ${C.primary}33`, borderRadius:8, cursor:'pointer', fontFamily:'inherit',
-          }}>
-            ✏️ Change Plan
-          </button>
+
           {/* Gift Forever only for Free accounts */}
           {(customer.plan === 'free' || customer.plan === 'free_forever') && (
             <button onClick={handleGift} style={{
