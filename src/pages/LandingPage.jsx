@@ -45,9 +45,9 @@ const T = {
       title: 'Start free. Scale as you grow.',
       subtitle: 'No hidden fees. No long-term contracts.',
       plans: [
-        { name:'Free', price:'₹0', period:'', desc:'Perfect to get started', vs:'FREE_VS', contacts:'FREE_CONTACTS', features:['Contact management','Booth tracking','Basic reports'], cta:'Get Started Free', highlight:false },
-        { name:'Single', price:'SINGLE_PRICE', period:'/month', desc:'For serious campaigners', vs:'1 Vidhan Sabha', contacts:'Unlimited contacts', features:['Everything in Free','Unlimited contacts','Advanced analytics','Priority support'], cta:'Start Single Plan', highlight:false },
-        { name:'Multiple', price:'MULTIPLE_PRICE', period:'/month', desc:'For leaders managing multiple VSs', vs:'Unlimited Vidhan Sabhas', contacts:'Unlimited contacts', features:['Everything in Single','Unlimited constituencies','MULTIPLE_EXTRA/mo per extra VS','Dedicated support'], cta:'Start Multiple Plan', highlight:true, badge:'Most Popular' },
+        { key:'free',     name:'Free',     price:'₹0',           period:'',       desc:'Perfect to get started',              vs:'FREE_VS',             contacts:'FREE_CONTACTS', features:['Contact management','Booth tracking','Basic reports'],                                                           cta:'Get Started Free',     highlight:false },
+        { key:'single',   name:'Single',   price:'SINGLE_PRICE',   period:'/month', desc:'For serious campaigners',             vs:'1 Vidhan Sabha',      contacts:'Unlimited contacts', features:['Everything in Free','Unlimited contacts','Advanced analytics','Priority support'],              cta:'Start Single Plan',    highlight:false },
+        { key:'multiple', name:'Multiple', price:'MULTIPLE_PRICE',  period:'/month', desc:'For leaders managing multiple VSs',   vs:'Unlimited Vidhan Sabhas', contacts:'Unlimited contacts', features:['Everything in Single','Unlimited constituencies','MULTIPLE_EXTRA/mo per extra VS','Dedicated support'], cta:'Start Multiple Plan',  highlight:true, badge:'Most Popular' },
       ]
     },
     cta: {
@@ -100,9 +100,9 @@ const T = {
       title: 'मुफ्त शुरू करें। जरूरत के साथ बढ़ें।',
       subtitle: 'कोई छुपी फीस नहीं। कोई लंबा अनुबंध नहीं।',
       plans: [
-        { name:'फ्री', price:'₹0', period:'', desc:'शुरुआत के लिए बिल्कुल सही', vs:'FREE_VS_HI', contacts:'FREE_CONTACTS_HI', features:['संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'], cta:'मुफ्त शुरू करें', highlight:false },
-        { name:'सिंगल', price:'SINGLE_PRICE', period:'/माह', desc:'गंभीर प्रचारकों के लिए', vs:'1 विधान सभा', contacts:'असीमित संपर्क', features:['फ्री की सब सुविधाएं','असीमित संपर्क','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता'], cta:'सिंगल प्लान शुरू करें', highlight:false },
-        { name:'मल्टीपल', price:'MULTIPLE_PRICE', period:'/माह', desc:'एकाधिक क्षेत्र मैनेज करने वालों के लिए', vs:'असीमित विधान सभाएं', contacts:'असीमित संपर्क', features:['सिंगल की सब सुविधाएं','असीमित क्षेत्र','MULTIPLE_EXTRA/माह प्रति अतिरिक्त VS','डेडिकेटेड सहायता'], cta:'मल्टीपल प्लान शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
+        { key:'free',     name:'फ्री',     price:'₹0',           period:'',      desc:'शुरुआत के लिए बिल्कुल सही',              vs:'FREE_VS_HI',          contacts:'FREE_CONTACTS_HI', features:['संपर्क प्रबंधन','बूथ ट्रैकिंग','बेसिक रिपोर्ट'],                                                         cta:'मुफ्त शुरू करें',       highlight:false },
+        { key:'single',   name:'सिंगल',   price:'SINGLE_PRICE',   period:'/माह',  desc:'गंभीर प्रचारकों के लिए',                vs:'1 विधान सभा',         contacts:'असीमित संपर्क', features:['फ्री की सब सुविधाएं','असीमित संपर्क','एडवांस्ड एनालिटिक्स','प्राथमिकता सहायता'],              cta:'सिंगल प्लान शुरू करें', highlight:false },
+        { key:'multiple', name:'मल्टीपल', price:'MULTIPLE_PRICE',  period:'/माह',  desc:'एकाधिक क्षेत्र मैनेज करने वालों के लिए', vs:'असीमित विधान सभाएं', contacts:'असीमित संपर्क', features:['सिंगल की सब सुविधाएं','असीमित क्षेत्र','MULTIPLE_EXTRA/माह प्रति अतिरिक्त VS','डेडिकेटेड सहायता'], cta:'मल्टीपल प्लान शुरू करें', highlight:true, badge:'सर्वाधिक लोकप्रिय' },
       ]
     },
     cta: {

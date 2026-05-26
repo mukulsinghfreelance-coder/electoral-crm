@@ -298,7 +298,7 @@ export default function WorkspacePage() {
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             {isFreeAtLimit && (
               <div
-                onClick={e => { e.stopPropagation(); console.log('Upgrade clicked, showUpgrade:', showUpgrade); setUpgradeReason('Free plan allows 1 VS only. Upgrade to add more.'); setShowUpgrade(true); console.log('showUpgrade set to true') }}
+                onClick={e => { e.stopPropagation(); setUpgradeReason('Free plan allows 1 VS only. Upgrade to add more.'); setShowUpgrade(true) }}
                 style={{ fontSize:11, background:'linear-gradient(135deg,#FEF3C7,#FDE68A)', color:'#92400E', padding:'7px 14px', borderRadius:8, border:'1px solid #F59E0B', fontWeight:600, cursor:'pointer' }}
               >
                 ⚡ Upgrade to add more
@@ -408,7 +408,6 @@ export default function WorkspacePage() {
         />
       )}
 
-      {/* showUpgrade={showUpgrade} */}
       {showUpgrade && (
         <UpgradeModalFull
           onClose={() => setShowUpgrade(false)}

@@ -25,6 +25,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
   const [payError,     setPayError]     = useState('')
   const [paySuccess,   setPaySuccess]   = useState(false)
   const [vsCount,      setVsCount]      = useState(1)
+  const [isAnnual,     setIsAnnual]     = useState(false)
 
   useEffect(() => {
     setVsCount(selectedPlan === 'multiple' ? Math.max(currentVSCount, 2) : 1)
@@ -34,15 +35,19 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
   const PLANS   = livePlans || DEFAULT_PLANS
   const gstRate = livePlans?.gstRate ?? BILLING.gstRate
 
+  const ANNUAL_DISCOUNT = 20  // 20% off for annual
+
   const calcBreakdown = (plan, vsCnt, discPct) => {
     const p = PLANS[plan]
     if (!p || p.basePrice === 0) return { base:0, discount:0, afterDiscount:0, gst:0, total:0, totalPaise:0 }
-    const base  = plan === 'single' ? p.basePrice : p.basePrice + Math.max(0, vsCnt - 1) * p.extraVS
-    const disc  = Math.round(base * discPct / 100)
-    const after = base - disc
-    const gst   = Math.round(after * gstRate)
-    const total = after + gst
-    return { base, discount:disc, afterDiscount:after, gst, total, totalPaise: total * 100 }
+    const monthly = plan === 'single' ? p.basePrice : p.basePrice + Math.max(0, vsCnt - 1) * p.extraVS
+    // Annual: 20% off monthly rate
+    const base    = isAnnual ? Math.round(monthly * (1 - ANNUAL_DISCOUNT/100)) : monthly
+    const disc    = Math.round(base * discPct / 100)
+    const after   = base - disc
+    const gst     = Math.round(after * gstRate)
+    const total   = after + gst
+    return { base, monthly, discount:disc, afterDiscount:after, gst, total, totalPaise: isAnnual ? total * 12 * 100 : total * 100, isAnnual }
   }
 
   const discountPct = couponResult?.valid ? couponResult.discountPct : 0
@@ -102,7 +107,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
         style={{ background:C.bg, border:`1px solid ${C.border2}`, borderRadius:20, padding:28, width:'100%', maxWidth:500, maxHeight:'90vh', overflowY:'auto', fontFamily:font }}
       >
         {/* Header */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
           <div>
             <div style={{ fontSize:18, fontWeight:800, color:C.white }}>⚡ Upgrade Plan</div>
             {triggerReason && <div style={{ fontSize:12, color:C.gold, marginTop:3 }}>{triggerReason}</div>}
@@ -110,9 +115,23 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
           <button onClick={onClose} style={{ background:'rgba(255,255,255,0.08)', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', color:C.gray, fontSize:16, fontFamily:font }}>✕</button>
         </div>
 
+        {/* Billing cycle toggle */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginBottom:20, background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 14px' }}>
+          <span style={{ fontSize:13, color: !isAnnual ? C.white : C.gray, fontWeight: !isAnnual ? 600 : 400 }}>Monthly</span>
+          <div
+            onClick={() => setIsAnnual(a => !a)}
+            style={{ width:44, height:24, borderRadius:12, background: isAnnual ? C.primary : 'rgba(255,255,255,0.15)', cursor:'pointer', position:'relative', transition:'background .2s' }}
+          >
+            <div style={{ width:18, height:18, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: isAnnual ? 23 : 3, transition:'left .2s' }}/>
+          </div>
+          <span style={{ fontSize:13, color: isAnnual ? C.white : C.gray, fontWeight: isAnnual ? 600 : 400 }}>
+            Annual <span style={{ background:'rgba(16,185,129,0.2)', color:C.success, fontSize:10, padding:'2px 6px', borderRadius:10, fontWeight:700, marginLeft:4 }}>Save 20%</span>
+          </span>
+        </div>
+
         {/* Plan selector */}
         <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
-          {Object.entries(PLANS).filter(([k]) => k !== 'free').map(([key, p]) => (
+          {Object.entries(PLANS).filter(([k, v]) => ['single','multiple'].includes(k) && typeof v === 'object').map(([key, p]) => (
             <div
               key={key}
               onClick={() => setSelectedPlan(key)}
@@ -138,11 +157,14 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
                     {p.extraVS > 0 && ` · +₹${Number(p.extraVS).toLocaleString('en-IN')}/mo per extra VS`}
                   </div>
                 </div>
-                <div style={{ textAlign:'right', minWidth:80, paddingLeft:12 }}>
+                <div style={{ textAlign:'right', minWidth:90, paddingLeft:12 }}>
                   <div style={{ fontSize:18, fontWeight:800, color: selectedPlan===key ? C.accent : C.white }}>
-                    ₹{Number(p.basePrice).toLocaleString('en-IN')}
+                    ₹{isAnnual ? Math.round(Number(p.basePrice) * 0.8).toLocaleString('en-IN') : Number(p.basePrice).toLocaleString('en-IN')}
                   </div>
-                  <div style={{ fontSize:10, color:C.gray2 }}>/month</div>
+                  {isAnnual
+                    ? <div style={{ fontSize:10, color:C.success }}>per month (annual)</div>
+                    : <div style={{ fontSize:10, color:C.gray2 }}>/month</div>
+                  }
                 </div>
               </div>
             </div>
@@ -233,7 +255,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
             boxShadow: payLoading ? 'none' : `0 8px 24px rgba(108,99,255,0.4)`,
           }}
         >
-          {payLoading ? '⏳ Processing...' : isFree ? '🎁 Activate Free Plan' : `Pay ₹${Number(breakdown.total).toLocaleString('en-IN')} →`}
+          {payLoading ? '⏳ Processing...' : isFree ? '🎁 Activate Free Plan' : isAnnual ? `Pay ₹${Number(breakdown.totalPaise/100).toLocaleString('en-IN')} for 12 months →` : `Pay ₹${Number(breakdown.total).toLocaleString('en-IN')}/month →`}
         </button>
 
         <div style={{ fontSize:11, color:C.gray2, textAlign:'center', marginTop:12, lineHeight:1.6 }}>
