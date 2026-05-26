@@ -52,95 +52,189 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
 
-  // Get live plans from AuthContext — avoids stale PLANS reference
   const { livePlans } = useAuth()
   const MODAL_PLANS   = livePlans || PLANS_DEFAULT
   const planConfig    = MODAL_PLANS[customer.plan] || MODAL_PLANS.free
   const planLimit     = planConfig.vs
 
   useEffect(() => { fetchStates().then(setStates).catch(console.error) }, [])
-
   useEffect(() => {
     if (!selState) { setLokSabhas([]); setSelLS(''); setVidhanSabhas([]); setSelVS(null); return }
-    fetchLokSabhas(selState).then(ls => { setLokSabhas(ls); setSelLS(''); setVidhanSabhas([]); setSelVS(null) })
+    fetchLokSabhas(selState).then(setLokSabhas)
+    setSelLS(''); setVidhanSabhas([]); setSelVS(null)
   }, [selState])
-
   useEffect(() => {
-    if (!selState || !selLS) { setVidhanSabhas([]); setSelVS(null); return }
-    fetchVidhanSabhas(selState, selLS).then(vs => { setVidhanSabhas(vs); setSelVS(null) })
-  }, [selState, selLS])
+    if (!selLS) { setVidhanSabhas([]); setSelVS(null); return }
+    fetchVidhanSabhas(selState, selLS).then(vs => {
+      const filtered = vs.filter(v => !existingVSNames.includes(v.vidhan_sabha))
+      setVidhanSabhas(filtered)
+      setSelVS(null)
+    })
+  }, [selLS])
 
   const handleAdd = async () => {
     if (!selVS) { setError('Please select a Vidhan Sabha'); return }
-    if (existingConstituencyIds.includes(selVS.id)) { setError(`${selVS.vidhan_sabha} is already added.`); return }
-    if (existingVSNames.map(n => n.toLowerCase()).includes(selVS.vidhan_sabha.toLowerCase())) { setError(`${selVS.vidhan_sabha} is already added.`); return }
     if (planLimit !== Infinity && currentCount >= planLimit) {
-      setError(`Your ${MODAL_PLANS[customer.plan]?.label || customer.plan} plan allows only ${planLimit} constituency. Please upgrade.`)
+      setError(`Your ${MODAL_PLANS[customer.plan]?.label || 'current'} plan allows only ${planLimit} constituency. Please upgrade.`)
       return
     }
     setLoading(true); setError('')
     try {
-      const ws = await createWorkspace({ customerId: customer.id, constituencyId: selVS.id, state: selState, ls: selLS, vs: selVS.vidhan_sabha })
+      const ws = await createWorkspace({
+        state: selState, lok_sabha: selLS,
+        vidhan_sabha: selVS.vidhan_sabha,
+        constituency_id: selVS.id,
+      })
       onAdded(ws)
-    } catch(e) { setError(e.message || 'Failed to add') }
+      onClose()
+    } catch(e) { setError(e.message || 'Failed to add constituency') }
     setLoading(false)
   }
 
-  const sel = { width:'100%', padding:'10px 12px', fontSize:14, border:`1.5px solid ${C.gray200}`, borderRadius:10, background:C.white, color:C.gray900, outline:'none', fontFamily:'inherit' }
+  const stepDone  = { state: !!selState, ls: !!selLS, vs: !!selVS }
+  const stepColor = '#6C63FF'
 
   return createPortal(
-    <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:24, width:'100%', maxWidth:420, boxShadow:'0 24px 64px rgba(0,0,0,.2)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div style={{ fontSize:17, fontWeight:800, color:C.gray900 }}>Add Constituency</div>
-          <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
-        </div>
-        <div style={{ background:C.primaryLight, borderRadius:10, padding:'10px 12px', marginBottom:16, fontSize:12, color:C.primary }}>
-          Plan: <strong>{MODAL_PLANS[customer.plan]?.label || (customer.plan === 'premium' ? 'Premium' : customer.plan)}</strong> · {currentCount} VS used
-          {planLimit !== Infinity && ` of ${planLimit}`}
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:16 }}>
+    <div
+      onClick={e => e.target === e.currentTarget && onClose()}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20, fontFamily:"system-ui,-apple-system,sans-serif" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background:'#16152A', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, width:'100%', maxWidth:480, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 80px rgba(0,0,0,0.5)' }}
+      >
+        {/* Header */}
+        <div style={{ padding:'20px 24px 16px', borderBottom:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray400, marginBottom:5, textTransform:'uppercase', letterSpacing:'.06em' }}>State</label>
-            <select value={selState} onChange={e => setSelState(e.target.value)} style={sel}>
-              <option value="">Select State…</option>
-              {states.map(s => <option key={s}>{s}</option>)}
+            <div style={{ fontSize:17, fontWeight:800, color:'#fff', letterSpacing:'-0.02em' }}>🏛️ Add Constituency</div>
+            <div style={{ fontSize:12, color:'#A78BFA', marginTop:2 }}>Select your Vidhan Sabha</div>
+          </div>
+          <button onClick={onClose} style={{ width:32, height:32, borderRadius:'50%', background:'rgba(255,255,255,0.08)', border:'none', color:'#9CA3AF', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+        </div>
+
+        {/* Progress steps */}
+        <div style={{ padding:'16px 24px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:0 }}>
+          {[['1','State', stepDone.state], ['2','Lok Sabha', stepDone.ls], ['3','Vidhan Sabha', stepDone.vs]].map(([n, label, done], i) => (
+            <div key={n} style={{ display:'flex', alignItems:'center', flex: i < 2 ? 1 : 'none' }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                <div style={{
+                  width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
+                  background: done ? stepColor : 'rgba(255,255,255,0.08)',
+                  border: `2px solid ${done ? stepColor : 'rgba(255,255,255,0.15)'}`,
+                  fontSize:11, fontWeight:700,
+                  color: done ? '#fff' : '#6B7280',
+                }}>
+                  {done ? '✓' : n}
+                </div>
+                <div style={{ fontSize:10, color: done ? '#A78BFA' : '#6B7280', fontWeight: done ? 600 : 400, whiteSpace:'nowrap' }}>{label}</div>
+              </div>
+              {i < 2 && <div style={{ flex:1, height:2, background: done ? stepColor : 'rgba(255,255,255,0.08)', margin:'0 8px', marginBottom:18 }}/>}
+            </div>
+          ))}
+        </div>
+
+        {/* Selectors */}
+        <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
+
+          {/* State */}
+          <div>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#A78BFA', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>State / UT</label>
+            <select
+              value={selState}
+              onChange={e => setSelState(e.target.value)}
+              style={{ width:'100%', padding:'11px 14px', fontSize:14, background: selState ? '#1C1B35' : 'rgba(255,255,255,0.04)', border:`1px solid ${selState ? '#6C63FF' : 'rgba(255,255,255,0.12)'}`, borderRadius:10, color: selState ? '#fff' : '#6B7280', fontFamily:'inherit', outline:'none', cursor:'pointer', colorScheme:'dark' }}
+            >
+              <option value=''>Select State / UT…</option>
+              {states.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-          <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray400, marginBottom:5, textTransform:'uppercase', letterSpacing:'.06em' }}>Lok Sabha</label>
-            <select value={selLS} onChange={e => setSelLS(e.target.value)} disabled={!lokSabhas.length} style={{ ...sel, opacity: lokSabhas.length ? 1 : .5 }}>
-              <option value="">Select LS…</option>
-              {lokSabhas.map(ls => <option key={ls}>{ls}</option>)}
+
+          {/* Lok Sabha */}
+          <div style={{ opacity: selState ? 1 : 0.4, transition:'opacity .2s' }}>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#A78BFA', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Lok Sabha Constituency</label>
+            <select
+              value={selLS}
+              onChange={e => setSelLS(e.target.value)}
+              disabled={!selState}
+              style={{ width:'100%', padding:'11px 14px', fontSize:14, background: selLS ? '#1C1B35' : 'rgba(255,255,255,0.04)', border:`1px solid ${selLS ? '#6C63FF' : 'rgba(255,255,255,0.12)'}`, borderRadius:10, color: selLS ? '#fff' : '#6B7280', fontFamily:'inherit', outline:'none', cursor: selState ? 'pointer' : 'not-allowed', colorScheme:'dark' }}
+            >
+              <option value=''>Select Lok Sabha…</option>
+              {lokSabhas.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
-          <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray400, marginBottom:5, textTransform:'uppercase', letterSpacing:'.06em' }}>Vidhan Sabha</label>
-            <select value={selVS?.id||''} onChange={e => setSelVS(vidhanSabhas.find(v => v.id === e.target.value)||null)} disabled={!vidhanSabhas.length} style={{ ...sel, opacity: vidhanSabhas.length ? 1 : .5 }}>
-              <option value="">Select VS…</option>
-              {vidhanSabhas.map(vs => {
-                const added = existingConstituencyIds.includes(vs.id) || existingVSNames.map(n=>n.toLowerCase()).includes(vs.vidhan_sabha.toLowerCase())
-                return <option key={vs.id} value={vs.id} disabled={added}>{vs.vidhan_sabha}{added ? ' ✓' : ''}</option>
-              })}
-            </select>
+
+          {/* Vidhan Sabha */}
+          <div style={{ opacity: selLS ? 1 : 0.4, transition:'opacity .2s' }}>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#A78BFA', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Vidhan Sabha</label>
+            {selLS && vidhanSabhas.length === 0 ? (
+              <div style={{ padding:'12px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, fontSize:13, color:'#6B7280' }}>
+                ✅ All constituencies in this Lok Sabha already added
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:200, overflowY:'auto' }}>
+                {vidhanSabhas.map(vs => (
+                  <div
+                    key={vs.id}
+                    onClick={() => setSelVS(vs)}
+                    style={{
+                      padding:'10px 14px', borderRadius:10, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between',
+                      background: selVS?.id === vs.id ? 'rgba(108,99,255,0.2)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${selVS?.id === vs.id ? '#6C63FF' : 'rgba(255,255,255,0.08)'}`,
+                      transition:'all .15s',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize:14, fontWeight: selVS?.id === vs.id ? 700 : 400, color: selVS?.id === vs.id ? '#fff' : '#D1D5DB' }}>{vs.vidhan_sabha}</div>
+                    </div>
+                    {selVS?.id === vs.id && (
+                      <div style={{ width:18, height:18, borderRadius:'50%', background:'#6C63FF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#fff', flexShrink:0 }}>✓</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Selected summary */}
+          {selVS && (
+            <div style={{ background:'rgba(108,99,255,0.1)', border:'1px solid rgba(108,99,255,0.3)', borderRadius:12, padding:'12px 16px' }}>
+              <div style={{ fontSize:11, color:'#A78BFA', fontWeight:600, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.06em' }}>Selected</div>
+              <div style={{ fontSize:15, fontWeight:700, color:'#fff', marginBottom:2 }}>{selVS.vidhan_sabha}</div>
+              <div style={{ fontSize:12, color:'#9CA3AF' }}>{selState} · {selLS}</div>
+            </div>
+          )}
+
+          {error && (
+            <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:10, padding:'10px 14px', fontSize:13, color:'#EF4444' }}>
+              ⚠ {error}
+            </div>
+          )}
+
+          {/* Action */}
+          <button
+            onClick={handleAdd}
+            disabled={!selVS || loading}
+            style={{
+              width:'100%', padding:'13px', fontSize:15, fontWeight:700,
+              background: !selVS || loading ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg,#6C63FF,#4F46E5)',
+              border:'none', borderRadius:12,
+              color: !selVS || loading ? '#6B7280' : '#fff',
+              cursor: !selVS || loading ? 'not-allowed' : 'pointer',
+              fontFamily:'inherit',
+              boxShadow: selVS && !loading ? '0 8px 24px rgba(108,99,255,0.4)' : 'none',
+              transition:'all .2s',
+            }}
+          >
+            {loading ? '⏳ Adding…' : selVS ? `Add ${selVS.vidhan_sabha} →` : 'Select a Vidhan Sabha'}
+          </button>
         </div>
-        {error && <div style={{ color:C.red, fontSize:12, marginBottom:12 }}>⚠ {error}</div>}
-        <button onClick={handleAdd} disabled={loading || !selVS} style={{
-          width:'100%', padding:11, fontSize:14, fontWeight:700, border:'none', borderRadius:10,
-          background:(loading||!selVS) ? C.gray200 : `linear-gradient(135deg,${C.success},#047857)`,
-          color:(loading||!selVS) ? C.gray400 : C.white, cursor:(loading||!selVS)?'not-allowed':'pointer', fontFamily:'inherit',
-        }}>
-          {loading ? '⏳ Adding…' : '+ Add Constituency'}
-        </button>
       </div>
     </div>,
     document.body
   )
 }
 
-// ─── UPGRADE MODAL ────────────────────────────────────────────────────────────
-// ─── STAT CARD ────────────────────────────────────────────────────────────────
+
 function StatCard({ label, value, color, icon }) {
   return (
     <div style={{ textAlign:'center' }}>
@@ -303,30 +397,25 @@ export default function WorkspacePage() {
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <div style={{ fontSize:12, fontWeight:700, color:'#A5B4FC', textTransform:'uppercase', letterSpacing:'.06em' }}>Your Constituencies</div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            {/* One button: Add Constituency OR X/Y Used — Upgrade */}
+            {/* Single button — Add OR Upgrade */}
             {isFreeAtLimit ? (
               <div
-                onClick={e => { e.stopPropagation(); setUpgradeReason('Upgrade to Premium to add more constituencies.'); setShowUpgrade(true) }}
+                onClick={() => { setUpgradeReason('Upgrade to Premium to add more constituencies.'); setShowUpgrade(true) }}
                 style={{ fontSize:11, background:'linear-gradient(135deg,#FEF3C7,#FDE68A)', color:'#92400E', padding:'7px 14px', borderRadius:8, border:'1px solid #F59E0B', fontWeight:600, cursor:'pointer' }}
               >
                 1/1 Used — Upgrade ↗
               </div>
             ) : isPremiumLimit ? (
               <div
-                onClick={e => { e.stopPropagation(); setUpgradeReason(`You have used all ${allowedVS} paid VS. Pay for more constituencies.`); setShowUpgrade(true) }}
+                onClick={() => { setUpgradeReason(`You have used all ${allowedVS} paid VS. Pay for more constituencies.`); setShowUpgrade(true) }}
                 style={{ fontSize:11, background:'linear-gradient(135deg,#EEF2FF,#C7D2FE)', color:'#3730A3', padding:'7px 14px', borderRadius:8, border:'1px solid #818CF8', fontWeight:600, cursor:'pointer' }}
               >
-                {allowedVS}/{allowedVS} Used — Add More ↗
+                {workspaces.length}/{allowedVS} Used — Add More ↗
               </div>
-            ) : canAddMore ? (
+            ) : (
               <button onClick={() => setShowAdd(true)} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, background:`linear-gradient(135deg,${C.success},#047857)`, border:'none', borderRadius:8, color:C.white, cursor:'pointer', fontFamily:'inherit' }}>
                 + Add Constituency
               </button>
-            )}
-            {isAtLimit && !isFreeAtLimit && (
-              <div onClick={() => setShowUpgrade(true)} style={{ fontSize:11, color:'#A5B4FC', background:'rgba(255,255,255,.1)', padding:'6px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', cursor:'pointer' }}>
-                {workspaces.length}/{vsLimit} used — <span style={{ color:'#FCD34D', fontWeight:600 }}>Upgrade ↗</span>
-              </div>
             )}
           </div>
         </div>
