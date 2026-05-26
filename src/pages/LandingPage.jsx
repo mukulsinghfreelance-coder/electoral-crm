@@ -280,7 +280,8 @@ export default function LandingPage() {
   const multiplePrice   = `₹${Number(PLANS.multiple.basePrice).toLocaleString('en-IN')}`
   const multipleExtra   = `₹${Number(PLANS.multiple.extraVS).toLocaleString('en-IN')}`
   const [lang, setLang]         = useState('en')
-  const [showAuth, setShowAuth] = useState(false)
+  const [showAuth,       setShowAuth]       = useState(false)
+  const [intendedPlan,   setIntendedPlan]   = useState(null)
   const [showPage, setShowPage] = useState(null)  // 'privacy' | 'terms' | 'contact'
   const [authStep, setAuthStep] = useState('email') // email | otp
   const [email, setEmail]       = useState('')
@@ -524,7 +525,14 @@ export default function LandingPage() {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setShowAuth(true)} style={{ marginTop:'auto', padding:'12px', fontSize:14, fontWeight:700, background: p.highlight ? `linear-gradient(135deg,${C.primary},${C.primaryD})` : 'rgba(255,255,255,0.06)', border: p.highlight ? 'none' : `1px solid ${C.border2}`, borderRadius:10, color: p.highlight ? '#fff' : C.white, cursor:'pointer', fontFamily:font }}>
+                <button
+                  onClick={() => {
+                    if (p.key !== 'free') {
+                      sessionStorage.setItem('intended_plan', p.key)
+                    }
+                    setShowAuth(true)
+                  }}
+                  style={{ marginTop:'auto', padding:'12px', fontSize:14, fontWeight:700, background: p.highlight ? `linear-gradient(135deg,${C.primary},${C.primaryD})` : 'rgba(255,255,255,0.06)', border: p.highlight ? 'none' : `1px solid ${C.border2}`, borderRadius:10, color: p.highlight ? '#fff' : C.white, cursor:'pointer', fontFamily:font }}>
                   {p.cta}
                 </button>
               </div>

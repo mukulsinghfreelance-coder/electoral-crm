@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import LandingPage from './pages/LandingPage'
 import App         from './App'
 
-const WorkspacePage = lazy(() => import('./pages/WorkspacePage'))
+const WorkspacePage  = lazy(() => import('./pages/WorkspacePage'))
+const UpgradeModal   = lazy(() => import('./components/UpgradeModal'))
 
 const Spinner = () => (
   <div style={{
@@ -25,16 +26,52 @@ const Spinner = () => (
 
 export default function AppRouter() {
   const { customer, session, loading, workspace } = useAuth()
+  const [intendedPlan, setIntendedPlan] = useState(null)
+  const [showPayment,  setShowPayment]  = useState(false)
+
+  // After login, check if customer came from a pricing CTA
+  useEffect(() => {
+    if (!customer?.id) return
+
+    const plan = sessionStorage.getItem('intended_plan')
+    if (!plan) return
+
+    sessionStorage.removeItem('intended_plan')
+
+    // Only show payment if customer is on free plan
+    // (they may have already paid before)
+    if (customer.plan === 'free' && !customer.gifted_forever) {
+      setIntendedPlan(plan)
+      setShowPayment(true)
+    }
+  }, [customer?.id])
 
   if (loading) return <Spinner/>
 
-  // Not logged in → marketing landing page
+  // Not logged in → landing page
   if (!session || !customer) return <LandingPage/>
 
-  // Logged in + workspace selected → main app
+  // Show payment modal after login from pricing CTA
+  if (showPayment && intendedPlan) {
+    return (
+      <>
+        <Spinner/>
+        <Suspense fallback={null}>
+          <UpgradeModal
+            onClose={() => { setShowPayment(false); setIntendedPlan(null) }}
+            currentVSCount={1}
+            initialPlan={intendedPlan}
+            triggerReason={`You selected the ${intendedPlan.charAt(0).toUpperCase()+intendedPlan.slice(1)} plan. Complete payment to activate.`}
+          />
+        </Suspense>
+      </>
+    )
+  }
+
+  // Workspace selected → main app
   if (workspace) return <App/>
 
-  // Logged in, no workspace → dashboard
+  // Dashboard
   return (
     <Suspense fallback={<Spinner/>}>
       <WorkspacePage/>

@@ -15,7 +15,7 @@ const C = {
 
 const font = "system-ui,-apple-system,'Segoe UI',sans-serif"
 
-export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReason = '' }) {
+export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReason = '', initialPlan = null }) {
   const { customer, planLimits, livePlans } = useAuth()
   const PLANS = livePlans || DEFAULT_PLANS
 
@@ -30,7 +30,7 @@ export default function UpgradeModal({ onClose, currentVSCount = 1, triggerReaso
     const total = after + gst
     return { base, discount:disc, afterDiscount:after, gst, total, totalPaise:total*100 }
   }
-  const [selectedPlan, setSelectedPlan] = useState('single')
+  const [selectedPlan, setSelectedPlan] = useState(initialPlan || 'single')
   const [coupon,       setCoupon]       = useState('')
   const [couponResult, setCouponResult] = useState(null)
   const [couponLoading,setCouponLoading]= useState(false)
