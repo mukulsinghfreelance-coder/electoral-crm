@@ -17,6 +17,8 @@ serve(async (req) => {
       razorpay_signature,
       additionalVS,   // how many NEW VSs were bought in this payment
       customerId,
+      isAnnual = false,
+      isFree   = false,
     } = await req.json()
 
     const KEY_SECRET = Deno.env.get('RAZORPAY_KEY_SECRET')!
@@ -29,7 +31,8 @@ serve(async (req) => {
     const body     = razorpay_order_id + '|' + razorpay_payment_id
     const expected = createHmac('sha256', KEY_SECRET).update(body).digest('hex')
 
-    if (expected !== razorpay_signature) {
+    // Skip signature check for free orders (100% coupon)
+    if (!isFree && expected !== razorpay_signature) {
       throw new Error('Payment signature verification failed')
     }
 
@@ -49,13 +52,22 @@ serve(async (req) => {
     const planExpiry = new Date()
     planExpiry.setMonth(planExpiry.getMonth() + 1)
 
+    // Lock billing cycle on first payment — cannot change later
+    const billingCycleUpdate = prevPaidVs === 0
+      ? { billing_cycle: isAnnual ? 'annual' : 'monthly' }
+      : {}  // already locked — don't change
+
+    // Set expiry based on billing cycle
+    if (isAnnual) planExpiry.setMonth(planExpiry.getMonth() + 11)  // +12 total
+
     const { error: updateErr } = await supabase
       .from('customers')
       .update({
         plan:          'premium',
         plan_status:   'active',
         plan_expiry:   planExpiry.toISOString(),
-        paid_vs_count: newPaidVs,   // ← cumulative VS count
+        paid_vs_count: newPaidVs,
+        ...billingCycleUpdate,
       })
       .eq('id', customerId)
 

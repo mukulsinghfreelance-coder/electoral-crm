@@ -81,7 +81,9 @@ export default function PaymentHistory({ onBack }) {
               )}
               {plan === 'premium' && expiry && (
                 <div style={{ fontSize:12, color: daysLeft <= 7 ? C.gold : C.gray, marginTop:4 }}>
-                  {daysLeft > 0 ? `Renews in ${daysLeft} days (${expiry.toLocaleDateString('en-IN')})` : '⚠ Plan expired'}
+                  {daysLeft > 0
+                    ? `${customer?.billing_cycle === 'annual' ? '📅 Annual' : '📅 Monthly'} · Renews ${expiry.toLocaleDateString('en-IN')} (in ${daysLeft} days)`
+                    : '⚠ Plan expired'}
                 </div>
               )}
               {plan === 'free' && (

@@ -212,7 +212,12 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
             </div>
           )}
 
-          {/* Action */}
+          {/* Confirmation + Action */}
+          {selVS && !loading && (
+            <div style={{ background:'rgba(108,99,255,0.08)', border:'1px solid rgba(108,99,255,0.2)', borderRadius:12, padding:'12px 14px', fontSize:12, color:'#A78BFA', lineHeight:1.6 }}>
+              ℹ️ You are about to add <strong style={{ color:'#fff' }}>{selVS.vidhan_sabha}</strong> ({selState} · {selLS}) to your dashboard. This action cannot be undone without contacting support.
+            </div>
+          )}
           <button
             onClick={handleAdd}
             disabled={!selVS || loading}
@@ -227,7 +232,7 @@ function AddConstModal({ onClose, onAdded, customer, currentCount, existingConst
               transition:'all .2s',
             }}
           >
-            {loading ? '⏳ Adding…' : selVS ? `Add ${selVS.vidhan_sabha} →` : 'Select a Vidhan Sabha'}
+            {loading ? '⏳ Adding…' : selVS ? `✓ Confirm & Add ${selVS.vidhan_sabha}` : 'Select a Vidhan Sabha'}
           </button>
         </div>
       </div>

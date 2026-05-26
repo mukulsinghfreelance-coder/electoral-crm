@@ -61,13 +61,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    const body = await req.json()
+    console.log('📦 Order request received:', JSON.stringify(body))
+
     const {
       customerId,
       additionalVS = 1,   // how many NEW VSs being bought
       discountPct  = 0,
       couponCode   = '',
       isAnnual     = false,
-    } = await req.json()
+    } = body
 
     // ── Get customer's current paid_vs_count ──────────────────────────────
     const { data: customer } = await supabase
