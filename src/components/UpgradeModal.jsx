@@ -60,7 +60,12 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
   const currentCycle = customer?.billing_cycle || 'monthly'
 
   const [additionalVS,  setAdditionalVS]  = useState(1)
-  const [isAnnual, setIsAnnual] = useState(false)
+  // Lock billing cycle after first payment
+  const isFirstPayment   = paidVsCount === 0
+  const lockedToAnnual   = !isFirstPayment && customer?.billing_cycle === 'annual'
+  const [isAnnual, setIsAnnual] = useState(
+    isFirstPayment ? false : customer?.billing_cycle === 'annual'
+  )
   const [coupon,        setCoupon]        = useState('')
   const [couponResult,  setCouponResult]  = useState(null)
   const [couponLoading, setCouponLoading] = useState(false)
@@ -164,12 +169,12 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
           <button onClick={onClose} style={{ background:'rgba(255,255,255,0.08)', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', color:C.gray, fontSize:16, fontFamily:font, flexShrink:0 }}>✕</button>
         </div>
 
-        {/* Annual billing toggle */}
-        {annualBillingEnabled && (
+        {/* Billing cycle — toggle on first payment, locked info on subsequent */}
+        {annualBillingEnabled && isFirstPayment && (
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.04)', border:`1px solid ${C.border}`, borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
             <div>
               <div style={{ fontSize:13, color:C.white, fontWeight:500 }}>Annual billing</div>
-              <div style={{ fontSize:11, color:C.success }}>Save {annualDisc}% vs monthly</div>
+              <div style={{ fontSize:11, color:C.success }}>Save {annualDisc}% vs monthly — locked for all future payments</div>
             </div>
             <div
               onClick={() => setIsAnnual(a => !a)}
@@ -177,6 +182,21 @@ export default function UpgradeModal({ onClose, triggerReason = '', initialPlan 
             >
               <div style={{ width:18, height:18, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: isAnnual ? 23 : 3, transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/>
             </div>
+          </div>
+        )}
+        {!isFirstPayment && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.04)', border:`1px solid ${C.border}`, borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
+            <div>
+              <div style={{ fontSize:13, color:C.white, fontWeight:500 }}>
+                📅 Billing cycle: <span style={{ color:C.accent }}>{isAnnual ? 'Annual' : 'Monthly'}</span>
+              </div>
+              <div style={{ fontSize:11, color:C.gray2 }}>
+                Locked from your first payment · Contact support to change
+              </div>
+            </div>
+            <span style={{ fontSize:10, background: isAnnual ? 'rgba(108,99,255,0.2)' : 'rgba(255,255,255,0.08)', color: isAnnual ? C.accent : C.gray, padding:'3px 10px', borderRadius:20, fontWeight:700, border:`1px solid ${isAnnual ? 'rgba(108,99,255,0.3)' : C.border}` }}>
+              🔒 {isAnnual ? 'Annual' : 'Monthly'}
+            </span>
           </div>
         )}
 
