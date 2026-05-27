@@ -888,7 +888,7 @@ export default function App() {
     const q=search.toLowerCase(); const ft=fT||activeTag;
     let r=contacts.filter(c=>{
       const ok=!q||(c.name+c.phone+c.wa+c.mandal+c.panchayat+c.village+c.bno+c.bnm+c.tag+c.caste).toLowerCase().includes(q);
-      return ok&&(!fM||c.mandal===fM)&&(!fP||c.panchayat===fP)&&(!fB||c.bno===fB)&&(!ft||c.tag===ft)&&(!fCaste||c.caste===fCaste)&&(!fAddedBy||c.created_by===fAddedBy);
+      return ok&&(!fM||c.mandal===fM)&&(!fP||c.panchayat===fP)&&(!fB||c.bno===fB)&&(!ft||c.tag===ft)&&(!fCaste||c.caste===fCaste)&&(!fAddedBy||(c.created_by&&c.created_by===fAddedBy));
     });
     r.sort((a,b)=>{let av=a[sort.col]||"",bv=b[sort.col]||"";if(sort.col==="bno"){av=parseInt(av)||0;bv=parseInt(bv)||0;return sort.dir==="asc"?av-bv:bv-av;}return sort.dir==="asc"?av.toString().localeCompare(bv.toString()):bv.toString().localeCompare(av.toString());});
     return r;
@@ -1189,7 +1189,7 @@ export default function App() {
                   <div style={{fontSize:11,color:C.primary,fontWeight:500}}>{contacts.length} total · {filteredC.length} shown</div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  {isAdmin&&!selectMode&&<Btn v="ghost" onClick={()=>setSelectMode(true)} style={{fontSize:11,padding:"5px 10px"}} title="Select contacts to bulk delete">☑️ Select</Btn>}
+                  {isAdmin&&!selectMode&&<Btn v="ghost" onClick={()=>setSelectMode(true)} style={{fontSize:11,padding:"5px 10px"}} title="Select contacts to bulk delete">☑️ Bulk Delete</Btn>}
                   {selectMode&&<>
                     <Btn v="ghost" onClick={()=>{setSelectedIds(slice.map(c=>c.id))}} style={{fontSize:11}}>☑ Page</Btn>
                     <Btn v="ghost" onClick={()=>{setSelectedIds(filteredC.map(c=>c.id))}} style={{fontSize:11}}>☑ All ({filteredC.length})</Btn>
@@ -1211,7 +1211,7 @@ export default function App() {
             </div>
 
             <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,background:C.gray50,overflowX:"auto",overflowY:"hidden",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
-              {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All "+((L.mandal||"Mandal")+"s"),settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All "+((L.panchayat||"Panchayat")+"s"),mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All "+((L.booth||"Booth")+"s"),[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All "+((L.caste||"Caste")+"s"),settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS],[fAddedBy,v=>{setFAddedBy(v);setPage(1);},"All — Added By",[...new Set(contacts.map(c=>c.created_by).filter(Boolean))]]].map(([val,setter,ph,opts],i)=>(
+              {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All "+((L.mandal||"Mandal")+"s"),settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All "+((L.panchayat||"Panchayat")+"s"),mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All "+((L.booth||"Booth")+"s"),[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All "+((L.caste||"Caste")+"s"),settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS],[fAddedBy,v=>{setFAddedBy(v);setPage(1);},"All — Added By",[...new Set(contacts.map(c=>c.created_by).filter(v=>v&&v.trim()))]]].map(([val,setter,ph,opts],i)=>(
                 <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer",flexShrink:0}}>
                   <option value="">{ph}</option>{opts.map(o=><option key={o} value={o}>{ph==="All — Added By"?o.split('@')[0]:o}</option>)}
                 </select>
