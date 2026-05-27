@@ -76,17 +76,22 @@ export function AuthProvider({ children }) {
               .eq('id', vol.workspace_id)
               .maybeSingle()
 
-            console.log('Volunteer loaded:', vol.email, '| workspace:', vol.workspace_id)
+            console.log('Volunteer loaded:', vol.email, '| workspace:', vol.workspace_id, '| ws found:', !!ws)
+            // Set workspace FIRST, then customer — AppRouter checks workspace
+            if (ws) {
+              setVolunteerWorkspace(ws)
+            } else {
+              console.error('Volunteer workspace not found:', vol.workspace_id)
+            }
             setCustomer({
-              id:          vol.id,
-              email:       authUser.email,
-              name:        vol.name,
-              plan:        'volunteer',
-              role:        'volunteer',
-              isVolunteer: true,
+              id:           vol.id,
+              email:        authUser.email,
+              name:         vol.name,
+              plan:         'volunteer',
+              role:         'volunteer',
+              isVolunteer:  true,
               workspace_id: vol.workspace_id,
             })
-            if (ws) setVolunteerWorkspace(ws)
             setAuthError('')
             setLoading(false)
             return

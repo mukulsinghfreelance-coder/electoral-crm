@@ -54,8 +54,11 @@ export default function AppRouter() {
   // Not logged in → landing page
   if (!session || !customer) return <LandingPage/>
 
-  // Volunteer → go directly to App (workspace already set by AuthContext)
-  if (customer?.isVolunteer) return <App/>
+  // Volunteer → go directly to App once workspace is loaded
+  if (customer?.isVolunteer) {
+    if (!workspace) return <Spinner/>  // wait for volunteerWorkspace to load
+    return <App/>
+  }
 
   // Show payment modal after login from pricing CTA
   if (showPayment && intendedPlan) {
