@@ -52,6 +52,7 @@ export function AuthProvider({ children }) {
           .eq('id', vol.workspace_id)
           .maybeSingle()
 
+        console.log('Setting volunteerWorkspace:', ws)
         if (ws) setVolunteerWorkspace(ws)
         else console.error('Volunteer workspace not found:', vol.workspace_id)
 
@@ -287,8 +288,9 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       customer, session, loading,
       workspace: (() => {
-        if (customer?.isVolunteer) return volunteerWorkspace
-        return workspace
+        const w = customer?.isVolunteer ? volunteerWorkspace : workspace
+        if (customer?.isVolunteer) console.log('Serving volunteer workspace:', w?.vs, '| volunteerWS:', volunteerWorkspace?.vs, '| regularWS:', workspace?.vs)
+        return w
       })(),
       authError,
       loginWithOTP, verifyOTP, loginWithGoogle, devLogin, logout,
