@@ -718,7 +718,7 @@ export default function App() {
   // ── Load data when workspace is ready ─────────────────────────────────────
   const loadAll = useCallback(async()=>{
     if(!workspace?.id){console.log('loadAll: no workspace id');return;}
-    console.log('loadAll starting for workspace:', workspace.id);
+    console.log('loadAll starting for workspace:', workspace.id, 'vs:', workspace.vs, 'name:', workspace.name);
     setLoading(true); setLoadErr(null);
     try{
       const [s,c,b]=await Promise.all([
