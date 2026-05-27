@@ -353,21 +353,17 @@ export default function LandingPage() {
     )
   }
 
-  // Mobile responsive via CSS injection
+  // Mobile CSS injection
   useEffect(() => {
     const style = document.createElement('style')
     style.id = 'landing-mobile'
-    style.textContent = `
-      @media (max-width: 640px) {
-        .landing-hero-title { font-size: 32px !important; }
-        .landing-pricing-grid { grid-template-columns: 1fr !important; }
-        .landing-features-grid { grid-template-columns: 1fr !important; }
-        .landing-steps-grid { grid-template-columns: 1fr !important; }
-        .landing-nav { flex-wrap: wrap; gap: 8px; }
-        .landing-cta-row { flex-direction: column; }
-        .landing-auth-modal { margin: 16px !important; max-width: calc(100vw - 32px) !important; }
-      }
-    `
+    style.textContent = [
+      '@media(max-width:640px){',
+      '.landing-pricing-grid{grid-template-columns:1fr!important;}',
+      '.landing-nav{flex-wrap:wrap;gap:8px;}',
+      '.landing-auth-modal{margin:16px!important;max-width:calc(100vw - 32px)!important;}',
+      '}'
+    ].join('')
     document.head.appendChild(style)
     return () => document.getElementById('landing-mobile')?.remove()
   }, [])
@@ -527,8 +523,8 @@ export default function LandingPage() {
                   <span style={{ fontSize:36, fontWeight:800, color:C.white, letterSpacing:'-0.03em' }}>{p.price}</span>
                   <span style={{ fontSize:14, color:C.textSub }}>{p.period}</span>
                 </div>
-                {i===2 && <div style={{ fontSize:11, color:C.accent, marginBottom:16 }}>+ {multipleExtra}/mo per additional VS</div>}
-                {i!==2 && <div style={{ marginBottom:16 }}/>}
+                {i===1 && <div style={{ fontSize:11, color:C.accent, marginBottom:16 }}>+ {premiumExtra}/mo per additional VS</div>}
+                {i!==1 && <div style={{ marginBottom:16 }}/>}
                 <div style={{ fontSize:12, color:C.textSub, marginBottom:4 }}>📍 {p.vs}</div>
                 <div style={{ fontSize:12, color:C.textSub, marginBottom:20 }}>👥 {p.contacts}</div>
                 <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:16, marginBottom:20 }}>
