@@ -168,7 +168,8 @@ export function AuthProvider({ children }) {
         }
 
         if (event === 'SIGNED_IN') {
-          if (newSession?.user && loadingRef.current !== newSession.user.id) {
+          // loadingRef guards against duplicate loads
+          if (newSession?.user) {
             setTimeout(() => loadCustomer(newSession.user), 0)
           } else {
             setLoading(false)
