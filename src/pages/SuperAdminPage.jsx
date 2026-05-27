@@ -392,12 +392,12 @@ function PricingPanel() {
             </span>
             <div style={{ display:'flex', gap:6 }}>
               <button disabled={custPage===1} onClick={()=>setCustPage(p=>p-1)}
-                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage===1?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage===1?'#4B5563':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage===1?'not-allowed':'pointer', fontFamily:font }}>
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage===1?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage===1?'#4B5563':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage===1?'not-allowed':'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
                 ← Prev
               </button>
               <span style={{ padding:'6px 12px', fontSize:12, color:'#9CA3AF' }}>Page {custPage} / {Math.ceil(custTotal/CUST_PAGE_SIZE)}</span>
               <button disabled={custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)} onClick={()=>setCustPage(p=>p+1)}
-                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'#4B5563':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'not-allowed':'pointer', fontFamily:font }}>
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'#4B5563':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'not-allowed':'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
                 Next →
               </button>
             </div>
@@ -453,7 +453,7 @@ function VolunteersPanel() {
         </div>
         <input value={search} onChange={e=>setSearch(e.target.value)}
           placeholder="Search name, email, VS…"
-          style={{ padding:'8px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, outline:'none', width:220, fontFamily:font }}
+          style={{ padding:'8px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, outline:'none', width:220, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}
         />
       </div>
       {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:8, marginBottom:12, fontSize:12 }}>{err}</div>}
@@ -500,7 +500,7 @@ function VolunteersPanel() {
                       {v.created_at ? new Date(v.created_at).toLocaleDateString('en-IN') : '—'}
                     </td>
                     <td style={{ padding:'10px 12px' }}>
-                      <button onClick={()=>remove(v.id, v.email)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, cursor:'pointer', fontFamily:font }}>
+                      <button onClick={()=>remove(v.id, v.email)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, cursor:'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
                         Remove
                       </button>
                     </td>
@@ -517,12 +517,12 @@ function VolunteersPanel() {
             </span>
             <div style={{ display:'flex', gap:6 }}>
               <button disabled={page===1} onClick={()=>setPage(p=>p-1)}
-                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page===1?'#F3F4F6':'#EDE9FE', color:page===1?'#9CA3AF':'#5B21B6', border:'1px solid #E5E7EB', borderRadius:7, cursor:page===1?'not-allowed':'pointer', fontFamily:font }}>
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page===1?'#F3F4F6':'#EDE9FE', color:page===1?'#9CA3AF':'#5B21B6', border:'1px solid #E5E7EB', borderRadius:7, cursor:page===1?'not-allowed':'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
                 ← Prev
               </button>
               <span style={{ padding:'6px 12px', fontSize:12, color:'#6B7280' }}>Page {page} / {totalPages}</span>
               <button disabled={page>=totalPages} onClick={()=>setPage(p=>p+1)}
-                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page>=totalPages?'#F3F4F6':'#EDE9FE', color:page>=totalPages?'#9CA3AF':'#5B21B6', border:'1px solid #E5E7EB', borderRadius:7, cursor:page>=totalPages?'not-allowed':'pointer', fontFamily:font }}>
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page>=totalPages?'#F3F4F6':'#EDE9FE', color:page>=totalPages?'#9CA3AF':'#5B21B6', border:'1px solid #E5E7EB', borderRadius:7, cursor:page>=totalPages?'not-allowed':'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
                 Next →
               </button>
             </div>
