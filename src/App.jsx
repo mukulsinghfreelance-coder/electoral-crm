@@ -280,7 +280,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
   const remM=i=>{const m=[...s.mandals];m.splice(i,1);setS(p=>({...p,mandals:m}));setSelM(0);};
   const addP=()=>{const n=np.trim();if(!n||!s.mandals[selM])return;const m=[...s.mandals];if(!m[selM].panchayats.includes(n))m[selM]={...m[selM],panchayats:[...m[selM].panchayats,n]};setS(p=>({...p,mandals:m}));setNp("");};
   const remP=(mi,pi)=>{const m=[...s.mandals];m[mi]={...m[mi],panchayats:m[mi].panchayats.filter((_,i)=>i!==pi)};setS(p=>({...p,mandals:m}));};
-  const TABS=[["geo","🗺️ Geography"],["labels","🏷️ Labels"],["castes","👥 Castes"],["parties","📊 Past Voting"]];
+  const TABS=[["geo","🗺️ Geography"],["labels","🏷️ Labels"],["castes","👥 Castes"],["parties","📊 Past Voting"],["admin","🔧 Admin"]];
   return (
     <Modal open={open} onClose={onClose} title="⚙️ Settings" wide>
       {/* Onboarding checklist */}
@@ -345,7 +345,16 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
           <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Election names</div>
           {elections.map((e,i)=>(<div key={i} style={{marginBottom:8}}><div style={{fontSize:10,color:C.gray400,fontWeight:600,marginBottom:4}}>E{i+1} {i===0?"(oldest)":i===2?"(latest)":""}</div><Inp value={e} onChange={ev=>{const el=[...elections];el[i]=ev.target.value;setElections(el);}}/></div>))}
         </div>
-      </div>)}
+      </div>)
+      {tab==="admin"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.gray900,marginBottom:4}}>Data Management</div>
+        <Btn v="primary" onClick={()=>{onClose();setShowImport(true);}}>⬆️ Import Contacts</Btn>
+        <Btn v="ghost" onClick={()=>{onClose();reqPinAdmin(exportCSV);}}>⬇️ Export Contacts CSV</Btn>
+        <Btn v="ghost" onClick={()=>{onClose();}}>⬆️ Import Booths</Btn>
+        <Btn v="ghost" onClick={()=>{onClose();setShowSheets(true);}}>🔗 Google Sheets Sync</Btn>
+        <div style={{height:1,background:C.gray200,margin:"4px 0"}}/>
+        <Btn v="danger" onClick={()=>{onClose();setSelectMode(true);}}>🗑️ Bulk Delete Contacts</Btn>
+      </div>)}}
 
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}}>
         <Btn v="ghost" onClick={onClose}>Cancel</Btn>
@@ -833,12 +842,19 @@ export default function App() {
       @media(max-width:768px){
         #sidebar-desktop{display:none!important;}
         #bottom-nav{display:flex!important;}
+        #data-status-strip{display:flex!important;}
         #detail-panel-desktop{display:none!important;}
         #metrics-row{grid-template-columns:repeat(2,1fr)!important;gap:6px!important;padding:8px!important;}
         #filter-bar select{font-size:12px!important;}
         .top-strip-label{display:none!important;}
+        #hero-bar{padding:6px 10px!important;}
+        #filter-bar{padding:4px 8px!important;}
+        #main-content{padding-bottom:100px!important;}
       }
-      @media(min-width:769px){#bottom-nav{display:none!important;}}
+      @media(min-width:769px){
+        #bottom-nav{display:none!important;}
+        #data-status-strip{display:none!important;}
+      }
     `;
     if(!document.getElementById('app-mobile-css'))document.head.appendChild(s);
     return()=>document.getElementById('app-mobile-css')?.remove();
@@ -898,11 +914,6 @@ export default function App() {
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>By Tag</div>
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
 
-          <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Import / Export</div>
-          <SBI icon="⬆️" label="Import Contacts" active={false} onClick={()=>setShowImport(true)}/>
-          {isAdmin&&<SBI icon="⬇️" label="Export CSV" active={false} onClick={()=>reqPinAdmin(exportCSV)}/>}
-          {isAdmin&&<SBI icon="🔗" label="Google Sheets" active={false} onClick={()=>setShowSheets(true)}/>}
-          {isAdmin&&<SBI icon="🗑️" label={selectMode?`Bulk Delete (${selectedIds.length})`:'Bulk Delete'} active={selectMode} onClick={()=>{if(selectMode&&selectedIds.length>0)handleBulkDelete();else{setSelectMode(s=>!s);if(selectMode)setSelectedIds([]);}}} color={C.red}/>}
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Modules</div>
           {settings.mandals.length === 0 && (
             <div onClick={()=>setShowSettings(true)} style={{margin:"4px 8px",padding:"8px 12px",background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,fontSize:11,color:'#92400E',cursor:'pointer',fontWeight:600}}>
@@ -946,11 +957,10 @@ export default function App() {
               📍 <span className="top-strip-label">Booth Management</span>
             </button>
             <div style={{flex:1}}/>
-            <span style={{fontSize:11,color:C.gray400}}>{contacts.length} contacts</span>
           </div>
 
           {screen==="contacts"&&<>
-            <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"12px 16px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+            <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:16,fontWeight:800,color:C.primaryDark}}>{activeTag||"All Contacts"}</div>
@@ -1088,14 +1098,22 @@ export default function App() {
         </div>
       )}
 
+      {/* DATA STATUS STRIP — mobile only */}
+      <div id="data-status-strip" style={{display:"none",background:C.white,borderTop:`1px solid ${C.gray200}`,padding:"4px 12px",flexDirection:"row",gap:0,alignItems:"center",justifyContent:"space-around"}}>
+        {[["Contacts",contacts.length,C.primary],["Booths",booths.length,C.teal],["Panchayats",allPanchs.length,C.success],["Volunteers",0,"#8B5CF6"]].map(([l,v,cl])=>(
+          <div key={l} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"4px 8px"}}>
+            <div style={{fontSize:15,fontWeight:800,color:cl}}>{v}</div>
+            <div style={{fontSize:8,fontWeight:700,color:C.gray400,textTransform:"uppercase"}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
       {/* BOTTOM NAV — mobile only, hidden on desktop via CSS */}
       <div id="bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:C.white,borderTop:`2px solid ${C.gray200}`,zIndex:200,alignItems:"stretch",paddingBottom:"env(safe-area-inset-bottom,0px)"}}>
         <button onClick={()=>{setScreen("contacts");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="contacts"?C.primary:C.gray500,borderTop:screen==="contacts"?`2.5px solid ${C.primary}`:"2.5px solid transparent",padding:"6px 0"}}>
           <span style={{fontSize:18}}>👥</span><span style={{fontSize:9,fontWeight:700}}>Contacts</span>
         </button>
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
-          <button onClick={()=>{setEditC(null);setShowAdd(true);}} style={{width:50,height:50,borderRadius:"50%",border:"none",cursor:"pointer",background:`linear-gradient(135deg,${C.success},#047857)`,color:C.white,fontSize:26,fontWeight:800,boxShadow:"0 4px 16px rgba(5,150,105,.5)",display:"flex",alignItems:"center",justifyContent:"center",position:"absolute",bottom:4}}>＋</button>
-        </div>
+
         <button onClick={()=>{setScreen("booths");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="booths"?C.teal:C.gray500,borderTop:screen==="booths"?`2.5px solid ${C.teal}`:"2.5px solid transparent",padding:"6px 0"}}>
           <span style={{fontSize:18}}>📍</span><span style={{fontSize:9,fontWeight:700}}>Booths</span>
         </button>

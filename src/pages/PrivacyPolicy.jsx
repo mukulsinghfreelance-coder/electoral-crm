@@ -16,7 +16,7 @@ export default function PrivacyPolicy({ onBack }) {
       {/* Header */}
       <div style={{ background:'rgba(15,14,26,0.95)', borderBottom:`1px solid ${C.border}`, padding:'16px 24px', position:'sticky', top:0, zIndex:100 }}>
         <div style={{ maxWidth:800, margin:'0 auto', display:'flex', alignItems:'center', gap:16 }}>
-          <button onClick={onBack} style={{ background:'rgba(255,255,255,0.08)', border:`1px solid ${C.border}`, borderRadius:8, padding:'6px 14px', fontSize:13, color:C.gray, cursor:'pointer', fontFamily:font }}>
+          <button onClick={onBack} style={{ background:'#6C63FF', border:'none', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:font, boxShadow:'0 2px 8px rgba(108,99,255,.4)' }}>
             ← Back
           </button>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
