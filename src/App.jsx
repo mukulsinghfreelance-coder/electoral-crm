@@ -747,7 +747,7 @@ export default function App() {
   const [sort,      setSort]      = useState({col:"name",dir:"asc"});
   const [bSort,     setBSort]     = useState({col:"bno",dir:"asc"});
   const [search,    setSearch]    = useState("");
-  const [fM,setFM]=useState(""); const [fP,setFP]=useState(""); const [fB,setFB]=useState(""); const [fT,setFT]=useState(""); const [fCaste,setFCaste]=useState("");
+  const [fM,setFM]=useState(""); const [fP,setFP]=useState(""); const [fB,setFB]=useState(""); const [fT,setFT]=useState(""); const [fCaste,setFCaste]=useState(""); const [fAddedBy,setFAddedBy]=useState("");
   const [bSearch,setBSearch]=useState("");
   const [boothPage,setBoothPage]=useState(1);
   const BOOTH_PER_PAGE=20; const [bfR,setBfR]=useState(""); const [bfP,setBfP]=useState("");
@@ -888,7 +888,7 @@ export default function App() {
     const q=search.toLowerCase(); const ft=fT||activeTag;
     let r=contacts.filter(c=>{
       const ok=!q||(c.name+c.phone+c.wa+c.mandal+c.panchayat+c.village+c.bno+c.bnm+c.tag+c.caste).toLowerCase().includes(q);
-      return ok&&(!fM||c.mandal===fM)&&(!fP||c.panchayat===fP)&&(!fB||c.bno===fB)&&(!ft||c.tag===ft)&&(!fCaste||c.caste===fCaste);
+      return ok&&(!fM||c.mandal===fM)&&(!fP||c.panchayat===fP)&&(!fB||c.bno===fB)&&(!ft||c.tag===ft)&&(!fCaste||c.caste===fCaste)&&(!fAddedBy||c.created_by===fAddedBy);
     });
     r.sort((a,b)=>{let av=a[sort.col]||"",bv=b[sort.col]||"";if(sort.col==="bno"){av=parseInt(av)||0;bv=parseInt(bv)||0;return sort.dir==="asc"?av-bv:bv-av;}return sort.dir==="asc"?av.toString().localeCompare(bv.toString()):bv.toString().localeCompare(av.toString());});
     return r;
@@ -1189,8 +1189,13 @@ export default function App() {
                   <div style={{fontSize:11,color:C.primary,fontWeight:500}}>{contacts.length} total · {filteredC.length} shown</div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  {selectMode&&selectedIds.length>0&&<Btn v="danger" onClick={handleBulkDelete}>🗑️ Delete {selectedIds.length}</Btn>}
-                  {selectMode&&<Btn v="ghost" onClick={()=>{setSelectMode(false);setSelectedIds([])}}>✕ Cancel</Btn>}
+                  {isAdmin&&!selectMode&&<Btn v="ghost" onClick={()=>setSelectMode(true)} style={{fontSize:11,padding:"5px 8px"}} title="Select contacts to bulk delete">☑️</Btn>}
+                  {selectMode&&<>
+                    <Btn v="ghost" onClick={()=>{setSelectedIds(slice.map(c=>c.id))}} style={{fontSize:11}}>☑ Page</Btn>
+                    <Btn v="ghost" onClick={()=>{setSelectedIds(filteredC.map(c=>c.id))}} style={{fontSize:11}}>☑ All ({filteredC.length})</Btn>
+                    {selectedIds.length>0&&<Btn v="danger" onClick={handleBulkDelete}>🗑️ Delete {selectedIds.length}</Btn>}
+                    <Btn v="ghost" onClick={()=>{setSelectMode(false);setSelectedIds([])}}>✕ Cancel</Btn>
+                  </>}
                 </div>
               </div>
               <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="🔍  Search name, phone, caste…" style={{width:"100%",padding:"9px 14px",fontSize:13,border:`1.5px solid ${C.gray200}`,borderRadius:22,background:C.white,color:C.gray900,outline:"none",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}/>
@@ -1206,18 +1211,18 @@ export default function App() {
             </div>
 
             <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,background:C.gray50,overflowX:"auto",overflowY:"hidden",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
-              {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All "+((L.mandal||"Mandal")+"s"),settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All "+((L.panchayat||"Panchayat")+"s"),mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All "+((L.booth||"Booth")+"s"),[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All "+((L.caste||"Caste")+"s"),settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS]].map(([val,setter,ph,opts],i)=>(
+              {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All "+((L.mandal||"Mandal")+"s"),settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All "+((L.panchayat||"Panchayat")+"s"),mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All "+((L.booth||"Booth")+"s"),[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All "+((L.caste||"Caste")+"s"),settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS],[fAddedBy,v=>{setFAddedBy(v);setPage(1);},"All Adders",[...new Set(contacts.map(c=>c.created_by).filter(Boolean))]]].map(([val,setter,ph,opts],i)=>(
                 <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer"}}>
                   <option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}
                 </select>
               ))}
-              {(search||fM||fP||fB||fCaste||fT||activeTag)&&<button onClick={()=>{setSearch("");setFM("");setFP("");setFB("");setFCaste("");setFT("");setActiveTag("");setPage(1);}} style={{padding:"5px 10px",fontSize:11,background:"#FEE2E2",color:C.red,border:"none",borderRadius:8,cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
+              {(search||fM||fP||fB||fCaste||fT||activeTag)&&<button onClick={()=>{setSearch("");setFM("");setFP("");setFB("");setFCaste("");setFT("");setActiveTag("");setFAddedBy("");setPage(1);}} style={{padding:"5px 10px",fontSize:11,background:"#FEE2E2",color:C.red,border:"none",borderRadius:8,cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
               <span style={{marginLeft:"auto",fontSize:11,color:C.gray400,fontWeight:600}}>{filteredC.length} result{filteredC.length!==1?"s":""}</span>
             </div>
 
             <div id="table-wrap" style={{flex:1,overflowY:"auto",overflowX:"auto",minHeight:0}}>
               <table id="contact-table" style={{width:"100%",borderCollapse:"collapse",tableLayout:"auto",minWidth:520}}>
-                <thead><tr>{[["name","Name",106],["phone","Phone",88],["caste",L.caste||"Caste",64],["mandal",L.mandal||"Mandal",72],["panchayat",L.panchayat||"Panchayat",76],["bno",L.booth||"Booth",42],["tag",L.tag||"Tag",86]].map(([col,label,w])=>(<th key={col} style={{...thS,width:w}}>{label}<SortArrow col={col} sort={sort} onSort={col=>setSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})}/></th>))}</tr></thead>
+                <thead><tr>{[["name","Name",106],["phone","Phone",88],["caste",L.caste||"Caste",64],["mandal",L.mandal||"Mandal",72],["panchayat",L.panchayat||"Panchayat",76],["bno",L.booth||"Booth",42],["tag",L.tag||"Tag",86],["created_by","Added By",100]].map(([col,label,w])=>(<th key={col} style={{...thS,width:w}}>{label}<SortArrow col={col} sort={sort} onSort={col=>setSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})}/></th>))}</tr></thead>
                 <tbody>{slice.map(c=>(<tr key={c.id} onClick={()=>{if(selectMode){toggleSelect(c.id);return;}setSelC(c);if(isMobile)setShowMobileDetail(true);}} style={{background:selectedIds.includes(c.id)?"#FEE2E2":selC?.id===c.id?C.primaryLight:"transparent",cursor:"pointer",transition:"background .1s"}}>
                   <td style={{...tdS,fontWeight:700,color:C.gray900}}>{c.name}</td>
                   <td style={{...tdS,color:C.gray600}}>{c.phone}</td>
@@ -1226,6 +1231,7 @@ export default function App() {
                   <td style={tdS}>{c.panchayat}</td>
                   <td style={{...tdS,textAlign:"center",fontWeight:700,color:C.primary}}>{c.bno}</td>
                   <td style={tdS}><Badge tag={c.tag}/></td>
+                  <td style={{...tdS,fontSize:11,color:C.gray400}}>{c.created_by||'—'}</td>
                 </tr>))}</tbody>
               </table>
               {slice.length===0&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:50,gap:10,color:C.gray400,textAlign:"center"}}><span style={{fontSize:40}}>🔍</span><span style={{fontSize:14,fontWeight:600}}>No contacts found</span></div>}
