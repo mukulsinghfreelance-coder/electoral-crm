@@ -17,15 +17,8 @@ const TAG_STYLE = {
 };
 const RATING = { A:{bg:"#D1FAE5",cl:"#065F46",label:"Wins"}, B:{bg:"#FEF3C7",cl:"#92400E",label:"Mediocre"}, C:{bg:"#FEE2E2",cl:"#991B1B",label:"Loses"} };
 const DEFAULT_SETTINGS = {
-  state:"Bihar", ls:"Patna Sahib", vs:"Bankipur", totalVoters:"", totalBooths:"",
-  mandals:[
-    {name:"Patna Sadar",panchayats:["Gaighat","Rampur"]},
-    {name:"Danapur",panchayats:["Khagaul","Dinapur"]},
-    {name:"Bikram",panchayats:["Naubatpur","Bihta"]},
-    {name:"Phulwari",panchayats:["Shahpur","Maner"]},
-  ],
-  castes:["Yadav","Brahmin","Kurmi","Bhumihar","Rajput","Muslim","Koeri","Dusadh"],
-  parties:["BJP+","Congress+","Others+"],
+  state:"", ls:"", vs:"", totalVoters:"", totalBooths:"",
+  mandals:[], castes:[], parties:["Alliance 1","Alliance 2","Others"],
   elections:["Election 2015","Election 2020","Election 2024"],
   adminPin:"1234", sheetsUrl:"",
   labels:{
@@ -722,7 +715,7 @@ export default function App() {
     setLoading(true); setLoadErr(null);
     try{
       const [s,c,b]=await Promise.all([
-        fetchSettings(workspace.id),
+        fetchSettings(workspace.id, workspace),
         fetchContacts(workspace.id),
         fetchBooths(workspace.id),
       ]);

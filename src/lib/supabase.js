@@ -165,14 +165,21 @@ export async function fetchWorkspaceStats(workspaceId) {
 }
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
-export async function fetchSettings(workspaceId) {
+export async function fetchSettings(workspaceId, workspace=null) {
   const { data, error } = await supabase
     .from('settings')
     .select('*')
     .eq('workspace_id', workspaceId)
     .limit(1)
   if (error) throw error
-  if (!data || data.length === 0) return dbToSettings({})
+  if (!data || data.length === 0) {
+    // No settings row yet — seed from workspace data
+    return dbToSettings({
+      state: workspace?.state || '',
+      ls:    workspace?.ls    || '',
+      vs:    workspace?.vs    || '',
+    })
+  }
   return dbToSettings(data[0])
 }
 
