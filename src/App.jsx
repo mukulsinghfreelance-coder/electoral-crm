@@ -533,74 +533,125 @@ function Toast({msg,type}) {
 }
 
 // ─── VOLUNTEER MODAL ──────────────────────────────────────────────────────────
-function VolunteerModal({open,onClose,workspaceId,orgId}) {
-  const [volunteers,setVolunteers]=useState([]);
-  const [name,setName]=useState(""); const [email,setEmail]=useState(""); const [phone,setPhone]=useState("");
-  const [loading,setLoading]=useState(false); const [saving,setSaving]=useState(false);
-  const {supabase:sb} = {supabase:null}; // we'll use direct import
+function VolunteerModal({open,onClose,workspaceId}) {
+  const [volunteers, setVolunteers] = useState([]);
+  const [name,  setName]  = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState("");
 
-  useEffect(()=>{
-    if(open) loadVolunteers();
-  },[open]);
+  useEffect(() => { if(open && workspaceId) load(); }, [open, workspaceId]);
 
-  const loadVolunteers=async()=>{
+  const getSb = async () => {
+    const m = await import('./lib/supabase');
+    return m.supabase;
+  };
+
+  const load = async () => {
     setLoading(true);
-    try{
-      const {createClient}=await import('@supabase/supabase-js');
-      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      const {data}=await sb.from('volunteers').select('*').eq('workspace_id',workspaceId);
-      setVolunteers(data||[]);
-    }catch(e){console.error(e);}
+    try {
+      const sb = await getSb();
+      const { data, error } = await sb.from('volunteers')
+        .select('*').eq('workspace_id', workspaceId).order('created_at');
+      if (error) throw error;
+      setVolunteers(data || []);
+    } catch(e) { setErr("Load failed: " + e.message); }
     setLoading(false);
   };
 
-  const addVolunteer=async()=>{
-    if(!name.trim()||!email.trim()){alert("Name and email are required");return;}
-    setSaving(true);
-    try{
-      const {createClient}=await import('@supabase/supabase-js');
-      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      await sb.from('volunteers').insert({name:name.trim(),email:email.trim().toLowerCase(),phone:phone.trim()||null,workspace_id:workspaceId});
+  const add = async () => {
+    const em = email.trim().toLowerCase();
+    if (!name.trim() || !em) { setErr("Name and email are required"); return; }
+    if (!/\S+@\S+\.\S+/.test(em)) { setErr("Enter a valid email"); return; }
+    setSaving(true); setErr("");
+    try {
+      const sb = await getSb();
+
+      // Check: email must not already be a CUSTOMER
+      const { data: existCust } = await sb.from('customers')
+        .select('id,email').eq('email', em).maybeSingle();
+      if (existCust) {
+        setErr(`❌ ${em} is already registered as a customer. A customer cannot be a volunteer.`);
+        setSaving(false); return;
+      }
+
+      // Check: email must not already be a volunteer in ANY workspace
+      const { data: existVol } = await sb.from('volunteers')
+        .select('id, workspace_id').eq('email', em).maybeSingle();
+      if (existVol) {
+        if (existVol.workspace_id === workspaceId) {
+          setErr(`❌ ${em} is already a volunteer in this constituency.`);
+        } else {
+          setErr(`❌ ${em} is already assigned as a volunteer in another constituency.`);
+        }
+        setSaving(false); return;
+      }
+
+      const { error } = await sb.from('volunteers').insert({
+        name:         name.trim(),
+        email:        em,
+        phone:        phone.trim() || null,
+        workspace_id: workspaceId,
+      });
+      if (error) throw error;
+
       setName(""); setEmail(""); setPhone("");
-      await loadVolunteers();
-    }catch(e){alert("Error: "+e.message);}
+      await load();
+    } catch(e) {
+      setErr("Error: " + (e.message?.includes('unique') ? 'This email is already registered.' : e.message));
+    }
     setSaving(false);
   };
 
-  const removeVolunteer=async(id)=>{
-    if(!confirm("Remove this volunteer?"))return;
-    try{
-      const {createClient}=await import('@supabase/supabase-js');
-      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      await sb.from('volunteers').delete().eq('id',id);
-      await loadVolunteers();
-    }catch(e){alert("Error: "+e.message);}
+  const remove = async (id, volEmail) => {
+    if (!confirm(`Remove volunteer ${volEmail}? They will no longer be able to log in.`)) return;
+    try {
+      const sb = await getSb();
+      const { error } = await sb.from('volunteers').delete().eq('id', id);
+      if (error) throw error;
+      await load();
+    } catch(e) { setErr("Error: " + e.message); }
   };
 
-  return(
+  return (
     <Modal open={open} onClose={onClose} title="👥 Manage Volunteers" wide>
-      <div style={{background:C.primaryLight,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:C.primary,lineHeight:1.7}}>
-        Add volunteers by entering their name and email. They will be able to login using email OTP and add contacts.
+      <div style={{background:C.primaryLight,borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:C.primary,lineHeight:1.7}}>
+        Volunteers can add contacts and manage booth data for <strong>this constituency only</strong>. They log in with their email via OTP.
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:"0 10px",marginBottom:12}}>
-        <Fld label="Name" col="1"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
-        <Fld label="Email" col="2"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
-        <Fld label="Phone" col="3"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="optional" maxLength={10}/></Fld>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:"0 10px",marginBottom:10}}>
+        <Fld label="Full Name"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
+        <Fld label="Email"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
+        <Fld label="Phone (optional)"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="10 digits" maxLength={10}/></Fld>
       </div>
-      <Btn v="primary" onClick={addVolunteer} disabled={saving} style={{marginBottom:16}}>{saving?"⏳ Adding…":"+ Add Volunteer"}</Btn>
-      <div style={{fontSize:12,fontWeight:700,color:C.gray900,marginBottom:8}}>Current Volunteers ({volunteers.length})</div>
-      {loading?<div style={{color:C.gray400,fontSize:12}}>Loading…</div>:
-        volunteers.length===0?<div style={{color:C.gray400,fontSize:12,padding:16,textAlign:"center"}}>No volunteers yet</div>:
-        <div style={{border:`1.5px solid ${C.gray200}`,borderRadius:10,overflow:"hidden"}}>
-          {volunteers.map(v=>(<div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:`1px solid ${C.gray100}`}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:600}}>{v.name}</div>
-              <div style={{fontSize:11,color:C.gray400}}>{v.email} {v.phone&&`· ${v.phone}`}</div>
-            </div>
-            <Btn v="danger" onClick={()=>removeVolunteer(v.id)} style={{padding:"5px 10px",fontSize:11}}>Remove</Btn>
-          </div>))}
+      {err && <div style={{background:"#FEE2E2",color:C.red,borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10}}>{err}</div>}
+      <Btn v="primary" onClick={add} disabled={saving} style={{marginBottom:16}}>
+        {saving ? "⏳ Adding…" : "＋ Add Volunteer"}
+      </Btn>
+
+      <div style={{fontSize:12,fontWeight:700,color:C.gray900,marginBottom:8}}>
+        Volunteers in this constituency ({volunteers.length})
+      </div>
+      {loading ? (
+        <div style={{color:C.gray400,fontSize:12,padding:16,textAlign:"center"}}>Loading…</div>
+      ) : volunteers.length === 0 ? (
+        <div style={{color:C.gray400,fontSize:12,padding:20,textAlign:"center",background:C.gray50,borderRadius:10}}>
+          No volunteers added yet.<br/>Add volunteers above to let them manage contacts.
         </div>
-      }
+      ) : (
+        <div style={{border:`1.5px solid ${C.gray200}`,borderRadius:10,overflow:"hidden"}}>
+          {volunteers.map(v => (
+            <div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:`1px solid ${C.gray100}`,gap:8}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.gray900}}>{v.name}</div>
+                <div style={{fontSize:11,color:C.gray400}}>{v.email}{v.phone && ` · ${v.phone}`}</div>
+              </div>
+              <Btn v="danger" onClick={()=>remove(v.id,v.email)} style={{padding:"4px 10px",fontSize:11,flexShrink:0}}>Remove</Btn>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{display:"flex",justifyContent:"flex-end",marginTop:14}}>
         <Btn v="ghost" onClick={onClose}>Close</Btn>
       </div>
@@ -608,13 +659,13 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
   );
 }
 
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const { customer: user, workspace, exitWorkspace, isSuperAdmin, planLimits, logout } = useAuth()
-  const isAdmin = true   // all customers are admins of their own data
-  const isVolunteer = false
-  const isMP = false     // no MP concept anymore — all customers are equal
+  const isAdmin     = !user?.isVolunteer   // volunteers are NOT admins
+  const isVolunteer = !!user?.isVolunteer
   // ── Data state ────────────────────────────────────────────────────────────
   const [settings,  setSettingsState] = useState(DEFAULT_SETTINGS);
   const [contacts,  setContacts]      = useState([]);
@@ -793,11 +844,11 @@ export default function App() {
       // If labels changed, propagate to ALL workspaces of this customer
       const labelsChanged = JSON.stringify(s.labels) !== JSON.stringify(settings.labels);
       if(labelsChanged && user?.id){
-        const sbMod = await import('./lib/supabase'); const sbClient = sbMod.supabase;
+        const { supabase: sbClient } = await import('./lib/supabase');
         const {data:allWs} = await sbClient.from('workspaces').select('id').eq('customer_id',user.id);
         if(allWs){
           await Promise.all(allWs.filter(w=>w.id!==workspace.id).map(w=>
-            sb.from('settings').update({labels:s.labels}).eq('workspace_id',w.id)
+            sbClient.from('settings').update({labels:s.labels}).eq('workspace_id',w.id)
           ));
           showToast('Labels updated across all constituencies ✓');
         }
@@ -935,7 +986,7 @@ export default function App() {
             <div style={{fontSize:12,fontWeight:700,color:C.primary}}>{user?.name}</div>
             <div style={{fontSize:10,color:C.gray400,marginTop:1}}>{isAdmin?"👑 Admin":"👤 Volunteer"} · {workspace?.vs||"—"}</div>
               <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
-              <button onClick={()=>exitWorkspace()} style={{width:"100%",padding:"7px 6px",fontSize:11,fontWeight:800,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(79,70,229,.4)"}}>🔄 Switch Constituency</button>
+              {isAdmin&&<button onClick={()=>exitWorkspace()} style={{width:"100%",padding:"7px 6px",fontSize:11,fontWeight:800,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(79,70,229,.4)"}}>🔄 Switch Constituency</button>}
               <button onClick={logout} style={{width:"100%",padding:"4px 6px",fontSize:10,fontWeight:500,background:"transparent",color:C.gray400,border:`1px solid ${C.gray200}`,borderRadius:5,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
             </div>
             </div>
@@ -975,9 +1026,9 @@ export default function App() {
             <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:C.primaryLight,color:C.primary,border:`1px solid ${C.primary}33`,borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
               ⚙️ <span className="top-strip-label">Settings</span>
             </button>
-            <button onClick={()=>setShowVolunteers(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:"#FFFBEB",color:"#D97706",border:"1px solid #D9770633",borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
+            {isAdmin&&<button onClick={()=>setShowVolunteers(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:"#FFFBEB",color:"#D97706",border:"1px solid #D9770633",borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
               👥 <span className="top-strip-label">Add Volunteers</span>
-            </button>
+            </button>}
             <button onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:C.tealLight,color:C.teal,border:`1px solid ${C.teal}33`,borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
               📍 <span className="top-strip-label">Booth Management</span>
             </button>
