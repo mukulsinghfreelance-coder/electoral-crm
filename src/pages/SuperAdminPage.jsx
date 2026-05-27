@@ -160,27 +160,19 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
         subtext: `⚠️ This will PERMANENTLY DELETE:\n\n👤 Customer: ${customer.name || customer.email}\n🗺️ Constituencies (${s.workspaces.length}): ${vsNames || 'none'}\n👥 Contacts: ${s.contactCount}\n📍 Booths: ${s.boothCount}${volLines}\n\nAll volunteers will lose access immediately.\nThis CANNOT be undone.`,
         danger: true,
         onConfirm: async () => {
-          try {
-            await adminPurgeCustomer(customer.id)
-            onPurged(customer.id)
-          } catch(e) {
-            let msg = e?.message || 'Purge failed'
-            if (msg.includes('Failed to fetch') || msg.includes('network')) msg = '🌐 Network error'
-            setDeleteError(msg)
-          }
+          try { await adminPurgeCustomer(customer.id); onPurged(customer.id) }
+          catch(e) { setDeleteError(e?.message || 'Purge failed') }
         }
       })
     } catch(e) {
       setConfirm({
         type: 'purge',
         message: `Purge ${customer.name || customer.email}?`,
-        subtext: `This will permanently delete the customer and ALL their data — every constituency, contact, booth and volunteer. Cannot be undone.`,
+        subtext: 'This will permanently delete the customer and ALL their data. Cannot be undone.',
         danger: true,
         onConfirm: async () => {
-          try {
-            await adminPurgeCustomer(customer.id)
-            onPurged(customer.id)
-          } catch(err) { setDeleteError(err?.message || 'Purge failed') }
+          try { await adminPurgeCustomer(customer.id); onPurged(customer.id) }
+          catch(err) { setDeleteError(err?.message || 'Purge failed') }
         }
       })
     }
@@ -383,26 +375,6 @@ function PricingPanel() {
       })}
       <div style={{ fontSize:12, color:'#6B7280', textAlign:'center', marginTop:8 }}>
         Changes take effect immediately for new payments. Existing subscriptions are not affected.
-
-        {/* Customer Pagination */}
-        {custTotal > CUST_PAGE_SIZE && (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderTop:'1px solid #E5E7EB', background:'#F9FAFB' }}>
-            <span style={{ fontSize:12, color:'#6B7280' }}>
-              {((custPage-1)*CUST_PAGE_SIZE)+1}–{Math.min(custPage*CUST_PAGE_SIZE, custTotal)} of {custTotal} customers
-            </span>
-            <div style={{ display:'flex', gap:6 }}>
-              <button disabled={custPage===1} onClick={()=>setCustPage(p=>p-1)}
-                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage===1?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage===1?'#4B5563':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage===1?'not-allowed':'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
-                ← Prev
-              </button>
-              <span style={{ padding:'6px 12px', fontSize:12, color:'#9CA3AF' }}>Page {custPage} / {Math.ceil(custTotal/CUST_PAGE_SIZE)}</span>
-              <button disabled={custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)} onClick={()=>setCustPage(p=>p+1)}
-                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'#4B5563':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'not-allowed':'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
-                Next →
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -417,7 +389,7 @@ function VolunteersPanel() {
   const [loading,    setLoading]    = useState(true)
   const [search,     setSearch]     = useState('')
   const [err,        setErr]        = useState('')
-  const PAGE_SIZE = 25
+  const VP_PAGE = 25
 
   useEffect(() => { setPage(1); load(1, search) }, [search])
   useEffect(() => { load(page, search) }, [page])
@@ -425,7 +397,7 @@ function VolunteersPanel() {
   const load = async (pg=page, q=search) => {
     setLoading(true); setErr('')
     try {
-      const { data, total: t } = await adminFetchAllVolunteers({ search:q, page:pg, pageSize:PAGE_SIZE })
+      const { data, total: t } = await adminFetchAllVolunteers({ search:q, page:pg, pageSize:VP_PAGE })
       setVolunteers(data || [])
       setTotal(t || 0)
     } catch(e) { setErr(e.message) }
@@ -442,32 +414,32 @@ function VolunteersPanel() {
     } catch(e) { alert('Error: ' + e.message) }
   }
 
-  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const totalPages = Math.ceil(total / VP_PAGE)
 
   return (
     <div style={{ padding:'20px 24px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
         <div>
-          <div style={{ fontSize:16, fontWeight:700, color:'#111827' }}>All Volunteers</div>
-          <div style={{ fontSize:12, color:'#6B7280' }}>{total} total across all constituencies</div>
+          <div style={{ fontSize:16, fontWeight:700, color:C.gray900 }}>All Volunteers</div>
+          <div style={{ fontSize:12, color:C.gray400 }}>{total} total across all constituencies</div>
         </div>
         <input value={search} onChange={e=>setSearch(e.target.value)}
           placeholder="Search name, email, VS…"
-          style={{ padding:'8px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, outline:'none', width:220, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}
+          style={{ padding:'8px 12px', fontSize:13, border:`1px solid ${C.gray200}`, borderRadius:8, outline:'none', width:220 }}
         />
       </div>
-      {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:8, marginBottom:12, fontSize:12 }}>{err}</div>}
+      {err && <div style={{ background:C.redLight, color:C.red, padding:'10px 14px', borderRadius:8, marginBottom:12, fontSize:12 }}>{err}</div>}
       {loading ? (
-        <div style={{ textAlign:'center', padding:40, color:'#6B7280' }}>Loading…</div>
+        <div style={{ textAlign:'center', padding:40, color:C.gray400 }}>Loading…</div>
       ) : volunteers.length === 0 ? (
-        <div style={{ textAlign:'center', padding:40, color:'#6B7280' }}>No volunteers found</div>
+        <div style={{ textAlign:'center', padding:40, color:C.gray400 }}>No volunteers found</div>
       ) : (<>
-        <div style={{ border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', minWidth:700 }}>
+        <div style={{ border:`1px solid ${C.gray200}`, borderRadius:12, overflow:'hidden', overflowX:'auto' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', minWidth:750 }}>
             <thead>
               <tr style={{ background:'#F9FAFB' }}>
                 {['Volunteer','Email','Phone','Constituency','State','Owner (Admin)','Added','Action'].map(h => (
-                  <th key={h} style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#6B7280', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:'1px solid #E5E7EB', whiteSpace:'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:C.gray400, textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:`1px solid ${C.gray200}`, whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -475,32 +447,33 @@ function VolunteersPanel() {
               {volunteers.map((v, i) => {
                 const owner = v.workspaces?.customers
                 return (
-                  <tr key={v.id} style={{ background:i%2===0?'#fff':'#F9FAFB', borderBottom:'1px solid #F3F4F6' }}>
+                  <tr key={v.id} style={{ background:i%2===0?C.white:'#F9FAFB', borderBottom:`1px solid ${C.gray100}` }}>
                     <td style={{ padding:'10px 12px' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <div style={{ width:28, height:28, borderRadius:'50%', background:'#F97316', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12, flexShrink:0 }}>
                           {(v.name||'?').charAt(0).toUpperCase()}
                         </div>
-                        <span style={{ fontSize:13, fontWeight:600, color:'#111827' }}>{v.name}</span>
+                        <span style={{ fontSize:13, fontWeight:600, color:C.gray900 }}>{v.name}</span>
                       </div>
                     </td>
-                    <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.email}</td>
-                    <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.phone||'—'}</td>
+                    <td style={{ padding:'10px 12px', fontSize:12, color:C.gray600 }}>{v.email}</td>
+                    <td style={{ padding:'10px 12px', fontSize:12, color:C.gray600 }}>{v.phone||'—'}</td>
                     <td style={{ padding:'10px 12px' }}>
-                      <span style={{ background:'#EDE9FE', color:'#5B21B6', padding:'2px 8px', borderRadius:6, fontWeight:600, fontSize:11 }}>
+                      <span style={{ background:C.primaryLight, color:C.primaryDark, padding:'2px 8px', borderRadius:6, fontWeight:600, fontSize:11 }}>
                         {v.workspaces?.vs||v.workspaces?.name||'—'}
                       </span>
                     </td>
-                    <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.workspaces?.state||'—'}</td>
+                    <td style={{ padding:'10px 12px', fontSize:12, color:C.gray600 }}>{v.workspaces?.state||'—'}</td>
                     <td style={{ padding:'10px 12px' }}>
-                      <div style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{owner?.name||'—'}</div>
-                      <div style={{ fontSize:11, color:'#9CA3AF' }}>{owner?.email||''}</div>
+                      <div style={{ fontSize:12, fontWeight:600, color:C.gray900 }}>{owner?.name||'—'}</div>
+                      <div style={{ fontSize:11, color:C.gray400 }}>{owner?.email||''}</div>
                     </td>
-                    <td style={{ padding:'10px 12px', fontSize:11, color:'#6B7280', whiteSpace:'nowrap' }}>
+                    <td style={{ padding:'10px 12px', fontSize:11, color:C.gray400, whiteSpace:'nowrap' }}>
                       {v.created_at ? new Date(v.created_at).toLocaleDateString('en-IN') : '—'}
                     </td>
                     <td style={{ padding:'10px 12px' }}>
-                      <button onClick={()=>remove(v.id, v.email)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, cursor:'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
+                      <button onClick={()=>remove(v.id, v.email)}
+                        style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:C.redLight, color:C.red, border:'none', borderRadius:6, cursor:'pointer' }}>
                         Remove
                       </button>
                     </td>
@@ -512,17 +485,17 @@ function VolunteersPanel() {
         </div>
         {totalPages > 1 && (
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:14 }}>
-            <span style={{ fontSize:12, color:'#6B7280' }}>
-              {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE, total)} of {total} volunteers
+            <span style={{ fontSize:12, color:C.gray400 }}>
+              {((page-1)*VP_PAGE)+1}–{Math.min(page*VP_PAGE, total)} of {total} volunteers
             </span>
             <div style={{ display:'flex', gap:6 }}>
               <button disabled={page===1} onClick={()=>setPage(p=>p-1)}
-                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page===1?'#F3F4F6':'#EDE9FE', color:page===1?'#9CA3AF':'#5B21B6', border:'1px solid #E5E7EB', borderRadius:7, cursor:page===1?'not-allowed':'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page===1?C.gray100:C.primaryLight, color:page===1?C.gray400:C.primaryDark, border:`1px solid ${C.gray200}`, borderRadius:7, cursor:page===1?'not-allowed':'pointer' }}>
                 ← Prev
               </button>
-              <span style={{ padding:'6px 12px', fontSize:12, color:'#6B7280' }}>Page {page} / {totalPages}</span>
+              <span style={{ padding:'6px 12px', fontSize:12, color:C.gray400 }}>Page {page} / {totalPages}</span>
               <button disabled={page>=totalPages} onClick={()=>setPage(p=>p+1)}
-                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page>=totalPages?'#F3F4F6':'#EDE9FE', color:page>=totalPages?'#9CA3AF':'#5B21B6', border:'1px solid #E5E7EB', borderRadius:7, cursor:page>=totalPages?'not-allowed':'pointer', fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page>=totalPages?C.gray100:C.primaryLight, color:page>=totalPages?C.gray400:C.primaryDark, border:`1px solid ${C.gray200}`, borderRadius:7, cursor:page>=totalPages?'not-allowed':'pointer' }}>
                 Next →
               </button>
             </div>
@@ -550,13 +523,18 @@ export default function SuperAdminPage({ onBack }) {
   useEffect(() => { setCustPage(1); loadCustomers(1, search, filterPlan) }, [search, filterPlan])
   useEffect(() => { loadCustomers(custPage) }, [custPage])
 
-  const loadCustomers = async (pg, q, plan) => {
-    const _pg   = pg   !== undefined ? pg   : custPage
-    const _q    = q    !== undefined ? q    : search
-    const _plan = plan !== undefined ? plan : filterPlan
+  const loadCustomers = async (pg, q, pl) => {
+    const _pg = pg !== undefined ? pg : custPage
+    const _q  = q  !== undefined ? q  : search
+    const _pl = pl !== undefined ? pl : filterPlan
     setLoading(true); setError('')
     try {
-      const { data, total } = await adminFetchAllCustomers({ search:_q==='all'?'':_q, plan:_plan==='all'?'':_plan, page:_pg, pageSize:CUST_PAGE_SIZE })
+      const { data, total } = await adminFetchAllCustomers({
+        search: _q === 'all' ? '' : _q,
+        plan:   _pl === 'all' ? '' : _pl,
+        page:   _pg,
+        pageSize: CUST_PAGE_SIZE
+      })
       setCustomers(data || [])
       setCustTotal(total)
     } catch(e) {
@@ -580,7 +558,7 @@ export default function SuperAdminPage({ onBack }) {
   }
 
   // Filter
-  const filtered = customers  // server-side)
+  const filtered = customers  // server-side filtered)
 
   // Stats
   const stats = {
@@ -698,7 +676,7 @@ export default function SuperAdminPage({ onBack }) {
             <div style={{ fontSize:20, marginBottom:8 }}>⚠️</div>
             <div style={{ fontSize:14, fontWeight:700, color:'#991B1B', marginBottom:4 }}>Failed to load customers</div>
             <div style={{ fontSize:12, color:'#DC2626', marginBottom:16 }}>{error}</div>
-            <button onClick={()=>loadCustomers(custPage)} style={{ padding:'8px 20px', fontSize:13, fontWeight:600, background:'#DC2626', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
+            <button onClick={loadCustomers} style={{ padding:'8px 20px', fontSize:13, fontWeight:600, background:'#DC2626', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
               Retry
             </button>
           </div>
@@ -774,6 +752,22 @@ export default function SuperAdminPage({ onBack }) {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {custTotal > CUST_PAGE_SIZE && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', marginTop:4 }}>
+            <span style={{ fontSize:12, color:C.gray400 }}>
+              Showing {((custPage-1)*CUST_PAGE_SIZE)+1}–{Math.min(custPage*CUST_PAGE_SIZE, custTotal)} of {custTotal} customers
+            </span>
+            <div style={{ display:'flex', gap:6 }}>
+              <button disabled={custPage===1} onClick={()=>setCustPage(p=>p-1)}
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage===1?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage===1?'#6B7280':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage===1?'not-allowed':'pointer' }}>← Prev</button>
+              <span style={{ padding:'6px 12px', fontSize:12, color:C.gray400 }}>Page {custPage} / {Math.ceil(custTotal/CUST_PAGE_SIZE)}</span>
+              <button disabled={custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)} onClick={()=>setCustPage(p=>p+1)}
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'#6B7280':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'not-allowed':'pointer' }}>Next →</button>
+            </div>
           </div>
         )}
       </div>
