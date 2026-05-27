@@ -294,15 +294,26 @@ export default function LandingPage() {
     el.textContent = `
       @media(max-width:640px){
         .lp-nav-links{display:none!important;}
-        .lp-nav-btns{gap:6px!important;}
-        .lp-hero-h1{font-size:28px!important;line-height:1.25!important;}
-        .lp-hero-sub{font-size:14px!important;}
-        .lp-pricing-grid{grid-template-columns:1fr!important;}
+        .lp-nav-btns button{padding:6px 10px!important;font-size:11px!important;}
+        .lp-hero-h1{font-size:24px!important;line-height:1.25!important;padding:0 12px!important;}
+        .lp-hero-sub{font-size:13px!important;padding:0 16px!important;}
+        .lp-pricing-grid{grid-template-columns:1fr!important;max-width:100%!important;}
         .lp-steps-grid{grid-template-columns:1fr!important;}
-        .lp-features-grid{grid-template-columns:1fr 1fr!important;}
-        .lp-footer-links{flex-wrap:wrap!important;gap:10px!important;justify-content:center!important;}
-        .lp-auth-modal{width:calc(100vw - 32px)!important;margin:16px!important;}
-        .lp-section-pad{padding:40px 16px!important;}
+        .lp-features-grid{grid-template-columns:1fr!important;}
+        .lp-footer-links{flex-wrap:wrap!important;gap:12px!important;justify-content:center!important;}
+        .lp-auth-overlay{align-items:flex-end!important;padding:0!important;}
+        .lp-auth-modal{
+          width:100vw!important;
+          max-width:100vw!important;
+          border-radius:20px 20px 0 0!important;
+          margin:0!important;
+          padding:20px 20px 32px!important;
+          max-height:92vh!important;
+          overflow-y:auto!important;
+        }
+        .lp-section-pad{padding:32px 16px!important;}
+        .lp-nav-container{padding:0 12px!important;height:52px!important;}
+        input,select{font-size:16px!important;}
       }
     `
     if (!document.getElementById('lp-mobile-css')) document.head.appendChild(el)

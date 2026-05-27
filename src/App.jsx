@@ -100,7 +100,7 @@ function LoadingScreen({message}) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",gap:16,background:C.white}}>
       <div style={{fontSize:40}}>📋</div>
-      <div style={{fontSize:16,fontWeight:800,color:C.gray900}}>Sampark.AI</div>
+      <div style={{fontSize:16,fontWeight:800,color:C.gray900}}>ContactBook</div>
       <div style={{fontSize:13,color:C.gray600,fontWeight:500}}>{message||"Loading…"}</div>
     </div>
   );
@@ -280,18 +280,9 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
   const remM=i=>{const m=[...s.mandals];m.splice(i,1);setS(p=>({...p,mandals:m}));setSelM(0);};
   const addP=()=>{const n=np.trim();if(!n||!s.mandals[selM])return;const m=[...s.mandals];if(!m[selM].panchayats.includes(n))m[selM]={...m[selM],panchayats:[...m[selM].panchayats,n]};setS(p=>({...p,mandals:m}));setNp("");};
   const remP=(mi,pi)=>{const m=[...s.mandals];m[mi]={...m[mi],panchayats:m[mi].panchayats.filter((_,i)=>i!==pi)};setS(p=>({...p,mandals:m}));};
-  const TABS=[["geo","🗺️ Geography"],["labels","🏷️ Labels"],["castes","👥 Castes"],["parties","📊 Past Voting"],["admin","🔧 Admin"]];
+  const TABS=[["geo","🗺️ Geography"],["labels","🏷️ Labels"],["castes","👥 Castes"],["parties","🏛️ Parties"],["admin","🔐 Admin"]];
   return (
-    <Modal open={open} onClose={onClose} title="⚙️ Settings" wide>
-      {/* Onboarding checklist */}
-      {(s.mandals.length === 0 || s.castes.length === 0) && (
-        <div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'#92400E',lineHeight:1.8}}>
-          <b>📋 Complete these steps to start managing contacts:</b><br/>
-          {s.mandals.length === 0 && <span>⚠️ Add Mandals in <b>Geography</b> tab<br/></span>}
-          {s.castes.length === 0 && <span>⚠️ Add your constituency's Castes<br/></span>}
-          Review <b>Labels</b> to match your state's terminology
-        </div>
-      )}
+    <Modal open={open} onClose={onClose} title="⚙️ Settings (Admin)" wide>
       <div style={{display:"flex",gap:0,marginBottom:18,borderBottom:`2px solid ${C.gray200}`}}>
         {TABS.map(([k,v])=>(<button key={k} onClick={()=>setTab(k)} style={{border:"none",background:"none",padding:"8px 14px",fontSize:12,fontWeight:tab===k?700:500,color:tab===k?C.primary:C.gray400,borderBottom:tab===k?`2.5px solid ${C.primary}`:"2.5px solid transparent",cursor:"pointer",marginBottom:-2,fontFamily:"inherit"}}>{v}</button>))}
       </div>
@@ -337,7 +328,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
       </div>)}
       {tab==="parties"&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
         <div>
-          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Party alliances shown in booth data (max 3)</div>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Party alliances (max 3)</div>
           {s.parties.map((p,i)=>(<div key={i} style={{display:"flex",gap:6,marginBottom:8}}><Inp value={p} onChange={e=>{const ps=[...s.parties];ps[i]=e.target.value;setS(prev=>({...prev,parties:ps}));}}/><button onClick={()=>setS(prev=>({...prev,parties:prev.parties.filter((_,j)=>j!==i)}))} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:16}}>✕</button></div>))}
           {s.parties.length<3&&<div style={{display:"flex",gap:6}}><Inp value={npy} onChange={e=>setNpy(e.target.value)} placeholder="Add party…"/><Btn v="primary" onClick={()=>{const n=npy.trim();if(n&&s.parties.length<3){setS(p=>({...p,parties:[...p.parties,n]}));setNpy("");}}} style={{padding:"9px 14px"}}>+</Btn></div>}
         </div>
@@ -347,15 +338,13 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
         </div>
       </div>)}
       {tab==="admin"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.gray900,marginBottom:4}}>Data Management</div>
-        <Btn v="primary" onClick={()=>{onClose();setShowImport(true);}}>⬆️ Import Contacts</Btn>
+        <div style={{fontSize:12,fontWeight:700,color:C.gray900,marginBottom:2}}>Data Management</div>
+        <Btn v="primary" onClick={()=>{onClose();setTimeout(()=>document.getElementById('import-trigger')?.click(),100);}}>⬆️ Import Contacts</Btn>
         <Btn v="ghost" onClick={()=>{onClose();reqPinAdmin(exportCSV);}}>⬇️ Export Contacts CSV</Btn>
-        <Btn v="ghost" onClick={()=>{onClose();}}>⬆️ Import Booths</Btn>
         <Btn v="ghost" onClick={()=>{onClose();setShowSheets(true);}}>🔗 Google Sheets Sync</Btn>
         <div style={{height:1,background:C.gray200,margin:"4px 0"}}/>
         <Btn v="danger" onClick={()=>{onClose();setSelectMode(true);}}>🗑️ Bulk Delete Contacts</Btn>
       </div>)}
-
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}}>
         <Btn v="ghost" onClick={onClose}>Cancel</Btn>
         <Btn v="primary" onClick={save} disabled={saving}>{saving?"⏳ Saving…":"✓ Save Settings"}</Btn>
@@ -541,56 +530,48 @@ function Toast({msg,type}) {
 }
 
 // ─── VOLUNTEER MODAL ──────────────────────────────────────────────────────────
-function VolunteerModal({open,onClose,workspaceId}) {
+function VolunteerModal({open,onClose,workspaceId,orgId}) {
   const [volunteers,setVolunteers]=useState([]);
   const [name,setName]=useState(""); const [email,setEmail]=useState(""); const [phone,setPhone]=useState("");
   const [loading,setLoading]=useState(false); const [saving,setSaving]=useState(false);
-  const [err,setErr]=useState("");
+  const {supabase:sb} = {supabase:null}; // we'll use direct import
 
-  useEffect(()=>{ if(open) loadVolunteers(); },[open,workspaceId]);
-
-  const getSb=async()=>{
-    const {createClient}=await import('@supabase/supabase-js');
-    return createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-  };
+  useEffect(()=>{
+    if(open) loadVolunteers();
+  },[open]);
 
   const loadVolunteers=async()=>{
-    setLoading(true); setErr("");
+    setLoading(true);
     try{
-      const sb=await getSb();
-      const {data,error}=await sb.from('volunteers').select('*').eq('workspace_id',workspaceId).order('created_at',{ascending:false});
-      if(error) throw error;
+      const {createClient}=await import('@supabase/supabase-js');
+      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
+      const {data}=await sb.from('app_users').select('*').eq('workspace_id',workspaceId).eq('role','volunteer');
       setVolunteers(data||[]);
-    }catch(e){ setErr("Load failed: "+e.message); }
+    }catch(e){console.error(e);}
     setLoading(false);
   };
 
   const addVolunteer=async()=>{
-    if(!name.trim()||!email.trim()){setErr("Name and email are required");return;}
-    setSaving(true); setErr("");
+    if(!name.trim()||!email.trim()){alert("Name and email are required");return;}
+    setSaving(true);
     try{
-      const sb=await getSb();
-      const {error}=await sb.from('volunteers').insert({
-        name:name.trim(),
-        email:email.trim().toLowerCase(),
-        phone:phone.trim()||null,
-        workspace_id:workspaceId,
-      });
-      if(error) throw error;
+      const {createClient}=await import('@supabase/supabase-js');
+      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
+      await sb.from('app_users').insert({name:name.trim(),email:email.trim().toLowerCase(),phone:phone.trim(),role:'volunteer',workspace_id:workspaceId,org_id:orgId});
       setName(""); setEmail(""); setPhone("");
       await loadVolunteers();
-    }catch(e){ setErr("Error: "+e.message); }
+    }catch(e){alert("Error: "+e.message);}
     setSaving(false);
   };
 
   const removeVolunteer=async(id)=>{
     if(!confirm("Remove this volunteer?"))return;
     try{
-      const sb=await getSb();
-      const {error}=await sb.from('volunteers').delete().eq('id',id);
-      if(error) throw error;
+      const {createClient}=await import('@supabase/supabase-js');
+      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
+      await sb.from('app_users').delete().eq('id',id);
       await loadVolunteers();
-    }catch(e){ setErr("Error: "+e.message); }
+    }catch(e){alert("Error: "+e.message);}
   };
 
   return(
@@ -628,7 +609,9 @@ function VolunteerModal({open,onClose,workspaceId}) {
 export default function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const { customer: user, workspace, exitWorkspace, isSuperAdmin, planLimits, logout } = useAuth()
-  const isAdmin = true
+  const isAdmin = true   // all customers are admins of their own data
+  const isVolunteer = false
+  const isMP = false     // no MP concept anymore — all customers are equal
   // ── Data state ────────────────────────────────────────────────────────────
   const [settings,  setSettingsState] = useState(DEFAULT_SETTINGS);
   const [contacts,  setContacts]      = useState([]);
@@ -650,7 +633,9 @@ export default function App() {
   const [bSort,     setBSort]     = useState({col:"bno",dir:"asc"});
   const [search,    setSearch]    = useState("");
   const [fM,setFM]=useState(""); const [fP,setFP]=useState(""); const [fB,setFB]=useState(""); const [fT,setFT]=useState(""); const [fCaste,setFCaste]=useState("");
-  const [bSearch,setBSearch]=useState(""); const [bfR,setBfR]=useState(""); const [bfP,setBfP]=useState("");
+  const [bSearch,setBSearch]=useState("");
+  const [boothPage,setBoothPage]=useState(1);
+  const BOOTH_PER_PAGE=20; const [bfR,setBfR]=useState(""); const [bfP,setBfP]=useState("");
   const [isMobile,  setIsMobile]  = useState(window.innerWidth<=768);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
 
@@ -728,6 +713,8 @@ export default function App() {
   },[contacts,search,fM,fP,fB,fT,fCaste,activeTag,sort]);
 
   const filteredB=useMemo(()=>{
+  const boothTotalPages=Math.max(1,Math.ceil(filteredB.length/BOOTH_PER_PAGE));
+  const pagedBooths=filteredB.slice((boothPage-1)*BOOTH_PER_PAGE,boothPage*BOOTH_PER_PAGE);
     const q=bSearch.toLowerCase();
     let r=booths.filter(b=>{const ok=!q||(b.bno+b.bnm+(b.mandal||"")+(b.panchayat||"")+b.castes.join(" ")).toLowerCase().includes(q);return ok&&(!bfR||b.rating===bfR)&&(!bfP||b.panchayat===bfP);});
     r.sort((a,b2)=>{let av=a[bSort.col]||"",bv=b2[bSort.col]||"";if(bSort.col==="bno"||bSort.col==="voters"){av=parseInt(av)||0;bv=parseInt(bv)||0;return bSort.dir==="asc"?av-bv:bv-av;}return bSort.dir==="asc"?av.toString().localeCompare(bv.toString()):bv.toString().localeCompare(av.toString());});
@@ -741,6 +728,7 @@ export default function App() {
   const handleSaveContact=async f=>{
     setSaving(true);
     // Check plan contact limit
+    console.log('Contact limit check:', contacts.length, '/', planLimits?.contacts, 'plan:', planLimits)
     if(!editC && planLimits?.contacts !== Infinity && contacts.length >= planLimits.contacts){
       setSaving(false)
       setUpgradeReason(`You have reached the ${planLimits.contacts.toLocaleString()} contact limit on your Free plan.`)
@@ -835,31 +823,6 @@ export default function App() {
     const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="contacts.csv";a.click();
   };
 
-  // ── Mobile CSS — MUST be before any early return ────────────────────────
-  useEffect(()=>{
-    const s=document.createElement('style');s.id='app-mobile-css';
-    s.textContent=`
-      @media(max-width:768px){
-        #sidebar-desktop{display:none!important;}
-        #bottom-nav{display:flex!important;}
-        #data-status-strip{display:flex!important;}
-        #detail-panel-desktop{display:none!important;}
-        #metrics-row{grid-template-columns:repeat(2,1fr)!important;gap:6px!important;padding:8px!important;}
-        #filter-bar select{font-size:12px!important;}
-        .top-strip-label{display:none!important;}
-        #hero-bar{padding:6px 10px!important;}
-        #filter-bar{padding:4px 8px!important;}
-        #main-content{padding-bottom:100px!important;}
-      }
-      @media(min-width:769px){
-        #bottom-nav{display:none!important;}
-        #data-status-strip{display:none!important;}
-      }
-    `;
-    if(!document.getElementById('app-mobile-css'))document.head.appendChild(s);
-    return()=>document.getElementById('app-mobile-css')?.remove();
-  },[]);
-
   // ── Guards (AppRouter guarantees user + workspace exist here) ──────────
   if(loading)  return <LoadingScreen message="Loading data…"/>;
   if(loadErr)  return <ErrorScreen message={loadErr} onRetry={loadAll}/>;
@@ -868,6 +831,33 @@ export default function App() {
   const thS={position:"sticky",top:0,fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",padding:"8px 10px",borderBottom:`2px solid ${C.gray200}`,textAlign:"left",userSelect:"none",background:C.gray50,whiteSpace:"nowrap"};
   const thSB={...thS,background:"#F0FDFA",color:C.teal,borderBottom:`2px solid ${C.teal}33`};
   const tdS={padding:"10px 10px",fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",borderBottom:`1px solid ${C.gray100}`};
+
+  useEffect(()=>{
+    const s=document.createElement('style');s.id='app-m-css';
+    s.textContent=`
+      @media(max-width:768px){
+        #sidebar-desktop{display:none!important;}
+        #bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;z-index:200;}
+        #data-status-strip{display:flex!important;}
+        #detail-panel-desktop{display:none!important;}
+        #metrics-row{grid-template-columns:repeat(2,1fr)!important;gap:4px!important;padding:4px 6px!important;}
+        #booth-metrics{grid-template-columns:repeat(2,1fr)!important;gap:4px!important;padding:4px 6px!important;}
+        #filter-bar select{font-size:14px!important;}
+        .top-strip-label{display:none!important;}
+        #hero-bar,#booth-hero{padding:5px 8px!important;overflow:hidden!important;}
+        #filter-bar{padding:3px 6px!important;overflow:hidden!important;}
+        #main-content{padding-bottom:90px!important;}
+        input,select,textarea{font-size:16px!important;box-sizing:border-box!important;}
+        [style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr!important;}
+      }
+      @media(min-width:769px){
+        #bottom-nav{display:none!important;}
+        #data-status-strip{display:none!important;}
+      }
+    `;
+    if(!document.getElementById('app-m-css'))document.head.appendChild(s);
+    return()=>document.getElementById('app-m-css')?.remove();
+  },[]);
 
   return (
     <div id="app-root" style={{display:"flex",flexDirection:"column",height:"100vh",background:C.white,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",fontSize:13,overflow:"hidden"}}>
@@ -894,7 +884,7 @@ export default function App() {
           <div style={{padding:"10px 10px 8px",borderBottom:`1px solid ${C.gray200}`}}>
             <div style={{display:"flex",alignItems:"center",gap:7}}>
               <div style={{width:32,height:32,borderRadius:9,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 3px 10px rgba(79,70,229,.3)"}}>📋</div>
-              <div><div style={{fontSize:14,fontWeight:800,color:C.gray900}}>Sampark<span style={{color:C.primary}}>.AI</span></div><div style={{fontSize:10,color:C.gray400,fontWeight:500}}>Electoral Intelligence</div></div>
+              <div><div style={{fontSize:14,fontWeight:800,color:C.gray900}}>ContactBook</div><div style={{fontSize:10,color:C.gray400,fontWeight:500}}>Electoral Manager</div></div>
             </div>
           </div>
 
@@ -902,39 +892,29 @@ export default function App() {
           <div style={{padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,background:C.primaryLight}}>
             <div style={{fontSize:12,fontWeight:700,color:C.primary}}>{user?.name}</div>
             <div style={{fontSize:10,color:C.gray400,marginTop:1}}>{isAdmin?"👑 Admin":"👤 Volunteer"} · {workspace?.vs||"—"}</div>
-              <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:4}}>
-              <button onClick={()=>exitWorkspace()} style={{width:"100%",padding:"8px 6px",fontSize:11,fontWeight:800,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(79,70,229,.4)",letterSpacing:"-0.01em"}}>🔄 Switch Constituency</button>
-              <button onClick={logout} style={{width:"100%",padding:"5px 6px",fontSize:10,fontWeight:600,background:"transparent",color:C.gray400,border:`1px solid ${C.gray200}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
+              <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
+              <button onClick={()=>exitWorkspace()} style={{width:"100%",padding:"7px 6px",fontSize:11,fontWeight:800,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(79,70,229,.4)"}}>🔄 Switch Constituency</button>
+              <button onClick={logout} style={{width:"100%",padding:"4px 6px",fontSize:10,fontWeight:500,background:"transparent",color:C.gray400,border:`1px solid ${C.gray200}`,borderRadius:5,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
             </div>
             </div>
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
+          <SBI icon="🗺️" label={`By ${L.mandal||"Mandal"}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
+          <SBI icon="🏘️" label={`By ${L.panchayat||"Panchayat"}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>By Tag</div>
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
 
-          <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Modules</div>
-          {settings.mandals.length === 0 && (
-            <div onClick={()=>setShowSettings(true)} style={{margin:"4px 8px",padding:"8px 12px",background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,fontSize:11,color:'#92400E',cursor:'pointer',fontWeight:600}}>
-              ⚠️ Setup required → Open Settings
-            </div>
-          )}
-          <SBI icon="📍" label={`${L.booth||"Booth"} Management`} count={booths.length} active={screen==="booths"} onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} color={C.teal} style={{fontWeight:700}}/>
-          {isAdmin&&<SBI icon="👥" label="Volunteers" active={false} onClick={()=>setShowVolunteers(true)} color={C.amber}/>}
-          {isAdmin&&<SBI icon="🔗" label="Google Sheets" active={false} onClick={()=>setShowSheets(true)}/>}
-          {isAdmin&&<SBI icon="⚙️" label="Settings" active={showSettings} onClick={()=>setShowSettings(true)}/>}
 
-          <div style={{borderTop:`1px solid ${C.gray200}`,marginTop:"auto",padding:"6px 8px 8px"}}>
-            <div style={{fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em",marginBottom:5}}>Data Status</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
-              {[["Contacts",contacts.length,C.primary],["Booths",booths.length,C.teal],["Panchayats",allPanchs.length,C.success],["Volunteers",0,"#8B5CF6"]].map(([l,v,cl])=>(
-                <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:8,padding:"6px 4px",textAlign:"center"}}>
-                  <div style={{fontSize:16,fontWeight:800,color:cl}}>{v}</div>
-                  <div style={{fontSize:8,color:C.gray400,fontWeight:600,textTransform:"uppercase"}}>{l}</div>
-                </div>
-              ))}
-            </div>
+
+          <div style={{padding:"10px 8px",borderTop:`1px solid ${C.gray200}`,marginTop:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+            {[["Contacts",contacts.length,C.primary],["Mandals",settings.mandals.length,C.success],["Booths",booths.length,C.teal],["Castes",settings.castes.length,C.amber]].map(([l,v,cl])=>(
+              <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:8,padding:"7px 9px",textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:800,color:cl}}>{v}</div>
+                <div style={{fontSize:9,color:C.gray400,fontWeight:600,textTransform:"uppercase"}}>{l}</div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -942,48 +922,53 @@ export default function App() {
         <div id="main-content" style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0,minHeight:0}}>
 
           {/* TOP ACTION STRIP */}
-          <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",background:C.white,borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
-            <button onClick={()=>{setScreen("contacts");setEditC(null);setShowAdd(true);}} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 20px",fontSize:14,fontWeight:800,background:`linear-gradient(135deg,${C.success},#047857)`,color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 3px 12px rgba(5,150,105,.4)",whiteSpace:"nowrap"}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",background:C.white,borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+            <button onClick={()=>{setScreen("contacts");setEditC(null);setShowAdd(true);}} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 18px",fontSize:13,fontWeight:800,background:`linear-gradient(135deg,${C.success},#047857)`,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 10px rgba(5,150,105,.4)",whiteSpace:"nowrap"}}>
               ＋ Add Contact
             </button>
-            <div style={{width:1,height:28,background:C.gray200,margin:"0 2px"}}/>
-            <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",fontSize:12,fontWeight:600,background:C.primaryLight,color:C.primary,border:`1.5px solid ${C.primary}33`,borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>
+            <div style={{width:1,height:24,background:C.gray200}}/>
+            <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:C.primaryLight,color:C.primary,border:`1px solid ${C.primary}33`,borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
               ⚙️ <span className="top-strip-label">Settings</span>
             </button>
-            <button onClick={()=>setShowVolunteers(true)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",fontSize:12,fontWeight:600,background:"#FFFBEB",color:"#D97706",border:"1.5px solid #D9770633",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>
+            <button onClick={()=>setShowVolunteers(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:"#FFFBEB",color:"#D97706",border:"1px solid #D9770633",borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
               👥 <span className="top-strip-label">Add Volunteers</span>
             </button>
-            <button onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",fontSize:12,fontWeight:600,background:C.tealLight,color:C.teal,border:`1.5px solid ${C.teal}33`,borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>
+            <button onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:C.tealLight,color:C.teal,border:`1px solid ${C.teal}33`,borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
               📍 <span className="top-strip-label">Booth Management</span>
             </button>
             <div style={{flex:1}}/>
           </div>
 
           {screen==="contacts"&&<>
-            <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+            <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"6px 12px",overflow:"hidden",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:16,fontWeight:800,color:C.primaryDark}}>{activeTag||"All Contacts"}</div>
                   <div style={{fontSize:11,color:C.primary,fontWeight:500}}>{contacts.length} total · {filteredC.length} shown</div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  {selectMode&&selectedIds.length>0&&<Btn v="danger" onClick={handleBulkDelete}>🗑️ Delete {selectedIds.length}</Btn>}
-                  {selectMode&&<Btn v="ghost" onClick={()=>{setSelectMode(false);setSelectedIds([])}}>✕ Cancel</Btn>}
+                  <Btn v="success" onClick={()=>{setEditC(null);setShowAdd(true);}} style={{padding:"9px 16px",fontSize:13}}>＋ Add</Btn>
+                  {isAdmin&&<Btn v="ghost" onClick={()=>reqPinAdmin(exportCSV)} title="Export CSV">⬇️</Btn>}
+                  <Btn v="ghost" onClick={()=>setShowImport(true)} title="Import CSV">⬆️</Btn>
+                  {isAdmin&&<Btn v={selectMode?"danger":"ghost"} onClick={()=>{if(selectMode){setSelectMode(false);setSelectedIds([]);}else setSelectMode(true);}}>
+                    {selectMode?`✕ (${selectedIds.length})`:"☑️"}
+                  </Btn>}
+                  {selectMode&&selectedIds.length>0&&<Btn v="danger" onClick={handleBulkDelete}>🗑️ {selectedIds.length}</Btn>}
                 </div>
               </div>
               <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="🔍  Search name, phone, caste…" style={{width:"100%",padding:"9px 14px",fontSize:13,border:`1.5px solid ${C.gray200}`,borderRadius:22,background:C.white,color:C.gray900,outline:"none",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}/>
             </div>
 
-            <div id="metrics-row" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+            <div id="metrics-row" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,padding:"5px 10px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               {[["Total",contacts.length,C.primary,"👥"],["Karyakartas",tagCounts["Karyakarta"]||0,C.success,"⚡"],["Key Voters",tagCounts["Key Voter"]||0,"#7C3AED","⭐"],["Opponents",tagCounts["Opponent"]||0,C.red,"⚠️"]].map(([l,v,cl,ic])=>(
-                <div key={l} style={{background:C.white,border:`1.5px solid ${cl}22`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
-                  <div style={{fontSize:10,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{ic} {l}</div>
-                  <div style={{fontSize:24,fontWeight:800,color:cl,lineHeight:1}}>{v}</div>
+                <div key={l} style={{background:C.white,border:`1.5px solid ${cl}22`,borderRadius:8,padding:"5px 8px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                  <div style={{fontSize:9,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:1}}>{ic} {l}</div>
+                  <div style={{fontSize:18,fontWeight:800,color:cl,lineHeight:1}}>{v}</div>
                 </div>
               ))}
             </div>
 
-            <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,flexWrap:"wrap",background:C.gray50}}>
+            <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,flexWrap:"wrap",background:C.gray50,overflow:"hidden"}}>
               {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All "+((L.mandal||"Mandal")+"s"),settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All "+((L.panchayat||"Panchayat")+"s"),mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All "+((L.booth||"Booth")+"s"),[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All "+((L.caste||"Caste")+"s"),settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS]].map(([val,setter,ph,opts],i)=>(
                 <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer"}}>
                   <option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}
@@ -1018,14 +1003,14 @@ export default function App() {
           </>}
 
           {screen==="booths"&&<>
-            <div id="booth-hero" style={{background:`linear-gradient(135deg,${C.tealLight},#ECFDF5)`,padding:"12px 16px",borderBottom:`1px solid ${C.teal}33`,flexShrink:0}}>
+            <div id="booth-hero" style={{background:`linear-gradient(135deg,${C.tealLight},#ECFDF5)`,padding:"6px 12px",overflow:"hidden",borderBottom:`1px solid ${C.teal}33`,flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:16,fontWeight:800,color:C.boothDark}}>📍 {L.booth||"Booth"} Management</div>
                   <div style={{fontSize:11,color:C.teal,fontWeight:500}}>{booths.length} booths · {filteredB.length} shown</div>
                 </div>
                 <Btn v="teal" onClick={()=>{setEditB(null);setShowBAdd(true);}} style={{padding:"10px 20px",fontSize:14}}>＋ Add</Btn>
-                <Btn v="ghost" onClick={()=>setShowExcel(true)} style={{background:C.tealLight,color:C.teal,border:`1.5px solid ${C.teal}55`}}>📊</Btn>
+
               </div>
               <input value={bSearch} onChange={e=>setBSearch(e.target.value)} placeholder={`🔍  Search ${L.booth||"booth"}s…`} style={{width:"100%",padding:"9px 14px",fontSize:13,border:`1.5px solid ${C.teal}55`,borderRadius:22,background:C.white,color:C.gray900,outline:"none",boxShadow:"0 2px 8px rgba(0,0,0,.06)",marginBottom:8}}/>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -1038,11 +1023,11 @@ export default function App() {
               </div>
             </div>
 
-            <div id="booth-metrics" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"10px 14px",borderBottom:`1px solid ${C.teal}22`,flexShrink:0,background:"#F0FDFA"}}>
+            <div id="booth-metrics" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,padding:"5px 10px",borderBottom:`1px solid ${C.teal}22`,flexShrink:0,background:"#F0FDFA"}}>
               {[["Total",booths.length,C.teal,"📍"],["Rating A",boothRatingCounts.A,C.success,"✅"],["Rating B",boothRatingCounts.B,C.amber,"⚠️"],["Rating C",boothRatingCounts.C,C.red,"❌"]].map(([l,v,cl,ic])=>(
-                <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:12,padding:"10px 13px",boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
-                  <div style={{fontSize:10,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{ic} {l}</div>
-                  <div style={{fontSize:24,fontWeight:800,color:cl,lineHeight:1}}>{v}</div>
+                <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:8,padding:"5px 8px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                  <div style={{fontSize:9,color:C.gray400,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:1}}>{ic} {l}</div>
+                  <div style={{fontSize:18,fontWeight:800,color:cl,lineHeight:1}}>{v}</div>
                 </div>
               ))}
             </div>
@@ -1054,7 +1039,7 @@ export default function App() {
                     <th key={col} style={{...thSB,...(w?{width:w}:{})}}>{label}{col!=="castes"&&col!=="last"&&<SortArrow col={col} sort={bSort} onSort={col=>setBSort(s=>s.col===col?{...s,dir:s.dir==="asc"?"desc":"asc"}:{col,dir:"asc"})} booth/>}</th>
                   ))}
                 </tr></thead>
-                <tbody>{filteredB.map(b=>{const last=b.elec[2]||{votes:[]};return(
+                <tbody>{pagedBooths.map(b=>{const last=b.elec[2]||{votes:[]};return(
                   <tr key={b.id} onClick={()=>{setSelB(b);if(isMobile)setShowMobileDetail(true);}} style={{background:selB?.id===b.id?C.tealLight:"transparent",cursor:"pointer",transition:"background .1s",borderBottom:`1px solid ${C.teal}11`}}>
                     <td style={{...tdS,textAlign:"center",fontWeight:800,color:C.teal,fontSize:14}}>{b.bno}</td>
                     <td style={{...tdS,fontWeight:700,color:C.gray900}}>{b.bnm||"—"}</td>
@@ -1069,6 +1054,11 @@ export default function App() {
               </table>
               {filteredB.length===0&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:50,gap:10,color:C.gray400,textAlign:"center"}}><span style={{fontSize:40}}>📍</span><span style={{fontSize:14,fontWeight:600}}>No booths found</span></div>}
             </div>
+            {boothTotalPages>1&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px",borderTop:`1px solid ${C.gray200}`,background:C.white,flexShrink:0}}>
+              <button onClick={()=>setBoothPage(p=>Math.max(1,p-1))} disabled={boothPage===1} style={{padding:"5px 14px",fontSize:12,fontWeight:600,background:boothPage===1?C.gray100:C.primaryLight,color:boothPage===1?C.gray400:C.primary,border:`1px solid ${boothPage===1?C.gray200:C.primary}44`,borderRadius:7,cursor:boothPage===1?"not-allowed":"pointer",fontFamily:"inherit"}}>← Previous</button>
+              <span style={{fontSize:12,color:C.gray600}}>Page {boothPage} of {boothTotalPages} · {filteredB.length} booths</span>
+              <button onClick={()=>setBoothPage(p=>Math.min(boothTotalPages,p+1))} disabled={boothPage===boothTotalPages} style={{padding:"5px 14px",fontSize:12,fontWeight:600,background:boothPage===boothTotalPages?C.gray100:C.primaryLight,color:boothPage===boothTotalPages?C.gray400:C.primary,border:`1px solid ${boothPage===boothTotalPages?C.gray200:C.primary}44`,borderRadius:7,cursor:boothPage===boothTotalPages?"not-allowed":"pointer",fontFamily:"inherit"}}>Next →</button>
+            </div>}
           </>}
         </div>
 
@@ -1099,28 +1089,30 @@ export default function App() {
       )}
 
       {/* DATA STATUS STRIP — mobile only */}
-      <div id="data-status-strip" style={{display:"none",background:C.white,borderTop:`1px solid ${C.gray200}`,padding:"4px 12px",flexDirection:"row",gap:0,alignItems:"center",justifyContent:"space-around"}}>
-        {[["Contacts",contacts.length,C.primary],["Booths",booths.length,C.teal],["Panchayats",allPanchs.length,C.success],["Volunteers",0,"#8B5CF6"]].map(([l,v,cl])=>(
-          <div key={l} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"4px 8px"}}>
-            <div style={{fontSize:15,fontWeight:800,color:cl}}>{v}</div>
+      <div id="data-status-strip" style={{display:"none",background:C.white,borderTop:`1px solid ${C.gray200}`,padding:"3px 0",flexDirection:"row",alignItems:"center",justifyContent:"space-around"}}>
+        {[["Contacts",contacts.length,C.primary],["Booths",booths.length,C.teal],["Panchayats",allPanchs.length,C.success]].map(([l,v,cl])=>(
+          <div key={l} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"2px 8px"}}>
+            <div style={{fontSize:14,fontWeight:800,color:cl}}>{v}</div>
             <div style={{fontSize:8,fontWeight:700,color:C.gray400,textTransform:"uppercase"}}>{l}</div>
           </div>
         ))}
       </div>
 
-      {/* BOTTOM NAV — mobile only, hidden on desktop via CSS */}
+      {/* BOTTOM NAV — mobile only */}
       <div id="bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:C.white,borderTop:`2px solid ${C.gray200}`,zIndex:200,alignItems:"stretch",paddingBottom:"env(safe-area-inset-bottom,0px)"}}>
-        <button onClick={()=>{setScreen("contacts");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="contacts"?C.primary:C.gray500,borderTop:screen==="contacts"?`2.5px solid ${C.primary}`:"2.5px solid transparent",padding:"6px 0"}}>
+        <button onClick={()=>{setScreen("contacts");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="contacts"?C.primary:C.gray500,borderTop:screen==="contacts"?`2.5px solid ${C.primary}`:"2.5px solid transparent",padding:"6px 0"}}>
           <span style={{fontSize:18}}>👥</span><span style={{fontSize:9,fontWeight:700}}>Contacts</span>
         </button>
-
-        <button onClick={()=>{setScreen("booths");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="booths"?C.teal:C.gray500,borderTop:screen==="booths"?`2.5px solid ${C.teal}`:"2.5px solid transparent",padding:"6px 0"}}>
+        <button onClick={()=>{setScreen("booths");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="booths"?C.teal:C.gray500,borderTop:screen==="booths"?`2.5px solid ${C.teal}`:"2.5px solid transparent",padding:"6px 0"}}>
           <span style={{fontSize:18}}>📍</span><span style={{fontSize:9,fontWeight:700}}>Booths</span>
         </button>
-        <button onClick={()=>exitWorkspace()} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:C.primary,borderTop:"2.5px solid transparent",padding:"6px 0"}}>
+        <button onClick={()=>setShowSettings(true)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:C.gray500,padding:"6px 0"}}>
+          <span style={{fontSize:18}}>⚙️</span><span style={{fontSize:9,fontWeight:700}}>Settings</span>
+        </button>
+        <button onClick={()=>exitWorkspace()} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:C.primary,padding:"6px 0"}}>
           <span style={{fontSize:18}}>🔄</span><span style={{fontSize:9,fontWeight:700}}>Switch</span>
         </button>
-        <button onClick={logout} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:C.gray500,padding:"6px 0"}}>
+        <button onClick={logout} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:C.gray500,padding:"6px 0"}}>
           <span style={{fontSize:18}}>🚪</span><span style={{fontSize:9,fontWeight:700}}>Logout</span>
         </button>
       </div>
@@ -1139,6 +1131,7 @@ export default function App() {
       {showUpgrade && (
         <UpgradeModal
           onClose={() => setShowUpgrade(false)}
+          currentVSCount={1}
           triggerReason={upgradeReason}
         />
       )}
