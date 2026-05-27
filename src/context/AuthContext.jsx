@@ -139,6 +139,7 @@ export function AuthProvider({ children }) {
       }
 
       console.log('Customer loaded:', data.email, '| plan:', data.plan)
+      customerRef.current = data.email  // mark as loaded to prevent re-load on focus
       setCustomer(data)
       setAuthError('')
     } catch (err) {
@@ -153,7 +154,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
-        console.log('Auth event:', event, newSession?.user?.email || 'none')
+        if(event !== 'TOKEN_REFRESHED') console.log('Auth event:', event, newSession?.user?.email || 'none')
         setSession(newSession)
 
         // ── KEY FIX: Never use await inside onAuthStateChange ──────────────
@@ -185,9 +186,12 @@ export function AuthProvider({ children }) {
 
         if (event === 'SIGNED_OUT') {
           loadingRef.current = null
+          customerRef.current = null
           setCustomer(null)
           setSession(null)
           setWorkspace(null)
+          setVolunteerWorkspace(null)
+          setOwnerCustomer(null)
           setLoading(false)
         }
 
