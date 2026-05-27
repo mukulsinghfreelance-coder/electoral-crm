@@ -370,12 +370,18 @@ function ConstModal({open,onClose,settings,onSave,saving,isAdmin}) {
   return (
     <Modal open={open} onClose={onClose} title={isAdmin?"✏️ Edit Constituency Info":"📋 Constituency Info"}>
       {isAdmin ? (
-        // ── Admin: fully editable ─────────────────────────────────────────
+        // ── Admin: State/LS/VS auto-populated (read-only), Voters/Booths editable
         <>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:"0 10px",marginBottom:10}}>
-            <Fld label="State"><Inp value={f.state} onChange={e=>setF(p=>({...p,state:e.target.value}))} placeholder="e.g. Bihar"/></Fld>
-            <Fld label="Lok Sabha"><Inp value={f.ls} onChange={e=>setF(p=>({...p,ls:e.target.value}))} placeholder="e.g. Patna Sahib"/></Fld>
-            <Fld label="Vidhan Sabha"><Inp value={f.vs} onChange={e=>setF(p=>({...p,vs:e.target.value}))} placeholder="e.g. Bankipur"/></Fld>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.gray400,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Constituency (auto-populated)</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8}}>
+              {[["State",f.state],["Lok Sabha",f.ls],["Vidhan Sabha",f.vs]].map(([l,v])=>(
+                <div key={l} style={{background:C.gray100,borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{l}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.gray900}}>{v||"—"}</div>
+                </div>
+              ))}
+            </div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px",marginBottom:10}}>
             <Fld label="Total Voters"><Inp value={f.totalVoters} onChange={e=>setF(p=>({...p,totalVoters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 250000"/></Fld>
@@ -801,9 +807,10 @@ export default function App() {
       // ── Contacts ──────────────────────────────────────────────────────────
       .on('postgres_changes',
         {event:'UPDATE', schema:'public', table:'settings', filter:`workspace_id=eq.${wsId}`},
-        ({new:row}) => {
-          // Admin changed settings - reload for volunteers to see updated labels/mandals
+        () => {
+          // Admin changed settings - reload so volunteers see updated labels/mandals/castes
           loadAll();
+          if(!isAdmin) showToast('⚙️ Settings updated by admin','info');
         }
       )
       .on('postgres_changes',
