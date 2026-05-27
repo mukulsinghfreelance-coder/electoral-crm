@@ -807,8 +807,8 @@ export default function App() {
       // ── Contacts ──────────────────────────────────────────────────────────
       .on('postgres_changes',
         {event:'UPDATE', schema:'public', table:'settings', filter:`workspace_id=eq.${wsId}`},
-        () => {
-          // Admin changed settings - reload so volunteers see updated labels/mandals/castes
+        (payload) => {
+          console.log('🔴 Settings Realtime fired!', payload);
           loadAll();
           if(!isAdmin) showToast('⚙️ Settings updated by admin','info');
         }
@@ -851,8 +851,7 @@ export default function App() {
         ({old:row}) => setBooths(prev=>prev.filter(b=>b.id!==row.id))
       )
       .subscribe(status=>{
-        if(status==='SUBSCRIBED') console.log('✅ Realtime connected for workspace:', wsId);
-        if(status==='CHANNEL_ERROR') console.warn('❌ Realtime error');
+        console.log('Realtime status:', status, 'workspace:', wsId);
       });
 
     return ()=>{ supabase.removeChannel(channel); };
