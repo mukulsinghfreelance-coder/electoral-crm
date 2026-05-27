@@ -44,6 +44,8 @@ export function AuthProvider({ children }) {
 
       if (vol) {
         console.log('Volunteer login:', vol.email, '| workspace:', vol.workspace_id)
+        // Clear any previous workspace state first
+        setWorkspace(null)
         const { data: ws } = await supabase
           .from('workspaces')
           .select('*')
@@ -284,7 +286,10 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       customer, session, loading,
-      workspace: customer?.isVolunteer ? volunteerWorkspace : workspace,
+      workspace: (() => {
+        if (customer?.isVolunteer) return volunteerWorkspace
+        return workspace
+      })(),
       authError,
       loginWithOTP, verifyOTP, loginWithGoogle, devLogin, logout,
       switchWorkspace, exitWorkspace,
@@ -301,3 +306,6 @@ export function AuthProvider({ children }) {
 }
 
 export const useAuth = () => useContext(AuthContext)
+    // Reset workspace on new login to prevent stale state
+    setWorkspace(null)
+    setVolunteerWorkspace(null)
