@@ -28,7 +28,8 @@ export function AuthProvider({ children }) {
   const customerRef   = useRef(null)  // track loaded customer emailserId we're loading
 
   const loadCustomer = useCallback(async (authUser) => {
-    // Prevent duplicate loads for same user
+    if (customerRef.current === authUser.email) return  // already loaded, skip
+    // Prevent concurrent loads
     if (loadingRef.current === authUser.id) return
     loadingRef.current = authUser.id
     console.log('loadCustomer:', authUser.email)
@@ -76,6 +77,7 @@ export function AuthProvider({ children }) {
           isVolunteer:  true,
           workspace_id: vol.workspace_id,
         })
+        customerRef.current = authUser.email  // prevent reload on focus
         setAuthError('')
         setLoading(false)
         return  // ← done, never touch customers table
@@ -171,17 +173,10 @@ export function AuthProvider({ children }) {
 
         if (event === 'SIGNED_IN') {
           if (newSession?.user) {
-            // Only load customer if not already loaded for this user
-            // Prevents reload on browser focus (Supabase fires SIGNED_IN on token refresh)
             setTimeout(() => loadCustomer(newSession.user), 0)
           } else {
             setLoading(false)
           }
-        }
-
-        if (event === 'TOKEN_REFRESHED') {
-          // Session refreshed (e.g. browser focus) - just update session, don't reload
-          console.log('Token refreshed - skipping customer reload')
         }
 
         if (event === 'SIGNED_OUT') {
