@@ -101,9 +101,24 @@ export function AuthProvider({ children }) {
             })
             .select()
             .single()
-          if (error) throw error
-          data = newC
-          console.log('New customer created:', data.email)
+
+          if (error) {
+            // auth_id conflict — a stale record exists, fetch by auth_id
+            if (error.code === '23505') {
+              const { data: stale } = await supabase
+                .from('customers')
+                .select('*')
+                .eq('auth_id', authUser.id)
+                .maybeSingle()
+              if (stale) { data = stale }
+              else throw error
+            } else {
+              throw error
+            }
+          } else {
+            data = newC
+            console.log('New customer created:', data.email)
+          }
         }
       }
 
