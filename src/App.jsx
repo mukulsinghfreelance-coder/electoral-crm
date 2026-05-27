@@ -663,7 +663,8 @@ export default function App() {
 
   // ── Load data when workspace is ready ─────────────────────────────────────
   const loadAll = useCallback(async()=>{
-    if(!workspace?.id)return;
+    if(!workspace?.id){console.log('loadAll: no workspace id');return;}
+    console.log('loadAll starting for workspace:', workspace.id);
     setLoading(true); setLoadErr(null);
     try{
       const [s,c,b]=await Promise.all([
@@ -671,8 +672,12 @@ export default function App() {
         fetchContacts(workspace.id),
         fetchBooths(workspace.id),
       ]);
+      console.log('loadAll done: settings=',s, 'contacts=',c?.length, 'booths=',b?.length);
       setSettingsState(s); setContacts(c); setBooths(b);
-    }catch(err){ setLoadErr(err.message||"Unknown error"); }
+    }catch(err){ 
+      console.error('loadAll error:', err);
+      setLoadErr(err.message||"Unknown error"); 
+    }
     setLoading(false);
   },[workspace?.id]);
 
