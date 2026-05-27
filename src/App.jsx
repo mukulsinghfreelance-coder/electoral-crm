@@ -350,38 +350,60 @@ function SettingsModal({open,onClose,settings,onSave,saving,onImport,onExportCSV
 }
 
 // ─── CONST MODAL ──────────────────────────────────────────────────────────────
-function ConstModal({open,onClose,settings,onSave,saving}) {
+function ConstModal({open,onClose,settings,onSave,saving,isAdmin}) {
   const [f,setF]=useState({});
-  useEffect(()=>{if(open)setF({state:settings.state,ls:settings.ls,vs:settings.vs,totalVoters:settings.totalVoters||"",totalBooths:settings.totalBooths||""});},[open]);
+  useEffect(()=>{
+    if(open) setF({
+      state:settings.state||"",ls:settings.ls||"",vs:settings.vs||"",
+      totalVoters:settings.totalVoters||"",totalBooths:settings.totalBooths||""
+    });
+  },[open]);
+
+  // Read-only display component
+  const ROField=({label,value})=>(
+    <div style={{background:C.gray100,borderRadius:8,padding:"8px 10px"}}>
+      <div style={{fontSize:9,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{label}</div>
+      <div style={{fontSize:13,fontWeight:600,color:C.gray900}}>{value||"—"}</div>
+    </div>
+  );
+
   return (
-    <Modal open={open} onClose={onClose} title="✏️ Edit Constituency Info">
-      <div style={{gridColumn:"1/-1",marginBottom:12}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.gray400,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Constituency (read only)</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-          {[["State",f.state],["Lok Sabha",f.ls],["Vidhan Sabha",f.vs]].map(([l,v])=>(
-            <div key={l} style={{background:C.gray100,borderRadius:8,padding:"8px 10px"}}>
-              <div style={{fontSize:9,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{l}</div>
-              <div style={{fontSize:13,fontWeight:600,color:C.gray900}}>{v||"—"}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 14px"}}>
-        <Fld label="Total Voters" col="1">
-          <div style={{padding:"9px 12px",background:C.gray100,border:`1.5px solid ${C.gray200}`,borderRadius:9,fontSize:13,color:C.gray600,fontWeight:600}}>
-            {f.totalVoters||"Auto-calculated from Settings"}
+    <Modal open={open} onClose={onClose} title={isAdmin?"✏️ Edit Constituency Info":"📋 Constituency Info"}>
+      {isAdmin ? (
+        // ── Admin: fully editable ─────────────────────────────────────────
+        <>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:"0 10px",marginBottom:10}}>
+            <Fld label="State"><Inp value={f.state} onChange={e=>setF(p=>({...p,state:e.target.value}))} placeholder="e.g. Bihar"/></Fld>
+            <Fld label="Lok Sabha"><Inp value={f.ls} onChange={e=>setF(p=>({...p,ls:e.target.value}))} placeholder="e.g. Patna Sahib"/></Fld>
+            <Fld label="Vidhan Sabha"><Inp value={f.vs} onChange={e=>setF(p=>({...p,vs:e.target.value}))} placeholder="e.g. Bankipur"/></Fld>
           </div>
-        </Fld>
-        <Fld label="Total Booths" col="2">
-          <div style={{padding:"9px 12px",background:C.gray100,border:`1.5px solid ${C.gray200}`,borderRadius:9,fontSize:13,color:C.gray600,fontWeight:600}}>
-            {f.totalBooths||"Auto-calculated from Booths"}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px",marginBottom:10}}>
+            <Fld label="Total Voters"><Inp value={f.totalVoters} onChange={e=>setF(p=>({...p,totalVoters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 250000"/></Fld>
+            <Fld label="Total Booths"><Inp value={f.totalBooths} onChange={e=>setF(p=>({...p,totalBooths:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 350"/></Fld>
           </div>
-        </Fld>
-      </div>
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14}}>
-        <Btn v="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn v="primary" onClick={()=>onSave(f)} disabled={saving}>{saving?"⏳ Saving…":"Save"}</Btn>
-      </div>
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14}}>
+            <Btn v="ghost" onClick={onClose}>Cancel</Btn>
+            <Btn v="primary" onClick={()=>onSave(f)} disabled={saving}>{saving?"⏳ Saving…":"Save"}</Btn>
+          </div>
+        </>
+      ) : (
+        // ── Volunteer: read-only, no edit/save buttons ────────────────────
+        <>
+          <div style={{background:"#FFF7ED",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:11,color:"#92400E"}}>
+            ℹ️ Only the constituency admin can edit this information.
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginBottom:10}}>
+            <ROField label="State"        value={f.state}/>
+            <ROField label="Lok Sabha"    value={f.ls}/>
+            <ROField label="Vidhan Sabha" value={f.vs}/>
+            <ROField label="Total Voters" value={f.totalVoters}/>
+            <ROField label="Total Booths" value={f.totalBooths}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",marginTop:14}}>
+            <Btn v="ghost" onClick={onClose}>Close</Btn>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }
@@ -778,6 +800,13 @@ export default function App() {
       .channel(`ws-${wsId}`)
       // ── Contacts ──────────────────────────────────────────────────────────
       .on('postgres_changes',
+        {event:'UPDATE', schema:'public', table:'settings', filter:`workspace_id=eq.${wsId}`},
+        ({new:row}) => {
+          // Admin changed settings - reload for volunteers to see updated labels/mandals
+          loadAll();
+        }
+      )
+      .on('postgres_changes',
         {event:'INSERT', schema:'public', table:'contacts', filter:`workspace_id=eq.${wsId}`},
         ({new:row}) => {
           setContacts(prev=>{
@@ -926,16 +955,23 @@ export default function App() {
     setSaving(true);
     try{
       await saveSettings(s,workspace.id);
-      // If labels changed, propagate to ALL workspaces of this customer
-      const labelsChanged = JSON.stringify(s.labels) !== JSON.stringify(settings.labels);
-      if(labelsChanged && user?.id){
+      // Propagate shared settings to ALL workspaces of this customer:
+      // labels (column names), castes, parties — NOT mandals/geography (per-VS specific)
+      const labelsChanged  = JSON.stringify(s.labels)  !== JSON.stringify(settings.labels);
+      const castesChanged  = JSON.stringify(s.castes)  !== JSON.stringify(settings.castes);
+      const partiesChanged = JSON.stringify(s.parties) !== JSON.stringify(settings.parties);
+      if((labelsChanged||castesChanged||partiesChanged) && user?.id){
         const { supabase: sbClient } = await import('./lib/supabase');
         const {data:allWs} = await sbClient.from('workspaces').select('id').eq('customer_id',user.id);
-        if(allWs){
+        if(allWs && allWs.length > 1){
+          const sharedUpdate = {};
+          if(labelsChanged)  sharedUpdate.labels  = s.labels;
+          if(castesChanged)  sharedUpdate.castes  = s.castes;
+          if(partiesChanged) sharedUpdate.parties = s.parties;
           await Promise.all(allWs.filter(w=>w.id!==workspace.id).map(w=>
-            sbClient.from('settings').update({labels:s.labels}).eq('workspace_id',w.id)
+            sbClient.from('settings').update(sharedUpdate).eq('workspace_id',w.id)
           ));
-          showToast('Labels updated across all constituencies ✓');
+          showToast('Settings updated across all constituencies ✓');
         }
       }
       setSettingsState(s);setShowSettings(false);showToast("Settings saved ✓");
@@ -1321,7 +1357,7 @@ export default function App() {
       />
       <ContactForm open={showAdd} onClose={()=>{setShowAdd(false);setEditC(null);}} initial={editC} settings={settings} onSave={handleSaveContact} saving={saving}/>
       <BoothForm open={showBAdd} onClose={()=>{setShowBAdd(false);setEditB(null);}} initial={editB} settings={settings} onSave={handleSaveBooth} saving={saving} existingBooths={booths}/>
-      <ConstModal open={showConst} onClose={()=>setShowConst(false)} settings={settings} onSave={handleSaveConst} saving={saving}/>
+      <ConstModal open={showConst} onClose={()=>setShowConst(false)} settings={settings} onSave={handleSaveConst} saving={saving} isAdmin={isAdmin}/>
       <ImportModal open={showImport} onClose={()=>setShowImport(false)} onImport={handleImport} saving={saving}/>
       <ExcelModal open={showExcel} onClose={()=>setShowExcel(false)} onImport={handleBoothExcel} saving={saving}/>
       <SheetsModal open={showSheets} onClose={()=>setShowSheets(false)} settings={settings} setSettings={setSettingsState}/>
