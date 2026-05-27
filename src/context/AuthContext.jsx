@@ -34,11 +34,13 @@ export function AuthProvider({ children }) {
     try {
       // ── STEP 1: Check volunteers table FIRST ─────────────────────────────
       // Volunteers must be identified before checking/creating customer records
-      const { data: vol } = await supabase
+      const { data: vol, error: volErr } = await supabase
         .from('volunteers')
         .select('*')
         .eq('email', authUser.email)
         .maybeSingle()
+
+      console.log('Volunteer check:', authUser.email, '→ vol=', vol, 'err=', volErr)
 
       if (vol) {
         console.log('Volunteer login:', vol.email, '| workspace:', vol.workspace_id)
