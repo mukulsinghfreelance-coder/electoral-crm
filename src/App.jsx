@@ -307,7 +307,7 @@ function SettingsModal({open,onClose,settings,onSave,saving,onImport,onExportCSV
             {[["mandal","Mandal","Mandal, Tehsil, Taluka, Block"],["panchayat","Panchayat","Panchayat, Gram Sabha, Ward"],["booth","Booth","Booth, Polling Station"],["village","Village","Village, Ward, Colony, Mohalla"],["caste","Caste","Caste, Community, Samaj"],["karyakarta","Karyakarta","Karyakarta, Worker, Activist"],["whatsapp","WhatsApp No.","WhatsApp No., Mobile No."]].map(([key,def,hint])=>(
               <div key={key}>
                 <label style={{display:"block",fontSize:10,fontWeight:700,color:C.gray400,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>{def} label</label>
-                <Inp value={s.labels?.[key]||def} onChange={e=>setS(p=>({...p,labels:{...p.labels,[key]:e.target.value}}))} placeholder={hint}/>
+                <Inp value={s.labels?.[key]??''} onChange={e=>setS(p=>({...p,labels:{...p.labels,[key]:e.target.value}}))} placeholder={hint}/>
                 <div style={{fontSize:10,color:C.gray400,marginTop:3}}>{hint}</div>
               </div>
             ))}
