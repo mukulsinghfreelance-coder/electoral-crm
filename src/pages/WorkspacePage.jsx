@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import {
+  supabase,
   fetchWorkspaces, fetchWorkspaceStats, createWorkspace,
   fetchStates, fetchLokSabhas, fetchVidhanSabhas,
 } from '../lib/supabase'
@@ -308,6 +309,23 @@ export default function WorkspacePage() {
     window.addEventListener('workspaces-updated', handler)
     return () => window.removeEventListener('workspaces-updated', handler)
   }, [])
+
+  // Realtime: auto-refresh if workspace deleted externally (e.g. by Super Admin)
+  useEffect(() => {
+    if (!customer?.id) return
+    const channel = supabase
+      .channel(`workspaces-${customer.id}`)
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'workspaces', filter: `customer_id=eq.${customer.id}` },
+        () => { loadWorkspaces() }
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'workspaces', filter: `customer_id=eq.${customer.id}` },
+        () => { loadWorkspaces() }
+      )
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [customer?.id])
 
   const loadWorkspaces = async () => {
     setLoading(true)
