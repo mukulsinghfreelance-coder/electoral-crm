@@ -94,7 +94,7 @@ function LoadingScreen({message}) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",gap:16,background:C.white}}>
       <div style={{fontSize:40}}>📋</div>
-      <div style={{fontSize:16,fontWeight:800,color:C.gray900}}>ContactBook</div>
+      <div style={{fontSize:16,fontWeight:800,color:C.gray900}}>Sampark<span style={{color:"#6C63FF"}}>.AI</span></div>
       <div style={{fontSize:13,color:C.gray600,fontWeight:500}}>{message||"Loading…"}</div>
     </div>
   );
@@ -367,8 +367,16 @@ function ConstModal({open,onClose,settings,onSave,saving}) {
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 14px"}}>
-        <Fld label="Total Voters" col="1"><Inp value={f.totalVoters||""} onChange={e=>setF(p=>({...p,totalVoters:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 250000"/></Fld>
-        <Fld label="Total Booths" col="2"><Inp value={f.totalBooths||""} onChange={e=>setF(p=>({...p,totalBooths:e.target.value.replace(/\D/g,"")}))} placeholder="e.g. 350"/></Fld>
+        <Fld label="Total Voters" col="1">
+          <div style={{padding:"9px 12px",background:C.gray100,border:`1.5px solid ${C.gray200}`,borderRadius:9,fontSize:13,color:C.gray600,fontWeight:600}}>
+            {f.totalVoters||"Auto-calculated from Settings"}
+          </div>
+        </Fld>
+        <Fld label="Total Booths" col="2">
+          <div style={{padding:"9px 12px",background:C.gray100,border:`1.5px solid ${C.gray200}`,borderRadius:9,fontSize:13,color:C.gray600,fontWeight:600}}>
+            {f.totalBooths||"Auto-calculated from Booths"}
+          </div>
+        </Fld>
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14}}>
         <Btn v="ghost" onClick={onClose}>Cancel</Btn>
@@ -572,6 +580,7 @@ function VolunteerModal({open,onClose,workspaceId,adminName,vsName}) {
   const add = async () => {
     const em = email.trim().toLowerCase();
     if (!name.trim() || !em) { setErr("Name and email are required"); return; }
+    if (!phone.trim() || phone.trim().length < 10) { setErr("Phone number (10 digits) is required"); return; }
     if (!/\S+@\S+\.\S+/.test(em)) { setErr("Enter a valid email address"); return; }
     setSaving(true); setErr("");
     try {
@@ -639,7 +648,7 @@ function VolunteerModal({open,onClose,workspaceId,adminName,vsName}) {
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:"0 10px",marginBottom:8}}>
           <Fld label="Full Name"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
           <Fld label="Email"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
-          <Fld label="Phone (optional)"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="10 digits" maxLength={10}/></Fld>
+          <Fld label="Phone *"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="10 digits" maxLength={10}/></Fld>
         </div>
         {err && <div style={{background:"#FEE2E2",color:C.red,borderRadius:7,padding:"7px 10px",fontSize:11,marginBottom:8}}>{err}</div>}
         <Btn v="primary" onClick={add} disabled={saving}>{saving?"⏳ Adding…":"＋ Add Volunteer"}</Btn>
@@ -1053,7 +1062,7 @@ export default function App() {
           <div style={{padding:"10px 10px 8px",borderBottom:`1px solid ${C.gray200}`}}>
             <div style={{display:"flex",alignItems:"center",gap:7}}>
               <div style={{width:32,height:32,borderRadius:9,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 3px 10px rgba(79,70,229,.3)"}}>📋</div>
-              <div><div style={{fontSize:14,fontWeight:800,color:C.gray900}}>ContactBook</div><div style={{fontSize:10,color:C.gray400,fontWeight:500}}>Electoral Manager</div></div>
+              <div><div style={{fontSize:14,fontWeight:800,color:C.gray900}}>Sampark<span style={{color:C.primary}}>.AI</span></div><div style={{fontSize:10,color:C.gray400,fontWeight:500}}>Electoral Intelligence</div></div>
             </div>
           </div>
 
@@ -1076,8 +1085,8 @@ export default function App() {
               </div>
               <div style={{background:"#FEF3C7",borderRadius:7,padding:"5px 8px",fontSize:10,color:"#92400E",marginBottom:4}}>
                 <div style={{fontWeight:600}}>📋 Assigned by:</div>
-                <div>{ownerCustomer?.name||"Admin"}</div>
-                <div style={{color:"#B45309",fontSize:9}}>{ownerCustomer?.email}</div>
+                <div style={{wordBreak:"break-all"}}>{ownerCustomer?.name&&ownerCustomer.name!==ownerCustomer.email?ownerCustomer.name:""}</div>
+                <div style={{color:"#B45309",fontWeight:600}}>{ownerCustomer?.email||"—"}</div>
               </div>
               <button onClick={logout} style={{width:"100%",padding:"5px 6px",fontSize:10,fontWeight:600,background:"transparent",color:"#D97706",border:"1px solid #FCD34D",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
             </>)}
@@ -1115,9 +1124,9 @@ export default function App() {
               ＋ Add Contact
             </button>
             <div style={{width:1,height:24,background:C.gray200}}/>
-            <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:C.primaryLight,color:C.primary,border:`1px solid ${C.primary}33`,borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
+            {isAdmin&&<button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:C.primaryLight,color:C.primary,border:`1px solid ${C.primary}33`,borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
               ⚙️ <span className="top-strip-label">Settings</span>
-            </button>
+            </button>}
             {isAdmin&&<button onClick={()=>setShowVolunteers(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",fontSize:11,fontWeight:600,background:"#FFFBEB",color:"#D97706",border:"1px solid #D9770633",borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>
               👥 <span className="top-strip-label">Add Volunteers</span>
             </button>}
