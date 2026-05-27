@@ -306,6 +306,3 @@ export function AuthProvider({ children }) {
 }
 
 export const useAuth = () => useContext(AuthContext)
-    // Reset workspace on new login to prevent stale state
-    setWorkspace(null)
-    setVolunteerWorkspace(null)
