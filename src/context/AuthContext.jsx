@@ -24,7 +24,8 @@ export function AuthProvider({ children }) {
   const [workspace, setWorkspace] = useState(null)
   const [loading,   setLoading]   = useState(true)
   const [authError, setAuthError] = useState('')
-  const loadingRef = useRef(null)  // track which userId we're loading
+  const loadingRef   = useRef(null)  // track which user is loading
+  const customerRef   = useRef(null)  // track loaded customer emailserId we're loading
 
   const loadCustomer = useCallback(async (authUser) => {
     // Prevent duplicate loads for same user
@@ -168,12 +169,18 @@ export function AuthProvider({ children }) {
         }
 
         if (event === 'SIGNED_IN') {
-          // loadingRef guards against duplicate loads
           if (newSession?.user) {
+            // Only load customer if not already loaded for this user
+            // Prevents reload on browser focus (Supabase fires SIGNED_IN on token refresh)
             setTimeout(() => loadCustomer(newSession.user), 0)
           } else {
             setLoading(false)
           }
+        }
+
+        if (event === 'TOKEN_REFRESHED') {
+          // Session refreshed (e.g. browser focus) - just update session, don't reload
+          console.log('Token refreshed - skipping customer reload')
         }
 
         if (event === 'SIGNED_OUT') {
