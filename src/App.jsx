@@ -508,6 +508,7 @@ function ContactDetail({contact,settings,onEdit,onDelete}) {
         [`📍 ${L.booth||"Booth"} No.`,contact.bno],
         [`🏫 ${L.boothName||"Booth Name"}`,contact.bnm],
         [`📝 Notes`,contact.notes],
+        [`👤 Added by`,contact.created_by],
       ].map(([l,v])=>v?(<div key={l} style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{l}</div><div style={{fontSize:13,fontWeight:500,color:C.gray900}}>{v}</div></div>):null)}
     </div>
     <div style={{padding:"12px 14px",borderTop:`1px solid ${C.gray200}`,display:"flex",gap:8}}>
@@ -918,7 +919,7 @@ export default function App() {
     }
     try{
       if(editC){const updated=await updateContact(editC.id,f);setContacts(cs=>cs.map(c=>c.id===updated.id?updated:c));setSelC(updated);showToast("Contact updated ✓");}
-      else{const created=await insertContact(f,workspace.id);setContacts(cs=>[created,...cs]);setSelC(created);showToast("Contact added ✓");syncToSheets(created);}
+      else{const created=await insertContact(f,workspace.id,user?.email||'');setContacts(cs=>[created,...cs]);setSelC(created);showToast("Contact added ✓");syncToSheets(created);}
       setShowAdd(false);setEditC(null);
     }catch(err){showToast("Error: "+err.message,"error");}
     setSaving(false);

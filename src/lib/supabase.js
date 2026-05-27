@@ -218,10 +218,10 @@ export async function fetchContacts(workspaceId) {
   return data.map(dbToContact)
 }
 
-export async function insertContact(contact, workspaceId) {
+export async function insertContact(contact, workspaceId, createdBy='') {
   const { data, error } = await supabase
     .from('contacts')
-    .insert({ ...contactToDb(contact), workspace_id: workspaceId })
+    .insert({ ...contactToDb(contact), workspace_id: workspaceId, created_by: createdBy || null })
     .select()
     .single()
   if (error) throw error
@@ -342,7 +342,7 @@ function settingsToDb(s) {
 
 function dbToContact(d) {
   return {
-    id: d.id, name: d.name||'', phone: d.phone||'', wa: d.wa||'',
+    id: d.id, created_by: d.created_by||'', name: d.name||'', phone: d.phone||'', wa: d.wa||'',
     mandal: d.mandal||'', panchayat: d.panchayat||'', village: d.village||'',
     bno: d.bno||'', bnm: d.bnm||'', tag: d.tag||'', caste: d.caste||'',
     gender: d.gender||'', notes: d.notes||'',
