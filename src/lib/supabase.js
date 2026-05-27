@@ -380,13 +380,38 @@ function boothToDb(b) {
 // ─── SUPER ADMIN FUNCTIONS ────────────────────────────────────────────────────
 // These query across all customers — only callable by super admin
 
-export async function adminFetchAllCustomers() {
-  const { data, error } = await supabase
+export async function adminFetchAllCustomers({ search='', plan='', page=1, pageSize=20 }={}) {
+  let query = supabase
     .from('customers')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range((page-1)*pageSize, page*pageSize - 1)
+
+  if (plan) query = query.eq('plan', plan)
+  if (search) query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`)
+
+  const { data, error, count } = await query
   if (error) throw error
-  return data
+  return { data: data || [], total: count || 0 }
+}
+
+export async function adminFetchAllVolunteers({ search='', page=1, pageSize=25 }={}) {
+  let query = supabase
+    .from('volunteers')
+    .select(`
+      *,
+      workspaces ( name, vs, state, customer_id,
+        customers ( name, email )
+      )
+    `, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range((page-1)*pageSize, page*pageSize - 1)
+
+  if (search) query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+
+  const { data, error, count } = await query
+  if (error) throw error
+  return { data: data || [], total: count || 0 }
 }
 
 export async function adminFetchCustomerWorkspaces(customerId) {

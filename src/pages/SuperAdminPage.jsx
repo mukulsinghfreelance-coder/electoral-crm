@@ -12,6 +12,7 @@ import {
   adminGiftCustomer,
   adminRevokeGift,
   adminGetPurgeSummary,
+  adminFetchAllVolunteers,
   adminFetchCoupons,
   adminCreateCoupon,
   adminToggleCoupon,
@@ -170,7 +171,6 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
         }
       })
     } catch(e) {
-      // Fallback if summary fetch fails
       setConfirm({
         type: 'purge',
         message: `Purge ${customer.name || customer.email}?`,
@@ -180,9 +180,7 @@ function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) 
           try {
             await adminPurgeCustomer(customer.id)
             onPurged(customer.id)
-          } catch(err) {
-            setDeleteError(err?.message || 'Purge failed')
-          }
+          } catch(err) { setDeleteError(err?.message || 'Purge failed') }
         }
       })
     }
@@ -385,6 +383,26 @@ function PricingPanel() {
       })}
       <div style={{ fontSize:12, color:'#6B7280', textAlign:'center', marginTop:8 }}>
         Changes take effect immediately for new payments. Existing subscriptions are not affected.
+
+        {/* Customer Pagination */}
+        {custTotal > CUST_PAGE_SIZE && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderTop:'1px solid #E5E7EB', background:'#F9FAFB' }}>
+            <span style={{ fontSize:12, color:'#6B7280' }}>
+              {((custPage-1)*CUST_PAGE_SIZE)+1}–{Math.min(custPage*CUST_PAGE_SIZE, custTotal)} of {custTotal} customers
+            </span>
+            <div style={{ display:'flex', gap:6 }}>
+              <button disabled={custPage===1} onClick={()=>setCustPage(p=>p-1)}
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage===1?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage===1?'#4B5563':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage===1?'not-allowed':'pointer', fontFamily:font }}>
+                ← Prev
+              </button>
+              <span style={{ padding:'6px 12px', fontSize:12, color:'#9CA3AF' }}>Page {custPage} / {Math.ceil(custTotal/CUST_PAGE_SIZE)}</span>
+              <button disabled={custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)} onClick={()=>setCustPage(p=>p+1)}
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'rgba(255,255,255,.05)':'rgba(108,99,255,.3)', color:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'#4B5563':'#A78BFA', border:'1px solid rgba(108,99,255,.3)', borderRadius:7, cursor:custPage>=Math.ceil(custTotal/CUST_PAGE_SIZE)?'not-allowed':'pointer', fontFamily:font }}>
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -394,109 +412,134 @@ function PricingPanel() {
 
 function VolunteersPanel() {
   const [volunteers, setVolunteers] = useState([])
+  const [total,      setTotal]      = useState(0)
+  const [page,       setPage]       = useState(1)
   const [loading,    setLoading]    = useState(true)
   const [search,     setSearch]     = useState('')
   const [err,        setErr]        = useState('')
+  const PAGE_SIZE = 25
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { setPage(1); load(1, search) }, [search])
+  useEffect(() => { load(page, search) }, [page])
 
-  const load = async () => {
-    setLoading(true)
+  const load = async (pg=page, q=search) => {
+    setLoading(true); setErr('')
     try {
-      const { data, error } = await supabase
-        .from('volunteers')
-        .select(`*, workspaces(name, vs, state)`)
-        .order('created_at', { ascending: false })
-      if (error) throw error
+      const { data, total: t } = await adminFetchAllVolunteers({ search:q, page:pg, pageSize:PAGE_SIZE })
       setVolunteers(data || [])
+      setTotal(t || 0)
     } catch(e) { setErr(e.message) }
     setLoading(false)
   }
 
   const remove = async (id, email) => {
-    if (!confirm(`Remove volunteer ${email}?\nThey will lose access to their constituency.`)) return
+    if (!confirm(`Remove volunteer ${email}?\nThey will lose access immediately.`)) return
     try {
       const { error } = await supabase.from('volunteers').delete().eq('id', id)
       if (error) throw error
-      await load()
+      setVolunteers(v => v.filter(x => x.id !== id))
+      setTotal(t => t - 1)
     } catch(e) { alert('Error: ' + e.message) }
   }
 
-  const filtered = volunteers.filter(v =>
-    !search || v.name?.toLowerCase().includes(search.toLowerCase()) ||
-    v.email?.toLowerCase().includes(search.toLowerCase()) ||
-    v.workspaces?.vs?.toLowerCase().includes(search.toLowerCase())
-  )
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
     <div style={{ padding:'20px 24px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
         <div>
           <div style={{ fontSize:16, fontWeight:700, color:'#111827' }}>All Volunteers</div>
-          <div style={{ fontSize:12, color:'#6B7280' }}>{volunteers.length} total across all constituencies</div>
+          <div style={{ fontSize:12, color:'#6B7280' }}>{total} total across all constituencies</div>
         </div>
         <input value={search} onChange={e=>setSearch(e.target.value)}
           placeholder="Search name, email, VS…"
-          style={{ padding:'8px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, outline:'none', width:220 }}
+          style={{ padding:'8px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, outline:'none', width:220, fontFamily:font }}
         />
       </div>
-
       {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:8, marginBottom:12, fontSize:12 }}>{err}</div>}
-
       {loading ? (
         <div style={{ textAlign:'center', padding:40, color:'#6B7280' }}>Loading…</div>
-      ) : filtered.length === 0 ? (
+      ) : volunteers.length === 0 ? (
         <div style={{ textAlign:'center', padding:40, color:'#6B7280' }}>No volunteers found</div>
-      ) : (
-        <div style={{ border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+      ) : (<>
+        <div style={{ border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', overflowX:'auto' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', minWidth:700 }}>
             <thead>
               <tr style={{ background:'#F9FAFB' }}>
-                {['Name','Email','Phone','Constituency (VS)','State','Added On','Action'].map(h => (
-                  <th key={h} style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#6B7280', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:'1px solid #E5E7EB' }}>{h}</th>
+                {['Volunteer','Email','Phone','Constituency','State','Owner (Admin)','Added','Action'].map(h => (
+                  <th key={h} style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#6B7280', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:'1px solid #E5E7EB', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((v, i) => (
-                <tr key={v.id} style={{ background: i%2===0?'#fff':'#F9FAFB', borderBottom:'1px solid #F3F4F6' }}>
-                  <td style={{ padding:'10px 12px', fontSize:13, fontWeight:600, color:'#111827' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <div style={{ width:28, height:28, borderRadius:'50%', background:'#F97316', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12, flexShrink:0 }}>
-                        {(v.name||'?').charAt(0).toUpperCase()}
+              {volunteers.map((v, i) => {
+                const owner = v.workspaces?.customers
+                return (
+                  <tr key={v.id} style={{ background:i%2===0?'#fff':'#F9FAFB', borderBottom:'1px solid #F3F4F6' }}>
+                    <td style={{ padding:'10px 12px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div style={{ width:28, height:28, borderRadius:'50%', background:'#F97316', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12, flexShrink:0 }}>
+                          {(v.name||'?').charAt(0).toUpperCase()}
+                        </div>
+                        <span style={{ fontSize:13, fontWeight:600, color:'#111827' }}>{v.name}</span>
                       </div>
-                      {v.name}
-                    </div>
-                  </td>
-                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.email}</td>
-                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.phone||'—'}</td>
-                  <td style={{ padding:'10px 12px', fontSize:12 }}>
-                    <span style={{ background:'#EDE9FE', color:'#5B21B6', padding:'2px 8px', borderRadius:6, fontWeight:600, fontSize:11 }}>
-                      {v.workspaces?.vs||v.workspaces?.name||'—'}
-                    </span>
-                  </td>
-                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.workspaces?.state||'—'}</td>
-                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6B7280' }}>
-                    {v.created_at ? new Date(v.created_at).toLocaleDateString('en-IN') : '—'}
-                  </td>
-                  <td style={{ padding:'10px 12px' }}>
-                    <button onClick={()=>remove(v.id, v.email)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, cursor:'pointer' }}>
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.email}</td>
+                    <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.phone||'—'}</td>
+                    <td style={{ padding:'10px 12px' }}>
+                      <span style={{ background:'#EDE9FE', color:'#5B21B6', padding:'2px 8px', borderRadius:6, fontWeight:600, fontSize:11 }}>
+                        {v.workspaces?.vs||v.workspaces?.name||'—'}
+                      </span>
+                    </td>
+                    <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.workspaces?.state||'—'}</td>
+                    <td style={{ padding:'10px 12px' }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{owner?.name||'—'}</div>
+                      <div style={{ fontSize:11, color:'#9CA3AF' }}>{owner?.email||''}</div>
+                    </td>
+                    <td style={{ padding:'10px 12px', fontSize:11, color:'#6B7280', whiteSpace:'nowrap' }}>
+                      {v.created_at ? new Date(v.created_at).toLocaleDateString('en-IN') : '—'}
+                    </td>
+                    <td style={{ padding:'10px 12px' }}>
+                      <button onClick={()=>remove(v.id, v.email)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, cursor:'pointer', fontFamily:font }}>
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
-      )}
+        {totalPages > 1 && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:14 }}>
+            <span style={{ fontSize:12, color:'#6B7280' }}>
+              {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE, total)} of {total} volunteers
+            </span>
+            <div style={{ display:'flex', gap:6 }}>
+              <button disabled={page===1} onClick={()=>setPage(p=>p-1)}
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page===1?'#F3F4F6':'#EDE9FE', color:page===1?'#9CA3AF':'#5B21B6', border:'1px solid #E5E7EB', borderRadius:7, cursor:page===1?'not-allowed':'pointer', fontFamily:font }}>
+                ← Prev
+              </button>
+              <span style={{ padding:'6px 12px', fontSize:12, color:'#6B7280' }}>Page {page} / {totalPages}</span>
+              <button disabled={page>=totalPages} onClick={()=>setPage(p=>p+1)}
+                style={{ padding:'6px 14px', fontSize:12, fontWeight:600, background:page>=totalPages?'#F3F4F6':'#EDE9FE', color:page>=totalPages?'#9CA3AF':'#5B21B6', border:'1px solid #E5E7EB', borderRadius:7, cursor:page>=totalPages?'not-allowed':'pointer', fontFamily:font }}>
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+      </>)}
     </div>
   )
 }
 
+
 export default function SuperAdminPage({ onBack }) {
   const { customer: me } = useAuth()
   const [customers,   setCustomers]   = useState([])
+  const [custTotal,   setCustTotal]   = useState(0)
+  const [custPage,    setCustPage]    = useState(1)
+  const CUST_PAGE_SIZE = 20
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState('')
   const [search,      setSearch]      = useState('')
@@ -504,14 +547,18 @@ export default function SuperAdminPage({ onBack }) {
   const [filterPlan,  setFilterPlan]  = useState('all')
   const [activeTab,   setActiveTab]   = useState('customers')  // customers | pricing | coupons
 
-  useEffect(() => { loadCustomers() }, [])
+  useEffect(() => { setCustPage(1); loadCustomers(1, search, filterPlan) }, [search, filterPlan])
+  useEffect(() => { loadCustomers(custPage) }, [custPage])
 
-  const loadCustomers = async () => {
-    setLoading(true)
-    setError('')
+  const loadCustomers = async (pg, q, plan) => {
+    const _pg   = pg   !== undefined ? pg   : custPage
+    const _q    = q    !== undefined ? q    : search
+    const _plan = plan !== undefined ? plan : filterPlan
+    setLoading(true); setError('')
     try {
-      const data = await adminFetchAllCustomers()
+      const { data, total } = await adminFetchAllCustomers({ search:_q==='all'?'':_q, plan:_plan==='all'?'':_plan, page:_pg, pageSize:CUST_PAGE_SIZE })
       setCustomers(data || [])
+      setCustTotal(total)
     } catch(e) {
       console.error('Admin load error:', e)
       setError(e.message || 'Failed to load customers')
@@ -533,13 +580,7 @@ export default function SuperAdminPage({ onBack }) {
   }
 
   // Filter
-  const filtered = customers.filter(c => {
-    const matchSearch = !search ||
-      c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.name?.toLowerCase().includes(search.toLowerCase())
-    const matchPlan = filterPlan === 'all' || c.plan === filterPlan
-    return matchSearch && matchPlan
-  })
+  const filtered = customers  // server-side)
 
   // Stats
   const stats = {
@@ -657,7 +698,7 @@ export default function SuperAdminPage({ onBack }) {
             <div style={{ fontSize:20, marginBottom:8 }}>⚠️</div>
             <div style={{ fontSize:14, fontWeight:700, color:'#991B1B', marginBottom:4 }}>Failed to load customers</div>
             <div style={{ fontSize:12, color:'#DC2626', marginBottom:16 }}>{error}</div>
-            <button onClick={loadCustomers} style={{ padding:'8px 20px', fontSize:13, fontWeight:600, background:'#DC2626', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
+            <button onClick={()=>loadCustomers(custPage)} style={{ padding:'8px 20px', fontSize:13, fontWeight:600, background:'#DC2626', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
               Retry
             </button>
           </div>
