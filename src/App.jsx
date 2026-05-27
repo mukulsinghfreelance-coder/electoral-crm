@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAuth } from './context/AuthContext'
 import UpgradeModal from './components/UpgradeModal'
 import {
+  supabase,
   fetchSettings, saveSettings,
   fetchContacts, insertContact, updateContact, deleteContact, bulkDeleteContacts,
   fetchBooths, insertBooth, updateBooth, deleteBooth, upsertBoothByBno,
@@ -537,15 +538,10 @@ function VolunteerModal({open,onClose,workspaceId}) {
 
   useEffect(() => { if(open && workspaceId) load(); }, [open, workspaceId]);
 
-  const getSb = async () => {
-    const m = await import('./lib/supabase');
-    return m.supabase;
-  };
-
   const load = async () => {
     setLoading(true);
     try {
-      const sb = await getSb();
+      const sb = supabase;
       const { data, error } = await sb.from('volunteers')
         .select('*').eq('workspace_id', workspaceId).order('created_at');
       if (error) throw error;
@@ -560,7 +556,7 @@ function VolunteerModal({open,onClose,workspaceId}) {
     if (!/\S+@\S+\.\S+/.test(em)) { setErr("Enter a valid email"); return; }
     setSaving(true); setErr("");
     try {
-      const sb = await getSb();
+      const sb = supabase;
 
       // Check: email must not already be a CUSTOMER
       const { data: existCust } = await sb.from('customers')
@@ -601,7 +597,7 @@ function VolunteerModal({open,onClose,workspaceId}) {
   const remove = async (id, volEmail) => {
     if (!confirm(`Remove volunteer ${volEmail}? They will no longer be able to log in.`)) return;
     try {
-      const sb = await getSb();
+      const sb = supabase;
       const { error } = await sb.from('volunteers').delete().eq('id', id);
       if (error) throw error;
       await load();
@@ -729,6 +725,59 @@ export default function App() {
   },[workspace?.id]);
 
   useEffect(()=>{ if(workspace?.id) loadAll(); },[workspace?.id]);
+
+  // ── Realtime sync ─────────────────────────────────────────────────────────
+  useEffect(()=>{
+    if(!workspace?.id) return;
+    const wsId = workspace.id;
+
+    const channel = supabase
+      .channel(`ws-${wsId}`)
+      // ── Contacts ──────────────────────────────────────────────────────────
+      .on('postgres_changes',
+        {event:'INSERT', schema:'public', table:'contacts', filter:`workspace_id=eq.${wsId}`},
+        ({new:row}) => {
+          setContacts(prev=>{
+            if(prev.find(c=>c.id===row.id)) return prev;
+            return [row, ...prev];
+          });
+          showToast(`📥 ${row.name} added`,'info');
+        }
+      )
+      .on('postgres_changes',
+        {event:'UPDATE', schema:'public', table:'contacts', filter:`workspace_id=eq.${wsId}`},
+        ({new:row}) => setContacts(prev=>prev.map(c=>c.id===row.id?row:c))
+      )
+      .on('postgres_changes',
+        {event:'DELETE', schema:'public', table:'contacts', filter:`workspace_id=eq.${wsId}`},
+        ({old:row}) => setContacts(prev=>prev.filter(c=>c.id!==row.id))
+      )
+      // ── Booths ────────────────────────────────────────────────────────────
+      .on('postgres_changes',
+        {event:'INSERT', schema:'public', table:'booths', filter:`workspace_id=eq.${wsId}`},
+        ({new:row}) => {
+          setBooths(prev=>{
+            if(prev.find(b=>b.id===row.id)) return prev;
+            return [...prev, row];
+          });
+          showToast(`📥 Booth ${row.bno} added`,'info');
+        }
+      )
+      .on('postgres_changes',
+        {event:'UPDATE', schema:'public', table:'booths', filter:`workspace_id=eq.${wsId}`},
+        ({new:row}) => setBooths(prev=>prev.map(b=>b.id===row.id?row:b))
+      )
+      .on('postgres_changes',
+        {event:'DELETE', schema:'public', table:'booths', filter:`workspace_id=eq.${wsId}`},
+        ({old:row}) => setBooths(prev=>prev.filter(b=>b.id!==row.id))
+      )
+      .subscribe(status=>{
+        if(status==='SUBSCRIBED') console.log('✅ Realtime connected for workspace:', wsId);
+        if(status==='CHANNEL_ERROR') console.warn('❌ Realtime error');
+      });
+
+    return ()=>{ supabase.removeChannel(channel); };
+  },[workspace?.id]);
 
   // ── Toast ─────────────────────────────────────────────────────────────────
   const showToast=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast({msg:"",type:"success"}),3000);};
