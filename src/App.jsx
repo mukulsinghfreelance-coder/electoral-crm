@@ -824,14 +824,6 @@ export default function App() {
   };
 
   // ── Guards (AppRouter guarantees user + workspace exist here) ──────────
-  if(loading)  return <LoadingScreen message="Loading data…"/>;
-  if(loadErr)  return <ErrorScreen message={loadErr} onRetry={loadAll}/>;
-
-  const L=settings.labels||{};
-  const thS={position:"sticky",top:0,fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",padding:"8px 10px",borderBottom:`2px solid ${C.gray200}`,textAlign:"left",userSelect:"none",background:C.gray50,whiteSpace:"nowrap"};
-  const thSB={...thS,background:"#F0FDFA",color:C.teal,borderBottom:`2px solid ${C.teal}33`};
-  const tdS={padding:"10px 10px",fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",borderBottom:`1px solid ${C.gray100}`};
-
   useEffect(()=>{
     const s=document.createElement('style');s.id='app-m-css';
     s.textContent=`
@@ -840,15 +832,12 @@ export default function App() {
         #bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;z-index:200;}
         #data-status-strip{display:flex!important;}
         #detail-panel-desktop{display:none!important;}
-        #metrics-row{grid-template-columns:repeat(2,1fr)!important;gap:4px!important;padding:4px 6px!important;}
-        #booth-metrics{grid-template-columns:repeat(2,1fr)!important;gap:4px!important;padding:4px 6px!important;}
-        #filter-bar select{font-size:14px!important;}
+        #metrics-row,#booth-metrics{grid-template-columns:repeat(2,1fr)!important;gap:4px!important;padding:4px 6px!important;}
         .top-strip-label{display:none!important;}
         #hero-bar,#booth-hero{padding:5px 8px!important;overflow:hidden!important;}
         #filter-bar{padding:3px 6px!important;overflow:hidden!important;}
         #main-content{padding-bottom:90px!important;}
         input,select,textarea{font-size:16px!important;box-sizing:border-box!important;}
-        [style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr!important;}
       }
       @media(min-width:769px){
         #bottom-nav{display:none!important;}
@@ -858,6 +847,15 @@ export default function App() {
     if(!document.getElementById('app-m-css'))document.head.appendChild(s);
     return()=>document.getElementById('app-m-css')?.remove();
   },[]);
+
+  if(loading)  return <LoadingScreen message="Loading data…"/>;
+  if(loadErr)  return <ErrorScreen message={loadErr} onRetry={loadAll}/>;
+
+  const L=settings.labels||{};
+  const thS={position:"sticky",top:0,fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",padding:"8px 10px",borderBottom:`2px solid ${C.gray200}`,textAlign:"left",userSelect:"none",background:C.gray50,whiteSpace:"nowrap"};
+  const thSB={...thS,background:"#F0FDFA",color:C.teal,borderBottom:`2px solid ${C.teal}33`};
+  const tdS={padding:"10px 10px",fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",borderBottom:`1px solid ${C.gray100}`};
+
 
   return (
     <div id="app-root" style={{display:"flex",flexDirection:"column",height:"100vh",background:C.white,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",fontSize:13,overflow:"hidden"}}>

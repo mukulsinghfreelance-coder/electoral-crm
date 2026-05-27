@@ -392,8 +392,8 @@ export default function LandingPage() {
     <div style={{ background:C.bg, minHeight:'100vh', fontFamily:font, color:C.text }}>
 
       {/* ── NAVBAR ────────────────────────────────────────────────────────────── */}
-      <nav style={{ position:'sticky', top:0, zIndex:100, background:'rgba(15,14,26,0.85)', backdropFilter:'blur(16px)', borderBottom:`1px solid ${C.border}`, padding:'0 24px' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto', height:64, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <nav style={{ position:'sticky', top:0, zIndex:100, background:'rgba(15,14,26,0.95)', backdropFilter:'blur(16px)', borderBottom:`1px solid ${C.border}`, padding:'0 16px' }}>
+        <div className="lp-nav-container" style={{ maxWidth:1100, margin:'0 auto', height:64, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           {/* Logo */}
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <div style={{ width:36, height:36, borderRadius:10, background:`linear-gradient(135deg,${C.primary},${C.primaryD})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🗳️</div>
@@ -403,7 +403,7 @@ export default function LandingPage() {
             </div>
           </div>
           {/* Nav links */}
-          <div style={{ display:'flex', alignItems:'center', gap:24 }}>
+          <div className="lp-nav-links" style={{ display:'flex', alignItems:'center', gap:24 }}>
             {[['features','#features'],['howItWorks','#how'],['pricing','#pricing']].map(([k,href]) => (
               <a key={k} href={href} style={{ fontSize:13, color:C.gray, textDecoration:'none', fontWeight:500 }}
                 onMouseEnter={e => e.target.style.color=C.white}
@@ -413,7 +413,7 @@ export default function LandingPage() {
             ))}
           </div>
           {/* Right controls */}
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div className="lp-nav-btns" style={{ display:'flex', alignItems:'center', gap:10 }}>
             {/* Language toggle */}
             <div style={{ display:'flex', background:'rgba(255,255,255,0.06)', border:`1px solid ${C.border}`, borderRadius:8, overflow:'hidden' }}>
               {['en','hi'].map(l => (
@@ -617,9 +617,10 @@ export default function LandingPage() {
       {showAuth && (
         <div
           onClick={e => e.target === e.currentTarget && setShowAuth(false)}
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}
+          className="lp-auth-overlay"
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20, backdropFilter:'blur(4px)' }}
         >
-          <div style={{ background:'#16152A', border:`1px solid ${C.border2}`, borderRadius:20, padding:32, width:'100%', maxWidth:400, boxShadow:'0 24px 80px rgba(0,0,0,0.5)' }}>
+          <div className="lp-auth-modal" style={{ background:'#1E1C38', border:`1px solid rgba(167,139,250,0.3)`, borderRadius:20, padding:32, width:'100%', maxWidth:400, boxShadow:'0 24px 80px rgba(0,0,0,0.5)' }}>
             {/* Header */}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
               <div>
