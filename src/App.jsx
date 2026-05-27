@@ -532,48 +532,56 @@ function Toast({msg,type}) {
 }
 
 // ─── VOLUNTEER MODAL ──────────────────────────────────────────────────────────
-function VolunteerModal({open,onClose,workspaceId,orgId}) {
+function VolunteerModal({open,onClose,workspaceId}) {
   const [volunteers,setVolunteers]=useState([]);
   const [name,setName]=useState(""); const [email,setEmail]=useState(""); const [phone,setPhone]=useState("");
   const [loading,setLoading]=useState(false); const [saving,setSaving]=useState(false);
-  const {supabase:sb} = {supabase:null}; // we'll use direct import
+  const [err,setErr]=useState("");
 
-  useEffect(()=>{
-    if(open) loadVolunteers();
-  },[open]);
+  useEffect(()=>{ if(open) loadVolunteers(); },[open,workspaceId]);
+
+  const getSb=async()=>{
+    const {createClient}=await import('@supabase/supabase-js');
+    return createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
+  };
 
   const loadVolunteers=async()=>{
-    setLoading(true);
+    setLoading(true); setErr("");
     try{
-      const {createClient}=await import('@supabase/supabase-js');
-      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      const {data}=await sb.from('app_users').select('*').eq('workspace_id',workspaceId).eq('role','volunteer');
+      const sb=await getSb();
+      const {data,error}=await sb.from('volunteers').select('*').eq('workspace_id',workspaceId).order('created_at',{ascending:false});
+      if(error) throw error;
       setVolunteers(data||[]);
-    }catch(e){console.error(e);}
+    }catch(e){ setErr("Load failed: "+e.message); }
     setLoading(false);
   };
 
   const addVolunteer=async()=>{
-    if(!name.trim()||!email.trim()){alert("Name and email are required");return;}
-    setSaving(true);
+    if(!name.trim()||!email.trim()){setErr("Name and email are required");return;}
+    setSaving(true); setErr("");
     try{
-      const {createClient}=await import('@supabase/supabase-js');
-      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      await sb.from('app_users').insert({name:name.trim(),email:email.trim().toLowerCase(),phone:phone.trim(),role:'volunteer',workspace_id:workspaceId,org_id:orgId});
+      const sb=await getSb();
+      const {error}=await sb.from('volunteers').insert({
+        name:name.trim(),
+        email:email.trim().toLowerCase(),
+        phone:phone.trim()||null,
+        workspace_id:workspaceId,
+      });
+      if(error) throw error;
       setName(""); setEmail(""); setPhone("");
       await loadVolunteers();
-    }catch(e){alert("Error: "+e.message);}
+    }catch(e){ setErr("Error: "+e.message); }
     setSaving(false);
   };
 
   const removeVolunteer=async(id)=>{
     if(!confirm("Remove this volunteer?"))return;
     try{
-      const {createClient}=await import('@supabase/supabase-js');
-      const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      await sb.from('app_users').delete().eq('id',id);
+      const sb=await getSb();
+      const {error}=await sb.from('volunteers').delete().eq('id',id);
+      if(error) throw error;
       await loadVolunteers();
-    }catch(e){alert("Error: "+e.message);}
+    }catch(e){ setErr("Error: "+e.message); }
   };
 
   return(
@@ -878,9 +886,9 @@ export default function App() {
           <div style={{padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,background:C.primaryLight}}>
             <div style={{fontSize:12,fontWeight:700,color:C.primary}}>{user?.name}</div>
             <div style={{fontSize:10,color:C.gray400,marginTop:1}}>{isAdmin?"👑 Admin":"👤 Volunteer"} · {workspace?.vs||"—"}</div>
-              <div style={{display:"flex",gap:5,marginTop:6}}>
-              <button onClick={()=>exitWorkspace()} style={{flex:1,padding:"6px 4px",fontSize:10,fontWeight:700,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>🔄 Switch</button>
-              <button onClick={logout} style={{flex:1,padding:"6px 4px",fontSize:10,fontWeight:700,background:C.gray100,color:C.gray600,border:`1px solid ${C.gray200}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
+              <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:4}}>
+              <button onClick={()=>exitWorkspace()} style={{width:"100%",padding:"8px 6px",fontSize:11,fontWeight:800,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(79,70,229,.4)",letterSpacing:"-0.01em"}}>🔄 Switch Constituency</button>
+              <button onClick={logout} style={{width:"100%",padding:"5px 6px",fontSize:10,fontWeight:600,background:"transparent",color:C.gray400,border:`1px solid ${C.gray200}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
             </div>
             </div>
 
@@ -906,13 +914,16 @@ export default function App() {
           {isAdmin&&<SBI icon="🔗" label="Google Sheets" active={false} onClick={()=>setShowSheets(true)}/>}
           {isAdmin&&<SBI icon="⚙️" label="Settings" active={showSettings} onClick={()=>setShowSettings(true)}/>}
 
-          <div style={{padding:"10px 8px",borderTop:`1px solid ${C.gray200}`,marginTop:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-            {[["Mandals",settings.mandals.length,C.primary],["Panchayats",allPanchs.length,C.success],["Booths",booths.length,C.teal],["Castes",settings.castes.length,"#8B5CF6"]].map(([l,v,cl])=>(
-              <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:8,padding:"7px 9px",textAlign:"center"}}>
-                <div style={{fontSize:18,fontWeight:800,color:cl}}>{v}</div>
-                <div style={{fontSize:9,color:C.gray400,fontWeight:600,textTransform:"uppercase"}}>{l}</div>
-              </div>
-            ))}
+          <div style={{borderTop:`1px solid ${C.gray200}`,marginTop:"auto",padding:"6px 8px 8px"}}>
+            <div style={{fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em",marginBottom:5}}>Data Status</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+              {[["Contacts",contacts.length,C.primary],["Booths",booths.length,C.teal],["Panchayats",allPanchs.length,C.success],["Volunteers",0,"#8B5CF6"]].map(([l,v,cl])=>(
+                <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:8,padding:"6px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:16,fontWeight:800,color:cl}}>{v}</div>
+                  <div style={{fontSize:8,color:C.gray400,fontWeight:600,textTransform:"uppercase"}}>{l}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -929,10 +940,10 @@ export default function App() {
               ⚙️ <span className="top-strip-label">Settings</span>
             </button>
             <button onClick={()=>setShowVolunteers(true)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",fontSize:12,fontWeight:600,background:"#FFFBEB",color:"#D97706",border:"1.5px solid #D9770633",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>
-              👥 <span className="top-strip-label">Volunteers</span>
+              👥 <span className="top-strip-label">Add Volunteers</span>
             </button>
             <button onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",fontSize:12,fontWeight:600,background:C.tealLight,color:C.teal,border:`1.5px solid ${C.teal}33`,borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>
-              📍 <span className="top-strip-label">Booths</span>
+              📍 <span className="top-strip-label">Booth Management</span>
             </button>
             <div style={{flex:1}}/>
             <span style={{fontSize:11,color:C.gray400}}>{contacts.length} contacts</span>
@@ -1077,19 +1088,22 @@ export default function App() {
         </div>
       )}
 
-      {/* BOTTOM NAV */}
-      <div id="bottom-nav">
-        <button onClick={()=>{setScreen("contacts");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="contacts"?C.primary:C.gray400,borderTop:screen==="contacts"?`2.5px solid ${C.primary}`:"2.5px solid transparent"}}>
-          <span style={{fontSize:20}}>👥</span><span style={{fontSize:10,fontWeight:700}}>Contacts</span>
+      {/* BOTTOM NAV — mobile only, hidden on desktop via CSS */}
+      <div id="bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:C.white,borderTop:`2px solid ${C.gray200}`,zIndex:200,alignItems:"stretch",paddingBottom:"env(safe-area-inset-bottom,0px)"}}>
+        <button onClick={()=>{setScreen("contacts");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="contacts"?C.primary:C.gray500,borderTop:screen==="contacts"?`2.5px solid ${C.primary}`:"2.5px solid transparent",padding:"6px 0"}}>
+          <span style={{fontSize:18}}>👥</span><span style={{fontSize:9,fontWeight:700}}>Contacts</span>
         </button>
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
-          <button onClick={()=>{setEditC(null);setShowAdd(true);}} style={{width:54,height:54,borderRadius:"50%",border:"none",cursor:"pointer",background:`linear-gradient(135deg,${C.success},#047857)`,color:C.white,fontSize:28,fontWeight:800,boxShadow:"0 6px 20px rgba(5,150,105,.45)",display:"flex",alignItems:"center",justifyContent:"center",position:"absolute",bottom:6}}>＋</button>
+          <button onClick={()=>{setEditC(null);setShowAdd(true);}} style={{width:50,height:50,borderRadius:"50%",border:"none",cursor:"pointer",background:`linear-gradient(135deg,${C.success},#047857)`,color:C.white,fontSize:26,fontWeight:800,boxShadow:"0 4px 16px rgba(5,150,105,.5)",display:"flex",alignItems:"center",justifyContent:"center",position:"absolute",bottom:4}}>＋</button>
         </div>
-        <button onClick={()=>{setScreen("booths");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="booths"?C.teal:C.gray400,borderTop:screen==="booths"?`2.5px solid ${C.teal}`:"2.5px solid transparent"}}>
-          <span style={{fontSize:20}}>📍</span><span style={{fontSize:10,fontWeight:700}}>Booths</span>
+        <button onClick={()=>{setScreen("booths");setActiveTag("");setSelC(null);setSelB(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:screen==="booths"?C.teal:C.gray500,borderTop:screen==="booths"?`2.5px solid ${C.teal}`:"2.5px solid transparent",padding:"6px 0"}}>
+          <span style={{fontSize:18}}>📍</span><span style={{fontSize:9,fontWeight:700}}>Booths</span>
         </button>
-        <button onClick={()=>isAdmin&&setShowSettings(true)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:C.gray400}}>
-          <span style={{fontSize:20}}>⚙️</span><span style={{fontSize:10,fontWeight:700}}>Settings</span>
+        <button onClick={()=>exitWorkspace()} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:C.primary,borderTop:"2.5px solid transparent",padding:"6px 0"}}>
+          <span style={{fontSize:18}}>🔄</span><span style={{fontSize:9,fontWeight:700}}>Switch</span>
+        </button>
+        <button onClick={logout} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:C.gray500,padding:"6px 0"}}>
+          <span style={{fontSize:18}}>🚪</span><span style={{fontSize:9,fontWeight:700}}>Logout</span>
         </button>
       </div>
 

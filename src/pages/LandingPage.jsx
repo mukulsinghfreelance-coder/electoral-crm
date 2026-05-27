@@ -291,7 +291,20 @@ export default function LandingPage() {
   useEffect(() => {
     const el = document.createElement('style')
     el.id = 'lp-mobile-css'
-    el.textContent = '@media(max-width:640px){.lp-pg{grid-template-columns:1fr!important;}.lp-nav{flex-wrap:wrap;}}'
+    el.textContent = `
+      @media(max-width:640px){
+        .lp-nav-links{display:none!important;}
+        .lp-nav-btns{gap:6px!important;}
+        .lp-hero-h1{font-size:28px!important;line-height:1.25!important;}
+        .lp-hero-sub{font-size:14px!important;}
+        .lp-pricing-grid{grid-template-columns:1fr!important;}
+        .lp-steps-grid{grid-template-columns:1fr!important;}
+        .lp-features-grid{grid-template-columns:1fr 1fr!important;}
+        .lp-footer-links{flex-wrap:wrap!important;gap:10px!important;justify-content:center!important;}
+        .lp-auth-modal{width:calc(100vw - 32px)!important;margin:16px!important;}
+        .lp-section-pad{padding:40px 16px!important;}
+      }
+    `
     if (!document.getElementById('lp-mobile-css')) document.head.appendChild(el)
     return () => document.getElementById('lp-mobile-css')?.remove()
   }, [])
