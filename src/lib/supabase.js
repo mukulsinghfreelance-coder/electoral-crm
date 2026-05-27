@@ -427,21 +427,52 @@ export async function adminDeleteWorkspace(workspaceId) {
 }
 
 export async function adminPurgeCustomer(customerId) {
-  // Get all workspaces first
+  // Get all workspaces
   const { data: workspaces } = await supabase
     .from('workspaces')
     .select('id')
     .eq('customer_id', customerId)
 
-  // Delete all workspace data
+  // Delete all workspace data in correct order
   for (const ws of workspaces || []) {
-    await supabase.from('settings').delete().eq('workspace_id', ws.id)
+    await supabase.from('volunteers').delete().eq('workspace_id', ws.id)
     await supabase.from('contacts').delete().eq('workspace_id', ws.id)
     await supabase.from('booths').delete().eq('workspace_id', ws.id)
+    await supabase.from('settings').delete().eq('workspace_id', ws.id)
   }
+
+  // Delete billing history
+  await supabase.from('billing_history').delete().eq('customer_id', customerId)
+
+  // Delete workspaces
   await supabase.from('workspaces').delete().eq('customer_id', customerId)
+
+  // Finally delete the customer
   const { error } = await supabase.from('customers').delete().eq('id', customerId)
   if (error) throw error
+}
+
+export async function adminGetPurgeSummary(customerId) {
+  // Get counts before purge to show warning
+  const { data: workspaces } = await supabase
+    .from('workspaces')
+    .select('id, name, vs')
+    .eq('customer_id', customerId)
+
+  const wsIds = (workspaces || []).map(w => w.id)
+  
+  const [contacts, booths, volunteers] = await Promise.all([
+    wsIds.length ? supabase.from('contacts').select('id', {count:'exact',head:true}).in('workspace_id', wsIds) : {count:0},
+    wsIds.length ? supabase.from('booths').select('id', {count:'exact',head:true}).in('workspace_id', wsIds) : {count:0},
+    wsIds.length ? supabase.from('volunteers').select('id, name, email').in('workspace_id', wsIds) : {data:[]},
+  ])
+
+  return {
+    workspaces: workspaces || [],
+    contactCount: contacts.count || 0,
+    boothCount: booths.count || 0,
+    volunteers: volunteers.data || [],
+  }
 }
 
 export async function adminFetchWorkspaceContactCount(workspaceId) {
