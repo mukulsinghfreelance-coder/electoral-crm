@@ -32,9 +32,42 @@ export function AuthProvider({ children }) {
     console.log('loadCustomer:', authUser.email)
 
     try {
+      // ── STEP 1: Check volunteers table FIRST ─────────────────────────────
+      // Volunteers must be identified before checking/creating customer records
+      const { data: vol } = await supabase
+        .from('volunteers')
+        .select('*')
+        .eq('email', authUser.email)
+        .maybeSingle()
+
+      if (vol) {
+        console.log('Volunteer login:', vol.email, '| workspace:', vol.workspace_id)
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('*')
+          .eq('id', vol.workspace_id)
+          .maybeSingle()
+
+        if (ws) setVolunteerWorkspace(ws)
+        else console.error('Volunteer workspace not found:', vol.workspace_id)
+
+        setCustomer({
+          id:           vol.id,
+          email:        authUser.email,
+          name:         vol.name,
+          plan:         'volunteer',
+          role:         'volunteer',
+          isVolunteer:  true,
+          workspace_id: vol.workspace_id,
+        })
+        setAuthError('')
+        setLoading(false)
+        return  // ← done, never touch customers table
+      }
+
+      // ── STEP 2: Check customers table ────────────────────────────────────
       let data = null
 
-      // 1. Try by auth_id
       const { data: byAuthId } = await supabase
         .from('customers')
         .select('*')
@@ -44,7 +77,6 @@ export function AuthProvider({ children }) {
       if (byAuthId) {
         data = byAuthId
       } else {
-        // 2. Try by email
         const { data: byEmail } = await supabase
           .from('customers')
           .select('*')
@@ -52,52 +84,13 @@ export function AuthProvider({ children }) {
           .maybeSingle()
 
         if (byEmail) {
-          // Link auth_id silently
-          supabase
-            .from('customers')
+          supabase.from('customers')
             .update({ auth_id: authUser.id })
             .eq('email', authUser.email)
-            .then(() => console.log('auth_id linked'))
-            .catch(console.warn)
+            .then(() => {}).catch(console.warn)
           data = { ...byEmail, auth_id: authUser.id }
         } else {
-          // 3. Check volunteers table before creating new customer
-          const { data: vol } = await supabase
-            .from('volunteers')
-            .select('*')
-            .eq('email', authUser.email)
-            .maybeSingle()
-
-          if (vol) {
-            // Volunteer login — fetch their workspace
-            const { data: ws } = await supabase
-              .from('workspaces')
-              .select('*')
-              .eq('id', vol.workspace_id)
-              .maybeSingle()
-
-            console.log('Volunteer loaded:', vol.email, '| workspace:', vol.workspace_id, '| ws found:', !!ws)
-            // Set workspace FIRST, then customer — AppRouter checks workspace
-            if (ws) {
-              setVolunteerWorkspace(ws)
-            } else {
-              console.error('Volunteer workspace not found:', vol.workspace_id)
-            }
-            setCustomer({
-              id:           vol.id,
-              email:        authUser.email,
-              name:         vol.name,
-              plan:         'volunteer',
-              role:         'volunteer',
-              isVolunteer:  true,
-              workspace_id: vol.workspace_id,
-            })
-            setAuthError('')
-            setLoading(false)
-            return
-          }
-
-          // 4. Truly new user → create free customer
+          // ── STEP 3: New user → create free customer ─────────────────────
           const { data: newC, error } = await supabase
             .from('customers')
             .insert({
@@ -110,7 +103,7 @@ export function AuthProvider({ children }) {
             .single()
           if (error) throw error
           data = newC
-          console.log('New customer created')
+          console.log('New customer created:', data.email)
         }
       }
 
