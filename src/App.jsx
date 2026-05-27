@@ -527,7 +527,7 @@ function Toast({msg,type}) {
 }
 
 // ─── VOLUNTEER MODAL ──────────────────────────────────────────────────────────
-function VolunteerModal({open,onClose,workspaceId}) {
+function VolunteerModal({open,onClose,workspaceId,adminName,vsName}) {
   const [volunteers, setVolunteers] = useState([]);
   const [name,  setName]  = useState("");
   const [email, setEmail] = useState("");
@@ -535,108 +535,142 @@ function VolunteerModal({open,onClose,workspaceId}) {
   const [loading, setLoading] = useState(false);
   const [saving,  setSaving]  = useState(false);
   const [err,     setErr]     = useState("");
+  const [notifyStatus, setNotifyStatus] = useState({}); // {id: 'sending'|'sent'|'error'}
 
   useEffect(() => { if(open && workspaceId) load(); }, [open, workspaceId]);
 
   const load = async () => {
-    setLoading(true);
+    setLoading(true); setErr("");
     try {
-      const sb = supabase;
-      const { data, error } = await sb.from('volunteers')
-        .select('*').eq('workspace_id', workspaceId).order('created_at');
+      const { data, error } = await supabase
+        .from('volunteers')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at');
       if (error) throw error;
       setVolunteers(data || []);
     } catch(e) { setErr("Load failed: " + e.message); }
     setLoading(false);
   };
 
+  const sendWelcomeEmail = async (volEmail, volName) => {
+    // Use Supabase Edge Function or mailto fallback
+    // For now: open mailto with pre-filled message
+    const subject = encodeURIComponent(`You've been added as a Volunteer - ${vsName}`);
+    const body = encodeURIComponent(
+      `Hi ${volName},\n\n` +
+      `You have been added as a Volunteer for the ${vsName} constituency by ${adminName}.\n\n` +
+      `You can now log in at: https://sampark.ai (or localhost:5173 for testing)\n` +
+      `Use your email: ${volEmail}\n` +
+      `Login method: Email OTP (no password needed)\n\n` +
+      `Your role: You can add and manage contacts and booth data for ${vsName}.\n\n` +
+      `Regards,\nSampark.AI Team`
+    );
+    window.open(`mailto:${volEmail}?subject=${subject}&body=${body}`);
+  };
+
   const add = async () => {
     const em = email.trim().toLowerCase();
     if (!name.trim() || !em) { setErr("Name and email are required"); return; }
-    if (!/\S+@\S+\.\S+/.test(em)) { setErr("Enter a valid email"); return; }
+    if (!/\S+@\S+\.\S+/.test(em)) { setErr("Enter a valid email address"); return; }
     setSaving(true); setErr("");
     try {
-      const sb = supabase;
-
-      // Check: email must not already be a CUSTOMER
-      const { data: existCust } = await sb.from('customers')
-        .select('id,email').eq('email', em).maybeSingle();
+      // Check: not already a customer
+      const { data: existCust } = await supabase
+        .from('customers').select('id').eq('email', em).maybeSingle();
       if (existCust) {
-        setErr(`❌ ${em} is already registered as a customer. A customer cannot be a volunteer.`);
+        setErr(`❌ ${em} is a registered customer and cannot be added as a volunteer.`);
         setSaving(false); return;
       }
-
-      // Check: email must not already be a volunteer in ANY workspace
-      const { data: existVol } = await sb.from('volunteers')
-        .select('id, workspace_id').eq('email', em).maybeSingle();
+      // Check: not already a volunteer anywhere
+      const { data: existVol } = await supabase
+        .from('volunteers').select('id, workspace_id').eq('email', em).maybeSingle();
       if (existVol) {
-        if (existVol.workspace_id === workspaceId) {
-          setErr(`❌ ${em} is already a volunteer in this constituency.`);
-        } else {
-          setErr(`❌ ${em} is already assigned as a volunteer in another constituency.`);
-        }
+        setErr(existVol.workspace_id === workspaceId
+          ? `❌ ${em} is already a volunteer in this constituency.`
+          : `❌ ${em} is already a volunteer in another constituency.`
+        );
         setSaving(false); return;
       }
-
-      const { error } = await sb.from('volunteers').insert({
-        name:         name.trim(),
-        email:        em,
-        phone:        phone.trim() || null,
-        workspace_id: workspaceId,
-      });
+      // Insert
+      const { data: newVol, error } = await supabase.from('volunteers').insert({
+        name: name.trim(), email: em,
+        phone: phone.trim() || null, workspace_id: workspaceId,
+      }).select().single();
       if (error) throw error;
 
       setName(""); setEmail(""); setPhone("");
       await load();
+
+      // Offer to send welcome email
+      if (confirm(`Volunteer added! Send welcome email to ${em}?`)) {
+        sendWelcomeEmail(em, name.trim());
+      }
     } catch(e) {
       setErr("Error: " + (e.message?.includes('unique') ? 'This email is already registered.' : e.message));
     }
     setSaving(false);
   };
 
-  const remove = async (id, volEmail) => {
-    if (!confirm(`Remove volunteer ${volEmail}? They will no longer be able to log in.`)) return;
+  const remove = async (id, volEmail, volName) => {
+    if (!confirm(`Remove ${volName} (${volEmail}) as volunteer?\nThey will no longer be able to access this constituency.`)) return;
     try {
-      const sb = supabase;
-      const { error } = await sb.from('volunteers').delete().eq('id', id);
+      const { error } = await supabase.from('volunteers').delete().eq('id', id);
       if (error) throw error;
       await load();
     } catch(e) { setErr("Error: " + e.message); }
   };
 
+  const resendInvite = (vol) => {
+    sendWelcomeEmail(vol.email, vol.name);
+  };
+
   return (
     <Modal open={open} onClose={onClose} title="👥 Manage Volunteers" wide>
+      {/* Info banner */}
       <div style={{background:C.primaryLight,borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:C.primary,lineHeight:1.7}}>
-        Volunteers can add contacts and manage booth data for <strong>this constituency only</strong>. They log in with their email via OTP.
+        Volunteers can add contacts and manage booth data for <strong>{vsName}</strong> only.
+        They log in with their email via OTP — no password needed.
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:"0 10px",marginBottom:10}}>
-        <Fld label="Full Name"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
-        <Fld label="Email"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
-        <Fld label="Phone (optional)"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="10 digits" maxLength={10}/></Fld>
-      </div>
-      {err && <div style={{background:"#FEE2E2",color:C.red,borderRadius:8,padding:"8px 12px",fontSize:12,marginBottom:10}}>{err}</div>}
-      <Btn v="primary" onClick={add} disabled={saving} style={{marginBottom:16}}>
-        {saving ? "⏳ Adding…" : "＋ Add Volunteer"}
-      </Btn>
 
+      {/* Add form */}
+      <div style={{background:C.gray50,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${C.gray200}`}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.gray900,marginBottom:8}}>Add New Volunteer</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:"0 10px",marginBottom:8}}>
+          <Fld label="Full Name"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
+          <Fld label="Email"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
+          <Fld label="Phone (optional)"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="10 digits" maxLength={10}/></Fld>
+        </div>
+        {err && <div style={{background:"#FEE2E2",color:C.red,borderRadius:7,padding:"7px 10px",fontSize:11,marginBottom:8}}>{err}</div>}
+        <Btn v="primary" onClick={add} disabled={saving}>{saving?"⏳ Adding…":"＋ Add Volunteer"}</Btn>
+      </div>
+
+      {/* Volunteers list */}
       <div style={{fontSize:12,fontWeight:700,color:C.gray900,marginBottom:8}}>
-        Volunteers in this constituency ({volunteers.length})
+        Volunteers in {vsName} ({volunteers.length})
       </div>
       {loading ? (
         <div style={{color:C.gray400,fontSize:12,padding:16,textAlign:"center"}}>Loading…</div>
       ) : volunteers.length === 0 ? (
         <div style={{color:C.gray400,fontSize:12,padding:20,textAlign:"center",background:C.gray50,borderRadius:10}}>
-          No volunteers added yet.<br/>Add volunteers above to let them manage contacts.
+          No volunteers yet. Add volunteers above to let them manage contacts.
         </div>
       ) : (
         <div style={{border:`1.5px solid ${C.gray200}`,borderRadius:10,overflow:"hidden"}}>
-          {volunteers.map(v => (
-            <div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:`1px solid ${C.gray100}`,gap:8}}>
-              <div style={{minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600,color:C.gray900}}>{v.name}</div>
-                <div style={{fontSize:11,color:C.gray400}}>{v.email}{v.phone && ` · ${v.phone}`}</div>
+          {volunteers.map((v,i) => (
+            <div key={v.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:i<volunteers.length-1?`1px solid ${C.gray100}`:"none",background:i%2===0?C.white:C.gray50}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:"#F97316",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:13,flexShrink:0}}>
+                {v.name.charAt(0).toUpperCase()}
               </div>
-              <Btn v="danger" onClick={()=>remove(v.id,v.email)} style={{padding:"4px 10px",fontSize:11,flexShrink:0}}>Remove</Btn>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.gray900}}>{v.name}</div>
+                <div style={{fontSize:11,color:C.gray400}}>{v.email}{v.phone&&` · ${v.phone}`}</div>
+                <div style={{fontSize:9,color:C.gray400}}>Added {new Date(v.created_at).toLocaleDateString('en-IN')}</div>
+              </div>
+              <div style={{display:"flex",gap:5,flexShrink:0}}>
+                <Btn v="ghost" onClick={()=>resendInvite(v)} style={{padding:"4px 8px",fontSize:10}} title="Resend invite email">📧</Btn>
+                <Btn v="danger" onClick={()=>remove(v.id,v.email,v.name)} style={{padding:"4px 10px",fontSize:11}}>Remove</Btn>
+              </div>
             </div>
           ))}
         </div>
@@ -652,7 +686,7 @@ function VolunteerModal({open,onClose,workspaceId}) {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const { customer: user, workspace, exitWorkspace, isSuperAdmin, planLimits, logout } = useAuth()
+  const { customer: user, workspace, exitWorkspace, isSuperAdmin, planLimits, logout, ownerCustomer } = useAuth()
   const isAdmin     = !user?.isVolunteer   // volunteers are NOT admins
   const isVolunteer = !!user?.isVolunteer
   // ── Data state ────────────────────────────────────────────────────────────
@@ -1024,14 +1058,30 @@ export default function App() {
           </div>
 
           {/* User info */}
-          <div style={{padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,background:C.primaryLight}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.primary}}>{user?.name}</div>
-            <div style={{fontSize:10,color:C.gray400,marginTop:1}}>{isAdmin?"👑 Admin":"👤 Volunteer"} · {workspace?.vs||"—"}</div>
+          <div style={{padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,background:isAdmin?C.primaryLight:"#FFF7ED"}}>
+            {isAdmin ? (<>
+              <div style={{fontSize:12,fontWeight:700,color:C.primary}}>{user?.name}</div>
+              <div style={{fontSize:10,color:C.gray400,marginTop:1}}>👑 Admin · {workspace?.vs||"—"}</div>
               <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
-              {isAdmin&&<button onClick={()=>exitWorkspace()} style={{width:"100%",padding:"7px 6px",fontSize:11,fontWeight:800,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(79,70,229,.4)"}}>🔄 Switch Constituency</button>}
-              <button onClick={logout} style={{width:"100%",padding:"4px 6px",fontSize:10,fontWeight:500,background:"transparent",color:C.gray400,border:`1px solid ${C.gray200}`,borderRadius:5,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
-            </div>
-            </div>
+                <button onClick={()=>exitWorkspace()} style={{width:"100%",padding:"7px 6px",fontSize:11,fontWeight:800,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(79,70,229,.4)"}}>🔄 Switch Constituency</button>
+                <button onClick={logout} style={{width:"100%",padding:"4px 6px",fontSize:10,fontWeight:500,background:"transparent",color:C.gray400,border:`1px solid ${C.gray200}`,borderRadius:5,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
+              </div>
+            </>) : (<>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:"#F97316",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>👤</div>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#92400E"}}>{user?.name}</div>
+                  <div style={{fontSize:9,color:"#D97706",fontWeight:600}}>VOLUNTEER</div>
+                </div>
+              </div>
+              <div style={{background:"#FEF3C7",borderRadius:7,padding:"5px 8px",fontSize:10,color:"#92400E",marginBottom:4}}>
+                <div style={{fontWeight:600}}>📋 Assigned by:</div>
+                <div>{ownerCustomer?.name||"Admin"}</div>
+                <div style={{color:"#B45309",fontSize:9}}>{ownerCustomer?.email}</div>
+              </div>
+              <button onClick={logout} style={{width:"100%",padding:"5px 6px",fontSize:10,fontWeight:600,background:"transparent",color:"#D97706",border:"1px solid #FCD34D",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
+            </>)}
+          </div>
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
@@ -1266,7 +1316,7 @@ export default function App() {
       <ImportModal open={showImport} onClose={()=>setShowImport(false)} onImport={handleImport} saving={saving}/>
       <ExcelModal open={showExcel} onClose={()=>setShowExcel(false)} onImport={handleBoothExcel} saving={saving}/>
       <SheetsModal open={showSheets} onClose={()=>setShowSheets(false)} settings={settings} setSettings={setSettingsState}/>
-      <VolunteerModal open={showVolunteers} onClose={()=>setShowVolunteers(false)} workspaceId={workspace?.id} orgId={user?.id}/>
+      <VolunteerModal open={showVolunteers} onClose={()=>setShowVolunteers(false)} workspaceId={workspace?.id} adminName={user?.name||user?.email} vsName={settings.vs||workspace?.vs||'—'}/>
       <Toast msg={toast.msg} type={toast.type}/>
       {showUpgrade && (
         <UpgradeModal

@@ -8,6 +8,7 @@ export { PLANS, calcMonthlyPrice }
 export function AuthProvider({ children }) {
   const [customer,          setCustomer]          = useState(null)
   const [volunteerWorkspace, setVolunteerWorkspace] = useState(null)
+  const [ownerCustomer,      setOwnerCustomer]      = useState(null)
   const [livePlans, setLivePlans] = useState(null)  // DB pricing overrides
 
   // ── Fetch live pricing from DB on mount ──────────────────────────────────
@@ -53,8 +54,18 @@ export function AuthProvider({ children }) {
           .maybeSingle()
 
         console.log('Setting volunteerWorkspace:', ws)
-        if (ws) setVolunteerWorkspace(ws)
-        else console.error('Volunteer workspace not found:', vol.workspace_id)
+        if (ws) {
+              setVolunteerWorkspace(ws)
+              // Fetch the admin who owns this workspace
+              const { data: owner } = await supabase
+                .from('customers')
+                .select('id, name, email')
+                .eq('id', ws.customer_id)
+                .maybeSingle()
+              if (owner) setOwnerCustomer(owner)
+            } else {
+              console.error('Volunteer workspace not found:', vol.workspace_id)
+            }
 
         setCustomer({
           id:           vol.id,
@@ -298,6 +309,7 @@ export function AuthProvider({ children }) {
       plan, planLimits, planConfig,
       livePlans: activePlans,
       isSuperAdmin, isGifted, paidVsCount, allowedVS,
+      ownerCustomer,
       annualBillingEnabled, annualDiscountPct,
       billingCycle: customer?.billing_cycle || 'monthly',
       calcMonthlyPrice: calcLivePrice,

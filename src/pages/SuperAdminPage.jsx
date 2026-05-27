@@ -371,6 +371,109 @@ function PricingPanel() {
 }
 
 // ─── MAIN SUPER ADMIN PAGE ────────────────────────────────────────────────────
+
+function VolunteersPanel() {
+  const [volunteers, setVolunteers] = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [search,     setSearch]     = useState('')
+  const [err,        setErr]        = useState('')
+
+  useEffect(() => { load() }, [])
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('volunteers')
+        .select(`*, workspaces(name, vs, state)`)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setVolunteers(data || [])
+    } catch(e) { setErr(e.message) }
+    setLoading(false)
+  }
+
+  const remove = async (id, email) => {
+    if (!confirm(`Remove volunteer ${email}?\nThey will lose access to their constituency.`)) return
+    try {
+      const { error } = await supabase.from('volunteers').delete().eq('id', id)
+      if (error) throw error
+      await load()
+    } catch(e) { alert('Error: ' + e.message) }
+  }
+
+  const filtered = volunteers.filter(v =>
+    !search || v.name?.toLowerCase().includes(search.toLowerCase()) ||
+    v.email?.toLowerCase().includes(search.toLowerCase()) ||
+    v.workspaces?.vs?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div style={{ padding:'20px 24px' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+        <div>
+          <div style={{ fontSize:16, fontWeight:700, color:'#111827' }}>All Volunteers</div>
+          <div style={{ fontSize:12, color:'#6B7280' }}>{volunteers.length} total across all constituencies</div>
+        </div>
+        <input value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="Search name, email, VS…"
+          style={{ padding:'8px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, outline:'none', width:220 }}
+        />
+      </div>
+
+      {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:8, marginBottom:12, fontSize:12 }}>{err}</div>}
+
+      {loading ? (
+        <div style={{ textAlign:'center', padding:40, color:'#6B7280' }}>Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign:'center', padding:40, color:'#6B7280' }}>No volunteers found</div>
+      ) : (
+        <div style={{ border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead>
+              <tr style={{ background:'#F9FAFB' }}>
+                {['Name','Email','Phone','Constituency (VS)','State','Added On','Action'].map(h => (
+                  <th key={h} style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#6B7280', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:'1px solid #E5E7EB' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((v, i) => (
+                <tr key={v.id} style={{ background: i%2===0?'#fff':'#F9FAFB', borderBottom:'1px solid #F3F4F6' }}>
+                  <td style={{ padding:'10px 12px', fontSize:13, fontWeight:600, color:'#111827' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:'#F97316', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12, flexShrink:0 }}>
+                        {(v.name||'?').charAt(0).toUpperCase()}
+                      </div>
+                      {v.name}
+                    </div>
+                  </td>
+                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.email}</td>
+                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.phone||'—'}</td>
+                  <td style={{ padding:'10px 12px', fontSize:12 }}>
+                    <span style={{ background:'#EDE9FE', color:'#5B21B6', padding:'2px 8px', borderRadius:6, fontWeight:600, fontSize:11 }}>
+                      {v.workspaces?.vs||v.workspaces?.name||'—'}
+                    </span>
+                  </td>
+                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.workspaces?.state||'—'}</td>
+                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6B7280' }}>
+                    {v.created_at ? new Date(v.created_at).toLocaleDateString('en-IN') : '—'}
+                  </td>
+                  <td style={{ padding:'10px 12px' }}>
+                    <button onClick={()=>remove(v.id, v.email)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, cursor:'pointer' }}>
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SuperAdminPage({ onBack }) {
   const { customer: me } = useAuth()
   const [customers,   setCustomers]   = useState([])
@@ -481,6 +584,7 @@ export default function SuperAdminPage({ onBack }) {
           {[
             { key:'customers', label:'👥 Customers' },
             { key:'pricing',   label:'💰 Pricing'   },
+            { key:'volunteers', label:'👥 Volunteers' },
           ].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
               flex:1, padding:'9px', fontSize:13, fontWeight:600, border:'none', borderRadius:9,
@@ -493,6 +597,7 @@ export default function SuperAdminPage({ onBack }) {
 
         {/* Pricing tab */}
         {activeTab === 'pricing' && <PricingPanel/>}
+      {activeTab === 'volunteers' && <VolunteersPanel/>}
       </div>
 
       {/* ── CUSTOMER LIST ── */}
