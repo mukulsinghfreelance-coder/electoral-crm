@@ -79,7 +79,7 @@ function Modal({open,onClose,title,children,wide=false}) {
   if(!open)return null;
   return (
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"rgba(17,24,39,.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:1000,padding:"30px 16px",overflowY:"auto",backdropFilter:"blur(3px)"}}>
-      <div className="modal-inner" style={{background:C.white,borderRadius:18,boxShadow:"0 24px 64px rgba(0,0,0,.18)",padding:"24px 26px",width:wide?640:450,maxHeight:"90vh",overflowY:"auto",marginBottom:20}}>
+      <div className="modal-inner" style={{background:C.white,borderRadius:18,boxShadow:"0 24px 64px rgba(0,0,0,.18)",padding:"24px 26px",width:wide?Math.min(780,window.innerWidth-32):Math.min(480,window.innerWidth-32),maxWidth:"calc(100vw - 32px)",maxHeight:"90vh",overflowY:"auto",marginBottom:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
           <span style={{fontSize:17,fontWeight:800,color:C.gray900}}>{title}</span>
           <button onClick={onClose} style={{background:C.gray100,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",color:C.gray600}}>✕</button>
@@ -582,7 +582,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
       <div style={{background:C.primaryLight,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:C.primary,lineHeight:1.7}}>
         Add volunteers by entering their name and email. They will be able to login using email OTP and add contacts.
       </div>
-      <div className="form-grid-3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px",marginBottom:12}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:"0 10px",marginBottom:12}}>
         <Fld label="Name" col="1"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
         <Fld label="Email" col="2"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
         <Fld label="Phone" col="3"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="optional" maxLength={10}/></Fld>
@@ -788,7 +788,22 @@ export default function App() {
 
   const handleSaveSettings=async s=>{
     setSaving(true);
-    try{await saveSettings(s,workspace.id);setSettingsState(s);setShowSettings(false);showToast("Settings saved ✓");}
+    try{
+      await saveSettings(s,workspace.id);
+      // If labels changed, propagate to ALL workspaces of this customer
+      const labelsChanged = JSON.stringify(s.labels) !== JSON.stringify(settings.labels);
+      if(labelsChanged && user?.id){
+        const sbMod = await import('./lib/supabase'); const sbClient = sbMod.supabase;
+        const {data:allWs} = await sbClient.from('workspaces').select('id').eq('customer_id',user.id);
+        if(allWs){
+          await Promise.all(allWs.filter(w=>w.id!==workspace.id).map(w=>
+            sb.from('settings').update({labels:s.labels}).eq('workspace_id',w.id)
+          ));
+          showToast('Labels updated across all constituencies ✓');
+        }
+      }
+      setSettingsState(s);setShowSettings(false);showToast("Settings saved ✓");
+    }
     catch(err){showToast("Error: "+err.message,"error");}
     setSaving(false);
   };
@@ -1057,7 +1072,7 @@ export default function App() {
               ))}
             </div>
 
-            <div id="table-wrap" style={{flex:1,overflowY:"auto",overflowX:"auto",minHeight:0}}>
+            <div id="booth-table-wrap" style={{flex:1,overflowY:"auto",overflowX:"auto",minHeight:0}}>
               <table id="booth-table" style={{width:"100%",borderCollapse:"collapse",tableLayout:"auto",minWidth:650}}>
                 <thead><tr>
                   {[["bno","No.",50],[`bnm`,L.boothName||"Booth Name",120],["mandal",L.mandal||"Mandal",80],["panchayat",L.panchayat||"Panchayat",90],["voters","Voters",60],["rating","Rating",80],["castes","Top Castes",null],["last","Last Election",null]].map(([col,label,w])=>(
@@ -1079,6 +1094,7 @@ export default function App() {
               </table>
               {filteredB.length===0&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:50,gap:10,color:C.gray400,textAlign:"center"}}><span style={{fontSize:40}}>📍</span><span style={{fontSize:14,fontWeight:600}}>No booths found</span></div>}
             </div>
+            {/* Pagination OUTSIDE scroll area so it's always visible */}
             {boothTotalPages>1&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px",borderTop:`1px solid ${C.gray200}`,background:C.white,flexShrink:0}}>
               <button onClick={()=>setBoothPage(p=>Math.max(1,p-1))} disabled={boothPage===1} style={{padding:"5px 14px",fontSize:12,fontWeight:600,background:boothPage===1?C.gray100:C.primaryLight,color:boothPage===1?C.gray400:C.primary,border:`1px solid ${boothPage===1?C.gray200:C.primary}44`,borderRadius:7,cursor:boothPage===1?"not-allowed":"pointer",fontFamily:"inherit"}}>← Previous</button>
               <span style={{fontSize:12,color:C.gray600}}>Page {boothPage} of {boothTotalPages} · {filteredB.length} booths</span>
