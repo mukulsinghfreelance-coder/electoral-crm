@@ -582,7 +582,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
       <div style={{background:C.primaryLight,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:C.primary,lineHeight:1.7}}>
         Add volunteers by entering their name and email. They will be able to login using email OTP and add contacts.
       </div>
-      <div className="form-grid-3" className="form-grid-3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px",marginBottom:12}}>
+      <div className="form-grid-3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px",marginBottom:12}}>
         <Fld label="Name" col="1"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
         <Fld label="Email" col="2"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
         <Fld label="Phone" col="3"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="optional" maxLength={10}/></Fld>
