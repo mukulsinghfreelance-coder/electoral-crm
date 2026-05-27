@@ -1189,7 +1189,7 @@ export default function App() {
                   <div style={{fontSize:11,color:C.primary,fontWeight:500}}>{contacts.length} total · {filteredC.length} shown</div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  {isAdmin&&!selectMode&&<Btn v="ghost" onClick={()=>setSelectMode(true)} style={{fontSize:11,padding:"5px 8px"}} title="Select contacts to bulk delete">☑️</Btn>}
+                  {isAdmin&&!selectMode&&<Btn v="ghost" onClick={()=>setSelectMode(true)} style={{fontSize:11,padding:"5px 10px"}} title="Select contacts to bulk delete">☑️ Select</Btn>}
                   {selectMode&&<>
                     <Btn v="ghost" onClick={()=>{setSelectedIds(slice.map(c=>c.id))}} style={{fontSize:11}}>☑ Page</Btn>
                     <Btn v="ghost" onClick={()=>{setSelectedIds(filteredC.map(c=>c.id))}} style={{fontSize:11}}>☑ All ({filteredC.length})</Btn>
@@ -1211,9 +1211,9 @@ export default function App() {
             </div>
 
             <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,background:C.gray50,overflowX:"auto",overflowY:"hidden",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
-              {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All "+((L.mandal||"Mandal")+"s"),settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All "+((L.panchayat||"Panchayat")+"s"),mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All "+((L.booth||"Booth")+"s"),[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All "+((L.caste||"Caste")+"s"),settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS],[fAddedBy,v=>{setFAddedBy(v);setPage(1);},"All Adders",[...new Set(contacts.map(c=>c.created_by).filter(Boolean))]]].map(([val,setter,ph,opts],i)=>(
-                <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer"}}>
-                  <option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}
+              {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All "+((L.mandal||"Mandal")+"s"),settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All "+((L.panchayat||"Panchayat")+"s"),mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All "+((L.booth||"Booth")+"s"),[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All "+((L.caste||"Caste")+"s"),settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS],[fAddedBy,v=>{setFAddedBy(v);setPage(1);},"All — Added By",[...new Set(contacts.map(c=>c.created_by).filter(Boolean))]]].map(([val,setter,ph,opts],i)=>(
+                <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer",flexShrink:0}}>
+                  <option value="">{ph}</option>{opts.map(o=><option key={o} value={o}>{ph==="All — Added By"?o.split('@')[0]:o}</option>)}
                 </select>
               ))}
               {(search||fM||fP||fB||fCaste||fT||activeTag)&&<button onClick={()=>{setSearch("");setFM("");setFP("");setFB("");setFCaste("");setFT("");setActiveTag("");setFAddedBy("");setPage(1);}} style={{padding:"5px 10px",fontSize:11,background:"#FEE2E2",color:C.red,border:"none",borderRadius:8,cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
