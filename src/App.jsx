@@ -808,11 +808,14 @@ export default function App() {
       .channel(`ws-${wsId}`)
       // ── Contacts ──────────────────────────────────────────────────────────
       .on('postgres_changes',
-        {event:'UPDATE', schema:'public', table:'settings', filter:`workspace_id=eq.${wsId}`},
+        {event:'UPDATE', schema:'public', table:'settings'},
         (payload) => {
           console.log('🔴 Settings Realtime fired!', payload);
-          loadAll();
-          if(!isAdmin) showToast('⚙️ Settings updated by admin','info');
+          // Only reload if it's our workspace
+          if(payload.new?.workspace_id === wsId || payload.old?.workspace_id === wsId) {
+            loadAll();
+            if(!isAdmin) showToast('⚙️ Settings updated by admin','info');
+          }
         }
       )
       .on('postgres_changes',
