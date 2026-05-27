@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { lazy, Suspense } from 'react'
 import { useAuth } from '../context/AuthContext'
 const PrivacyPolicy  = lazy(() => import('./PrivacyPolicy'))
