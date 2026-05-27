@@ -29,7 +29,7 @@ const DEFAULT_SETTINGS = {
   elections:["Election 2015","Election 2020","Election 2024"],
   adminPin:"1234", sheetsUrl:"",
   labels:{
-    mandal:L.mandal||"Mandal", panchayat:"Panchayat", booth:"Booth",
+    mandal:"Mandal", panchayat:"Panchayat", booth:"Booth",
     village:"Village", boothName:"Booth Name", caste:"Caste",
     tag:"Tag", contacts:"Contacts", karyakarta:"Karyakarta", whatsapp:"WhatsApp No.",
   },
