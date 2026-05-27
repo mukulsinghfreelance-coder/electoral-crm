@@ -269,7 +269,7 @@ function BoothForm({open,onClose,initial,settings,onSave,existingBooths,saving})
 }
 
 // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
-function SettingsModal({open,onClose,settings,onSave,saving}) {
+function SettingsModal({open,onClose,settings,onSave,saving,onImport,onExportCSV,onExportBooth,onSheets,onBulkDelete}) {
   const [s,setS]=useState(settings); const [selM,setSelM]=useState(0);
   const [nm,setNm]=useState(""); const [np,setNp]=useState(""); const [nc,setNc]=useState("");
   const [npy,setNpy]=useState(""); const [elections,setElections]=useState([...settings.elections]);
@@ -338,12 +338,14 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
         </div>
       </div>)}
       {tab==="admin"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.gray900,marginBottom:2}}>Data Management</div>
-        <Btn v="primary" onClick={()=>{onClose();setTimeout(()=>document.getElementById('import-trigger')?.click(),100);}}>⬆️ Import Contacts</Btn>
-        <Btn v="ghost" onClick={()=>{onClose();reqPinAdmin(exportCSV);}}>⬇️ Export Contacts CSV</Btn>
-        <Btn v="ghost" onClick={()=>{onClose();setShowSheets(true);}}>🔗 Google Sheets Sync</Btn>
-        <div style={{height:1,background:C.gray200,margin:"4px 0"}}/>
-        <Btn v="danger" onClick={()=>{onClose();setSelectMode(true);}}>🗑️ Bulk Delete Contacts</Btn>
+        <div style={{fontSize:12,fontWeight:700,color:C.gray900,marginBottom:2,paddingBottom:6,borderBottom:`1px solid ${C.gray200}`}}>Contacts</div>
+        <Btn v="primary" onClick={onImport}>⬆️ Import Contacts</Btn>
+        <Btn v="ghost" onClick={onExportCSV}>⬇️ Export Contacts CSV</Btn>
+        <Btn v="ghost" onClick={onSheets}>🔗 Google Sheets Sync</Btn>
+        <Btn v="danger" onClick={onBulkDelete}>🗑️ Bulk Delete Contacts</Btn>
+        <div style={{height:1,background:C.gray200,margin:"6px 0"}}/>
+        <div style={{fontSize:12,fontWeight:700,color:C.gray900,marginBottom:2}}>Booths</div>
+        <Btn v="ghost" onClick={onExportBooth}>📊 Export Booth Excel</Btn>
       </div>)}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}}>
         <Btn v="ghost" onClick={onClose}>Cancel</Btn>
@@ -545,7 +547,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
     try{
       const {createClient}=await import('@supabase/supabase-js');
       const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      const {data}=await sb.from('app_users').select('*').eq('workspace_id',workspaceId).eq('role','volunteer');
+      const {data}=await sb.from('volunteers').select('*').eq('workspace_id',workspaceId);
       setVolunteers(data||[]);
     }catch(e){console.error(e);}
     setLoading(false);
@@ -557,7 +559,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
     try{
       const {createClient}=await import('@supabase/supabase-js');
       const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      await sb.from('app_users').insert({name:name.trim(),email:email.trim().toLowerCase(),phone:phone.trim(),role:'volunteer',workspace_id:workspaceId,org_id:orgId});
+      await sb.from('volunteers').insert({name:name.trim(),email:email.trim().toLowerCase(),phone:phone.trim()||null,workspace_id:workspaceId});
       setName(""); setEmail(""); setPhone("");
       await loadVolunteers();
     }catch(e){alert("Error: "+e.message);}
@@ -569,7 +571,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
     try{
       const {createClient}=await import('@supabase/supabase-js');
       const sb=createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_ANON_KEY);
-      await sb.from('app_users').delete().eq('id',id);
+      await sb.from('volunteers').delete().eq('id',id);
       await loadVolunteers();
     }catch(e){alert("Error: "+e.message);}
   };
@@ -579,7 +581,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
       <div style={{background:C.primaryLight,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:C.primary,lineHeight:1.7}}>
         Add volunteers by entering their name and email. They will be able to login using email OTP and add contacts.
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px",marginBottom:12}}>
+      <div className="form-grid-3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px",marginBottom:12}}>
         <Fld label="Name" col="1"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
         <Fld label="Email" col="2"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
         <Fld label="Phone" col="3"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="optional" maxLength={10}/></Fld>
@@ -840,9 +842,15 @@ export default function App() {
         #metrics-row,#booth-metrics{grid-template-columns:repeat(2,1fr)!important;gap:4px!important;padding:4px 6px!important;}
         .top-strip-label{display:none!important;}
         #hero-bar,#booth-hero{padding:5px 8px!important;overflow:hidden!important;}
-        #filter-bar{padding:3px 6px!important;overflow:hidden!important;}
+        #filter-bar{padding:3px 4px!important;gap:6px!important;}
+        #filter-bar select{min-width:110px!important;flex-shrink:0!important;}
         #main-content{padding-bottom:90px!important;}
         input,select,textarea{font-size:16px!important;box-sizing:border-box!important;}
+        .form-grid-3{grid-template-columns:1fr!important;}
+        .form-grid-2{grid-template-columns:1fr!important;}
+      }
+      @media(max-width:1024px){
+        .form-grid-3{grid-template-columns:1fr 1fr!important;}
       }
       @media(min-width:769px){
         #bottom-nav{display:none!important;}
@@ -903,21 +911,24 @@ export default function App() {
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
-          <SBI icon="🗺️" label={`By ${L.mandal||"Mandal"}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
-          <SBI icon="🏘️" label={`By ${L.panchayat||"Panchayat"}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
+
+
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>By Tag</div>
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
 
 
 
-          <div style={{padding:"10px 8px",borderTop:`1px solid ${C.gray200}`,marginTop:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-            {[["Contacts",contacts.length,C.primary],["Mandals",settings.mandals.length,C.success],["Booths",booths.length,C.teal],["Castes",settings.castes.length,C.amber]].map(([l,v,cl])=>(
-              <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:8,padding:"7px 9px",textAlign:"center"}}>
-                <div style={{fontSize:18,fontWeight:800,color:cl}}>{v}</div>
-                <div style={{fontSize:9,color:C.gray400,fontWeight:600,textTransform:"uppercase"}}>{l}</div>
-              </div>
-            ))}
+          <div style={{borderTop:`1px solid ${C.gray200}`,marginTop:"auto",padding:"5px 8px 6px"}}>
+            <div style={{fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em",marginBottom:4}}>Data Count</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+              {[["Contacts",contacts.length,C.primary],[`${L.panchayat||"Panchayat"}s`,allPanchs.length,C.success],[`${L.booth||"Booth"}s`,booths.length,C.teal],["Volunteers",0,"#8B5CF6"]].map(([l,v,cl])=>(
+                <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:8,padding:"5px 3px",textAlign:"center"}}>
+                  <div style={{fontSize:15,fontWeight:800,color:cl,lineHeight:1}}>{v}</div>
+                  <div style={{fontSize:8,color:C.gray400,fontWeight:600,textTransform:"uppercase",marginTop:2}}>{l}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -950,13 +961,8 @@ export default function App() {
                   <div style={{fontSize:11,color:C.primary,fontWeight:500}}>{contacts.length} total · {filteredC.length} shown</div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <Btn v="success" onClick={()=>{setEditC(null);setShowAdd(true);}} style={{padding:"9px 16px",fontSize:13}}>＋ Add</Btn>
-                  {isAdmin&&<Btn v="ghost" onClick={()=>reqPinAdmin(exportCSV)} title="Export CSV">⬇️</Btn>}
-                  <Btn v="ghost" onClick={()=>setShowImport(true)} title="Import CSV">⬆️</Btn>
-                  {isAdmin&&<Btn v={selectMode?"danger":"ghost"} onClick={()=>{if(selectMode){setSelectMode(false);setSelectedIds([]);}else setSelectMode(true);}}>
-                    {selectMode?`✕ (${selectedIds.length})`:"☑️"}
-                  </Btn>}
-                  {selectMode&&selectedIds.length>0&&<Btn v="danger" onClick={handleBulkDelete}>🗑️ {selectedIds.length}</Btn>}
+                  {selectMode&&selectedIds.length>0&&<Btn v="danger" onClick={handleBulkDelete}>🗑️ Delete {selectedIds.length}</Btn>}
+                  {selectMode&&<Btn v="ghost" onClick={()=>{setSelectMode(false);setSelectedIds([])}}>✕ Cancel</Btn>}
                 </div>
               </div>
               <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="🔍  Search name, phone, caste…" style={{width:"100%",padding:"9px 14px",fontSize:13,border:`1.5px solid ${C.gray200}`,borderRadius:22,background:C.white,color:C.gray900,outline:"none",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}/>
@@ -971,7 +977,7 @@ export default function App() {
               ))}
             </div>
 
-            <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,flexWrap:"wrap",background:C.gray50,overflow:"hidden"}}>
+            <div id="filter-bar" style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0,background:C.gray50,overflowX:"auto",overflowY:"hidden",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
               {[[fM,v=>{setFM(v);setFP("");setPage(1);},"All "+((L.mandal||"Mandal")+"s"),settings.mandals.map(m=>m.name)],[fP,v=>{setFP(v);setPage(1);},"All "+((L.panchayat||"Panchayat")+"s"),mandalPanchs],[fB,v=>{setFB(v);setPage(1);},"All "+((L.booth||"Booth")+"s"),[...new Set(contacts.map(c=>c.bno).filter(Boolean))].sort((a,b)=>+a-+b)],[fCaste,v=>{setFCaste(v);setPage(1);},"All "+((L.caste||"Caste")+"s"),settings.castes],[fT,v=>{setFT(v);setActiveTag("");setPage(1);},"All Tags",TAGS]].map(([val,setter,ph,opts],i)=>(
                 <select key={i} value={val} onChange={e=>setter(e.target.value)} style={{padding:"6px 10px",fontSize:11,border:`1.5px solid ${C.gray200}`,borderRadius:8,background:val?C.primaryLight:C.white,color:val?C.primary:C.gray600,fontWeight:val?700:400,outline:"none",cursor:"pointer"}}>
                   <option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}
@@ -1122,7 +1128,13 @@ export default function App() {
 
       {/* MODALS */}
       <OTPModal open={showOTP} onClose={()=>setShowOTP(false)} pin={settings.adminPin} onSuccess={()=>{setPinIsAdmin(true);setShowOTP(false);if(otpAction){otpAction();setOtpAction(null);}}}/>
-      <SettingsModal open={showSettings} onClose={()=>setShowSettings(false)} settings={settings} onSave={handleSaveSettings} saving={saving}/>
+      <SettingsModal open={showSettings} onClose={()=>setShowSettings(false)} settings={settings} onSave={handleSaveSettings} saving={saving}
+        onImport={()=>{setShowSettings(false);setShowImport(true);}}
+        onExportCSV={()=>{setShowSettings(false);reqPinAdmin(exportCSV);}}
+        onExportBooth={()=>{setShowSettings(false);setShowExcel(true);}}
+        onSheets={()=>{setShowSettings(false);setShowSheets(true);}}
+        onBulkDelete={()=>{setShowSettings(false);setSelectMode(true);}}
+      />
       <ContactForm open={showAdd} onClose={()=>{setShowAdd(false);setEditC(null);}} initial={editC} settings={settings} onSave={handleSaveContact} saving={saving}/>
       <BoothForm open={showBAdd} onClose={()=>{setShowBAdd(false);setEditB(null);}} initial={editB} settings={settings} onSave={handleSaveBooth} saving={saving} existingBooths={booths}/>
       <ConstModal open={showConst} onClose={()=>setShowConst(false)} settings={settings} onSave={handleSaveConst} saving={saving}/>
