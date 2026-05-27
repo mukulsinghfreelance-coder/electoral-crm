@@ -56,12 +56,7 @@ export default function AppRouter() {
 
   // Volunteer → go directly to App once workspace is loaded
   if (customer?.isVolunteer) {
-    console.log('AppRouter: volunteer check - workspace:', workspace?.vs, 'loading:', loading)
-    if (!workspace) {
-      console.log('AppRouter: waiting for volunteer workspace...')
-      return <Spinner/>
-    }
-    console.log('AppRouter: rendering App for volunteer')
+    if (!workspace) return <Spinner/>
     return <App/>
   }
 

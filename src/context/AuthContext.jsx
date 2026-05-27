@@ -32,7 +32,6 @@ export function AuthProvider({ children }) {
     // Prevent concurrent loads
     if (loadingRef.current === authUser.id) return
     loadingRef.current = authUser.id
-    console.log('loadCustomer:', authUser.email)
 
     try {
       // ── STEP 1: Check volunteers table FIRST ─────────────────────────────
@@ -43,10 +42,7 @@ export function AuthProvider({ children }) {
         .eq('email', authUser.email)
         .maybeSingle()
 
-      console.log('Volunteer check:', authUser.email, '→ vol=', vol, 'err=', volErr)
-
       if (vol) {
-        console.log('Volunteer login:', vol.email, '| workspace:', vol.workspace_id)
         // Clear any previous workspace state first
         setWorkspace(null)
         const { data: ws } = await supabase
@@ -65,7 +61,6 @@ export function AuthProvider({ children }) {
                 setOwnerCustomer({ name: ownerRows[0].owner_name, email: ownerRows[0].owner_email })
               }
             } else {
-              console.error('Volunteer workspace not found:', vol.workspace_id)
             }
 
         setCustomer({
@@ -135,8 +130,7 @@ export function AuthProvider({ children }) {
             }
           } else {
             data = newC
-            console.log('New customer created:', data.email)
-          }
+              }
         }
       }
 
@@ -156,7 +150,6 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
-        if(event !== 'TOKEN_REFRESHED') console.log('Auth event:', event, newSession?.user?.email || 'none')
         setSession(newSession)
 
         // ── KEY FIX: Never use await inside onAuthStateChange ──────────────
@@ -306,7 +299,6 @@ export function AuthProvider({ children }) {
       customer, session, loading,
       workspace: (() => {
         const w = customer?.isVolunteer ? volunteerWorkspace : workspace
-        if (customer?.isVolunteer) console.log('Serving volunteer workspace:', w?.vs, '| volunteerWS:', volunteerWorkspace?.vs, '| regularWS:', workspace?.vs)
         return w
       })(),
       authError,

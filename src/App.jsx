@@ -777,8 +777,8 @@ export default function App() {
 
   // ── Load data when workspace is ready ─────────────────────────────────────
   const loadAll = useCallback(async()=>{
-    if(!workspace?.id){console.log('loadAll: no workspace id');return;}
-    console.log('loadAll starting for workspace:', workspace.id, 'vs:', workspace.vs, 'name:', workspace.name);
+    if(!workspace?.id){return;}
+    
     setLoading(true); setLoadErr(null);
     try{
       const [s,c,b]=await Promise.all([
@@ -786,7 +786,7 @@ export default function App() {
         fetchContacts(workspace.id),
         fetchBooths(workspace.id),
       ]);
-      console.log('loadAll done: settings=',s, 'contacts=',c?.length, 'booths=',b?.length);
+      
       setSettingsState(s); setContacts(c); setBooths(b);
     }catch(err){ 
       console.error('loadAll error:', err);
@@ -795,14 +795,14 @@ export default function App() {
     setLoading(false);
   },[workspace?.id]);
 
-  useEffect(()=>{ console.log('loadAll effect triggered, workspace?.id:', workspace?.id); if(workspace?.id) loadAll(); },[workspace?.id]);
+  useEffect(()=>{ if(workspace?.id) loadAll(); },[workspace?.id]);
 
   // ── Realtime sync ─────────────────────────────────────────────────────────
   useEffect(()=>{
-    console.log('Realtime effect triggered, workspace?.id:', workspace?.id);
+    
     if(!workspace?.id) return;
     const wsId = workspace.id;
-    console.log('Setting up Realtime for workspace:', wsId);
+    
 
     const channel = supabase
       .channel(`ws-${wsId}`)
@@ -810,7 +810,6 @@ export default function App() {
       .on('postgres_changes',
         {event:'UPDATE', schema:'public', table:'settings'},
         (payload) => {
-          console.log('🔴 Settings Realtime fired!', payload);
           // Only reload if it's our workspace
           if(payload.new?.workspace_id === wsId || payload.old?.workspace_id === wsId) {
             loadAll();
@@ -855,9 +854,7 @@ export default function App() {
         {event:'DELETE', schema:'public', table:'booths', filter:`workspace_id=eq.${wsId}`},
         ({old:row}) => setBooths(prev=>prev.filter(b=>b.id!==row.id))
       )
-      .subscribe(status=>{
-        console.log('Realtime status:', status, 'workspace:', wsId);
-      });
+      .subscribe();
 
     return ()=>{ supabase.removeChannel(channel); };
   },[workspace?.id]);
