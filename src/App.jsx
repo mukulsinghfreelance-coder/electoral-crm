@@ -795,12 +795,14 @@ export default function App() {
     setLoading(false);
   },[workspace?.id]);
 
-  useEffect(()=>{ if(workspace?.id) loadAll(); },[workspace?.id]);
+  useEffect(()=>{ console.log('loadAll effect triggered, workspace?.id:', workspace?.id); if(workspace?.id) loadAll(); },[workspace?.id]);
 
   // ── Realtime sync ─────────────────────────────────────────────────────────
   useEffect(()=>{
+    console.log('Realtime effect triggered, workspace?.id:', workspace?.id);
     if(!workspace?.id) return;
     const wsId = workspace.id;
+    console.log('Setting up Realtime for workspace:', wsId);
 
     const channel = supabase
       .channel(`ws-${wsId}`)
