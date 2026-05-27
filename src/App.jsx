@@ -818,6 +818,24 @@ export default function App() {
     const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="contacts.csv";a.click();
   };
 
+  // ── Mobile CSS — MUST be before any early return ────────────────────────
+  useEffect(()=>{
+    const s=document.createElement('style');s.id='app-mobile-css';
+    s.textContent=`
+      @media(max-width:768px){
+        #sidebar-desktop{display:none!important;}
+        #bottom-nav{display:flex!important;}
+        #detail-panel-desktop{display:none!important;}
+        #metrics-row{grid-template-columns:repeat(2,1fr)!important;gap:6px!important;padding:8px!important;}
+        #filter-bar select{font-size:12px!important;}
+        .top-strip-label{display:none!important;}
+      }
+      @media(min-width:769px){#bottom-nav{display:none!important;}}
+    `;
+    if(!document.getElementById('app-mobile-css'))document.head.appendChild(s);
+    return()=>document.getElementById('app-mobile-css')?.remove();
+  },[]);
+
   // ── Guards (AppRouter guarantees user + workspace exist here) ──────────
   if(loading)  return <LoadingScreen message="Loading data…"/>;
   if(loadErr)  return <ErrorScreen message={loadErr} onRetry={loadAll}/>;
@@ -826,29 +844,6 @@ export default function App() {
   const thS={position:"sticky",top:0,fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",padding:"8px 10px",borderBottom:`2px solid ${C.gray200}`,textAlign:"left",userSelect:"none",background:C.gray50,whiteSpace:"nowrap"};
   const thSB={...thS,background:"#F0FDFA",color:C.teal,borderBottom:`2px solid ${C.teal}33`};
   const tdS={padding:"10px 10px",fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",borderBottom:`1px solid ${C.gray100}`};
-
-  // Inject mobile CSS once
-  useEffect(()=>{
-    const s=document.createElement('style');s.id='app-mobile-css';
-    s.textContent=`
-      @media(max-width:768px){
-        #sidebar-desktop{display:none!important;}
-        #bottom-nav{display:flex!important;}
-        #detail-panel-desktop{display:none!important;}
-        #app-root{font-size:14px;}
-        #const-bar{min-height:36px!important;max-height:36px!important;}
-        #metrics-row{grid-template-columns:repeat(2,1fr)!important;gap:6px!important;padding:8px!important;}
-        #filter-bar select{font-size:12px!important;}
-        #hero-bar{padding:10px 12px!important;}
-        .top-strip-label{display:none;}
-      }
-      @media(min-width:769px){
-        #bottom-nav{display:none!important;}
-      }
-    `;
-    if(!document.getElementById('app-mobile-css'))document.head.appendChild(s);
-    return()=>document.getElementById('app-mobile-css')?.remove();
-  },[]);
 
   return (
     <div id="app-root" style={{display:"flex",flexDirection:"column",height:"100vh",background:C.white,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",fontSize:13,overflow:"hidden"}}>
