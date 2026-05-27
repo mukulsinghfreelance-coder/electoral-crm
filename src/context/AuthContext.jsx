@@ -6,7 +6,8 @@ const AuthContext = createContext(null)
 export { PLANS, calcMonthlyPrice }
 
 export function AuthProvider({ children }) {
-  const [customer,  setCustomer]  = useState(null)
+  const [customer,          setCustomer]          = useState(null)
+  const [volunteerWorkspace, setVolunteerWorkspace] = useState(null)
   const [livePlans, setLivePlans] = useState(null)  // DB pricing overrides
 
   // ── Fetch live pricing from DB on mount ──────────────────────────────────
@@ -60,7 +61,38 @@ export function AuthProvider({ children }) {
             .catch(console.warn)
           data = { ...byEmail, auth_id: authUser.id }
         } else {
-          // 3. Create new customer
+          // 3. Check volunteers table before creating new customer
+          const { data: vol } = await supabase
+            .from('volunteers')
+            .select('*')
+            .eq('email', authUser.email)
+            .maybeSingle()
+
+          if (vol) {
+            // Volunteer login — fetch their workspace
+            const { data: ws } = await supabase
+              .from('workspaces')
+              .select('*')
+              .eq('id', vol.workspace_id)
+              .maybeSingle()
+
+            console.log('Volunteer loaded:', vol.email, '| workspace:', vol.workspace_id)
+            setCustomer({
+              id:          vol.id,
+              email:       authUser.email,
+              name:        vol.name,
+              plan:        'volunteer',
+              role:        'volunteer',
+              isVolunteer: true,
+              workspace_id: vol.workspace_id,
+            })
+            if (ws) setVolunteerWorkspace(ws)
+            setAuthError('')
+            setLoading(false)
+            return
+          }
+
+          // 4. Truly new user → create free customer
           const { data: newC, error } = await supabase
             .from('customers')
             .insert({
@@ -236,7 +268,9 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      customer, session, loading, workspace, authError,
+      customer, session, loading,
+      workspace: customer?.isVolunteer ? volunteerWorkspace : workspace,
+      authError,
       loginWithOTP, verifyOTP, loginWithGoogle, devLogin, logout,
       switchWorkspace, exitWorkspace,
       plan, planLimits, planConfig,

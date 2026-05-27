@@ -54,6 +54,9 @@ export default function AppRouter() {
   // Not logged in → landing page
   if (!session || !customer) return <LandingPage/>
 
+  // Volunteer → go directly to App (workspace already set by AuthContext)
+  if (customer?.isVolunteer) return <App/>
+
   // Show payment modal after login from pricing CTA
   if (showPayment && intendedPlan) {
     return (
@@ -62,7 +65,6 @@ export default function AppRouter() {
         <Suspense fallback={null}>
           <UpgradeModal
             onClose={() => { setShowPayment(false); setIntendedPlan(null) }}
-            currentVSCount={1}
             initialPlan={intendedPlan}
             triggerReason={`You selected the ${intendedPlan.charAt(0).toUpperCase()+intendedPlan.slice(1)} plan. Complete payment to activate.`}
           />
@@ -74,7 +76,7 @@ export default function AppRouter() {
   // Workspace selected → main app
   if (workspace) return <App/>
 
-  // Dashboard
+  // Customer dashboard
   return (
     <Suspense fallback={<Spinner/>}>
       <WorkspacePage/>
