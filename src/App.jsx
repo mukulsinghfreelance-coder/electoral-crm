@@ -718,13 +718,13 @@ export default function App() {
   },[contacts,search,fM,fP,fB,fT,fCaste,activeTag,sort]);
 
   const filteredB=useMemo(()=>{
-  const boothTotalPages=Math.max(1,Math.ceil(filteredB.length/BOOTH_PER_PAGE));
-  const pagedBooths=filteredB.slice((boothPage-1)*BOOTH_PER_PAGE,boothPage*BOOTH_PER_PAGE);
     const q=bSearch.toLowerCase();
     let r=booths.filter(b=>{const ok=!q||(b.bno+b.bnm+(b.mandal||"")+(b.panchayat||"")+b.castes.join(" ")).toLowerCase().includes(q);return ok&&(!bfR||b.rating===bfR)&&(!bfP||b.panchayat===bfP);});
     r.sort((a,b2)=>{let av=a[bSort.col]||"",bv=b2[bSort.col]||"";if(bSort.col==="bno"||bSort.col==="voters"){av=parseInt(av)||0;bv=parseInt(bv)||0;return bSort.dir==="asc"?av-bv:bv-av;}return bSort.dir==="asc"?av.toString().localeCompare(bv.toString()):bv.toString().localeCompare(av.toString());});
     return r;
   },[booths,bSearch,bfR,bfP,bSort]);
+  const boothTotalPages=Math.max(1,Math.ceil(filteredB.length/BOOTH_PER_PAGE));
+  const pagedBooths=filteredB.slice((boothPage-1)*BOOTH_PER_PAGE,boothPage*BOOTH_PER_PAGE);
 
   const pages=Math.max(1,Math.ceil(filteredC.length/PS));
   const slice=filteredC.slice((page-1)*PS,page*PS);
