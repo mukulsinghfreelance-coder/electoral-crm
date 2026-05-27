@@ -29,7 +29,7 @@ const DEFAULT_SETTINGS = {
   elections:["Election 2015","Election 2020","Election 2024"],
   adminPin:"1234", sheetsUrl:"",
   labels:{
-    mandal:"Mandal", panchayat:"Panchayat", booth:"Booth",
+    mandal:L.mandal||"Mandal", panchayat:"Panchayat", booth:"Booth",
     village:"Village", boothName:"Booth Name", caste:"Caste",
     tag:"Tag", contacts:"Contacts", karyakarta:"Karyakarta", whatsapp:"WhatsApp No.",
   },
@@ -488,6 +488,7 @@ function ContactDetail({contact,settings,onEdit,onDelete}) {
 }
 
 function BoothDetail({booth,settings,onEdit,onDelete}) {
+  const L=settings?.labels||{};
   if(!booth)return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,gap:10,color:C.gray400,padding:30,textAlign:"center"}}><span style={{fontSize:40}}>📍</span><span style={{fontSize:13,fontWeight:500}}>Select a booth</span></div>;
   const b=booth; const rs=RATING[b.rating]||{bg:C.gray100,cl:C.gray600};
   return(<>
@@ -499,7 +500,7 @@ function BoothDetail({booth,settings,onEdit,onDelete}) {
     </div>
     <div style={{padding:"14px 16px",flex:1,overflowY:"auto"}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-        {[["Mandal",b.mandal],["Panchayat",b.panchayat],["Voters",b.voters||"—"],["Rating",b.rating?<RBadge r={b.rating}/>:"—"]].map(([l,v])=>(<div key={l} style={{background:C.tealLight,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:9,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div><div style={{fontSize:13,fontWeight:700,color:C.boothDark,marginTop:2}}>{v}</div></div>))}
+        {[[L.mandal||"Mandal",b.mandal],[L.panchayat||"Panchayat",b.panchayat],["Voters",b.voters||"—"],["Rating",b.rating?<RBadge r={b.rating}/>:"—"]].map(([l,v])=>(<div key={l} style={{background:C.tealLight,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:9,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div><div style={{fontSize:13,fontWeight:700,color:C.boothDark,marginTop:2}}>{v}</div></div>))}
       </div>
       <div style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>Top Castes</div><div style={{fontSize:13,fontWeight:500}}>{b.castes.filter(Boolean).join(" · ")||"—"}</div></div>
       <div style={{marginBottom:10}}>
@@ -581,7 +582,7 @@ function VolunteerModal({open,onClose,workspaceId,orgId}) {
       <div style={{background:C.primaryLight,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:C.primary,lineHeight:1.7}}>
         Add volunteers by entering their name and email. They will be able to login using email OTP and add contacts.
       </div>
-      <div className="form-grid-3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px",marginBottom:12}}>
+      <div className="form-grid-3" className="form-grid-3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px",marginBottom:12}}>
         <Fld label="Name" col="1"><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></Fld>
         <Fld label="Email" col="2"><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@gmail.com" type="email"/></Fld>
         <Fld label="Phone" col="3"><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="optional" maxLength={10}/></Fld>
@@ -875,10 +876,25 @@ export default function App() {
 
       {/* CONSTANTS BAR */}
       <div id="const-bar" style={{display:"flex",alignItems:"center",background:"linear-gradient(135deg,#1E1B4B,#312E81)",flexShrink:0,width:"100%",minHeight:42,maxHeight:42,overflowX:"auto",overflowY:"hidden",position:"relative",zIndex:100}}>
-        {[["State",settings.state||"—"],["Lok Sabha",settings.ls||"—"],["Vidhan Sabha",settings.vs||"—"],["Voters",settings.totalVoters||"—"],["Booths",settings.totalBooths||"—"]].map(([label,value])=>(
-          <div key={label} style={{display:"flex",alignItems:"center",gap:6,padding:"0 16px",borderRight:"1px solid #3730A3",height:42,flexShrink:0,whiteSpace:"nowrap"}}>
-            <span style={{fontSize:10,letterSpacing:".04em",color:"#A5B4FC",fontWeight:600,textTransform:"uppercase"}}>{label}</span>
-            <span style={{fontWeight:700,color:"#fff",fontSize:12,marginLeft:4}}>{value}</span>
+        {/* State + LS - small left */}
+        {[["State",settings.state||"—"],["Lok Sabha",settings.ls||"—"]].map(([label,value])=>(
+          <div key={label} style={{display:"flex",alignItems:"center",gap:5,padding:"0 12px",borderRight:"1px solid #3730A3",height:42,flexShrink:0,whiteSpace:"nowrap"}}>
+            <span style={{fontSize:9,color:"#A5B4FC",fontWeight:600,textTransform:"uppercase"}}>{label}</span>
+            <span style={{fontWeight:600,color:"#C7D2FE",fontSize:11,marginLeft:3}}>{value}</span>
+          </div>
+        ))}
+        {/* VS name - BOLD CENTRE */}
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 16px",borderRight:"1px solid #3730A3",height:42,minWidth:200}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#A78BFA",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",lineHeight:1}}>Vidhan Sabha</div>
+            <div style={{fontSize:17,fontWeight:900,color:"#fff",lineHeight:1.2,letterSpacing:"-0.01em"}}>{settings.vs||workspace?.vs||"—"}</div>
+          </div>
+        </div>
+        {/* Voters + Booths - small right */}
+        {[["Voters",settings.totalVoters||"—"],["Booths",settings.totalBooths||"—"]].map(([label,value])=>(
+          <div key={label} style={{display:"flex",alignItems:"center",gap:5,padding:"0 12px",borderRight:"1px solid #3730A3",height:42,flexShrink:0,whiteSpace:"nowrap"}}>
+            <span style={{fontSize:9,color:"#A5B4FC",fontWeight:600,textTransform:"uppercase"}}>{label}</span>
+            <span style={{fontWeight:600,color:"#C7D2FE",fontSize:11,marginLeft:3}}>{value}</span>
           </div>
         ))}
         {syncStatus&&<span style={{marginLeft:10,fontSize:11,fontWeight:600,flexShrink:0,color:syncStatus==="ok"?"#6EE7B7":syncStatus==="error"?"#FCA5A5":"#A5B4FC"}}>{syncStatus==="syncing"?"⏳ Syncing…":syncStatus==="ok"?"✅ Synced":"❌ Failed"}</span>}
