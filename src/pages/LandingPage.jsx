@@ -362,20 +362,7 @@ export default function LandingPage() {
     )
   }
 
-  // Mobile CSS injection
-  useEffect(() => {
-    const style = document.createElement('style')
-    style.id = 'landing-mobile'
-    style.textContent = [
-      '@media(max-width:640px){',
-      '.landing-pricing-grid{grid-template-columns:1fr!important;}',
-      '.landing-nav{flex-wrap:wrap;gap:8px;}',
-      '.landing-auth-modal{margin:16px!important;max-width:calc(100vw - 32px)!important;}',
-      '}'
-    ].join('')
-    document.head.appendChild(style)
-    return () => document.getElementById('landing-mobile')?.remove()
-  }, [])
+
 
   return (
     <div style={{ background:C.bg, minHeight:'100vh', fontFamily:font, color:C.text }}>

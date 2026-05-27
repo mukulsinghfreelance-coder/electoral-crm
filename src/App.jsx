@@ -878,30 +878,23 @@ export default function App() {
           <div style={{padding:"8px 12px",borderBottom:`1px solid ${C.gray200}`,background:C.primaryLight}}>
             <div style={{fontSize:12,fontWeight:700,color:C.primary}}>{user?.name}</div>
             <div style={{fontSize:10,color:C.gray400,marginTop:1}}>{isAdmin?"👑 Admin":"👤 Volunteer"} · {workspace?.vs||"—"}</div>
-              <button
-                onClick={() => exitWorkspace()}
-                style={{
-                  marginTop:8, width:"100%", padding:"8px 10px",
-                  fontSize:11, fontWeight:700,
-                  background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-                  color:C.white, border:"none",
-                  borderRadius:8, cursor:"pointer",
-                  fontFamily:"inherit",
-                  boxShadow:"0 3px 10px rgba(79,70,229,.35)",
-                }}
-              >
-                🔄 Switch Constituency
-              </button>
+              <div style={{display:"flex",gap:5,marginTop:6}}>
+              <button onClick={()=>exitWorkspace()} style={{flex:1,padding:"6px 4px",fontSize:10,fontWeight:700,background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>🔄 Switch</button>
+              <button onClick={logout} style={{flex:1,padding:"6px 4px",fontSize:10,fontWeight:700,background:C.gray100,color:C.gray600,border:`1px solid ${C.gray200}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>🚪 Logout</button>
+            </div>
             </div>
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Contacts</div>
           <SBI icon="👥" label="All Contacts" count={contacts.length} active={screen==="contacts"&&!activeTag} onClick={()=>{setScreen("contacts");setActiveTag("");setFT("");setSearch("");setPage(1);setSelC(null);}}/>
-          <SBI icon="🗺️" label={`By ${L.mandal||"Mandal"}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
-          <SBI icon="🏘️" label={`By ${L.panchayat||"Panchayat"}`} active={false} onClick={()=>{setScreen("contacts");setActiveTag("");}}/>
 
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>By Tag</div>
           {TAGS.map((tag,i)=>(<SBI key={tag} icon={<span style={{width:8,height:8,borderRadius:"50%",background:Object.values(TAG_STYLE)[i]?.cl,display:"inline-block"}}/>} label={tag} count={tagCounts[tag]||0} active={activeTag===tag} onClick={()=>{setScreen("contacts");setActiveTag(tag);setFT("");setSearch("");setPage(1);setSelC(null);}} color={Object.values(TAG_STYLE)[i]?.cl}/>))}
 
+          <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Import / Export</div>
+          <SBI icon="⬆️" label="Import Contacts" active={false} onClick={()=>setShowImport(true)}/>
+          {isAdmin&&<SBI icon="⬇️" label="Export CSV" active={false} onClick={()=>reqPinAdmin(exportCSV)}/>}
+          {isAdmin&&<SBI icon="🔗" label="Google Sheets" active={false} onClick={()=>setShowSheets(true)}/>}
+          {isAdmin&&<SBI icon="🗑️" label={selectMode?`Bulk Delete (${selectedIds.length})`:'Bulk Delete'} active={selectMode} onClick={()=>{if(selectMode&&selectedIds.length>0)handleBulkDelete();else{setSelectMode(s=>!s);if(selectMode)setSelectedIds([]);}}} color={C.red}/>}
           <div style={{padding:"12px 8px 4px",fontSize:9,fontWeight:800,color:C.gray400,textTransform:"uppercase",letterSpacing:".08em"}}>Modules</div>
           {settings.mandals.length === 0 && (
             <div onClick={()=>setShowSettings(true)} style={{margin:"4px 8px",padding:"8px 12px",background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,fontSize:11,color:'#92400E',cursor:'pointer',fontWeight:600}}>
@@ -912,10 +905,9 @@ export default function App() {
           {isAdmin&&<SBI icon="👥" label="Volunteers" active={false} onClick={()=>setShowVolunteers(true)} color={C.amber}/>}
           {isAdmin&&<SBI icon="🔗" label="Google Sheets" active={false} onClick={()=>setShowSheets(true)}/>}
           {isAdmin&&<SBI icon="⚙️" label="Settings" active={showSettings} onClick={()=>setShowSettings(true)}/>}
-          <SBI icon="🚪" label="Logout" active={false} onClick={logout}/>
 
           <div style={{padding:"10px 8px",borderTop:`1px solid ${C.gray200}`,marginTop:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-            {[["Contacts",contacts.length,C.primary],["Mandals",settings.mandals.length,C.success],["Booths",booths.length,C.teal],["Castes",settings.castes.length,C.amber]].map(([l,v,cl])=>(
+            {[["Mandals",settings.mandals.length,C.primary],["Panchayats",allPanchs.length,C.success],["Booths",booths.length,C.teal],["Castes",settings.castes.length,"#8B5CF6"]].map(([l,v,cl])=>(
               <div key={l} style={{background:C.white,border:`1.5px solid ${cl}33`,borderRadius:8,padding:"7px 9px",textAlign:"center"}}>
                 <div style={{fontSize:18,fontWeight:800,color:cl}}>{v}</div>
                 <div style={{fontSize:9,color:C.gray400,fontWeight:600,textTransform:"uppercase"}}>{l}</div>
