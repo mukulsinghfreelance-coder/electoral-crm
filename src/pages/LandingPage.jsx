@@ -287,6 +287,15 @@ export default function LandingPage() {
   const [authError, setAuthError]     = useState('')
   const [otpSent, setOtpSent]         = useState(false)
 
+  // Mobile CSS — MUST be before any early return (Rules of Hooks)
+  useEffect(() => {
+    const el = document.createElement('style')
+    el.id = 'lp-mobile-css'
+    el.textContent = '@media(max-width:640px){.lp-pg{grid-template-columns:1fr!important;}.lp-nav{flex-wrap:wrap;}}'
+    if (!document.getElementById('lp-mobile-css')) document.head.appendChild(el)
+    return () => document.getElementById('lp-mobile-css')?.remove()
+  }, [])
+
   const t = T[lang]
 
   // Inject live pricing into plan cards

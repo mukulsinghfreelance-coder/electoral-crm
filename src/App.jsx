@@ -927,6 +927,25 @@ export default function App() {
         {/* MAIN */}
         <div id="main-content" style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0,minHeight:0}}>
 
+          {/* TOP ACTION STRIP */}
+          <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",background:C.white,borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
+            <button onClick={()=>{setScreen("contacts");setEditC(null);setShowAdd(true);}} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 20px",fontSize:14,fontWeight:800,background:`linear-gradient(135deg,${C.success},#047857)`,color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 3px 12px rgba(5,150,105,.4)",whiteSpace:"nowrap"}}>
+              ＋ Add Contact
+            </button>
+            <div style={{width:1,height:28,background:C.gray200,margin:"0 2px"}}/>
+            <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",fontSize:12,fontWeight:600,background:C.primaryLight,color:C.primary,border:`1.5px solid ${C.primary}33`,borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>
+              ⚙️ <span className="top-strip-label">Settings</span>
+            </button>
+            <button onClick={()=>setShowVolunteers(true)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",fontSize:12,fontWeight:600,background:"#FFFBEB",color:"#D97706",border:"1.5px solid #D9770633",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>
+              👥 <span className="top-strip-label">Volunteers</span>
+            </button>
+            <button onClick={()=>{setScreen("booths");setActiveTag("");setSelB(null);}} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",fontSize:12,fontWeight:600,background:C.tealLight,color:C.teal,border:`1.5px solid ${C.teal}33`,borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>
+              📍 <span className="top-strip-label">Booths</span>
+            </button>
+            <div style={{flex:1}}/>
+            <span style={{fontSize:11,color:C.gray400}}>{contacts.length} contacts</span>
+          </div>
+
           {screen==="contacts"&&<>
             <div id="hero-bar" style={{background:`linear-gradient(135deg,${C.primaryLight},#E0E7FF)`,padding:"12px 16px",borderBottom:`1px solid ${C.gray200}`,flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
