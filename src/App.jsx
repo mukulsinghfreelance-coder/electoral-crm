@@ -345,7 +345,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
           <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Election names</div>
           {elections.map((e,i)=>(<div key={i} style={{marginBottom:8}}><div style={{fontSize:10,color:C.gray400,fontWeight:600,marginBottom:4}}>E{i+1} {i===0?"(oldest)":i===2?"(latest)":""}</div><Inp value={e} onChange={ev=>{const el=[...elections];el[i]=ev.target.value;setElections(el);}}/></div>))}
         </div>
-      </div>)
+      </div>)}
       {tab==="admin"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
         <div style={{fontSize:13,fontWeight:700,color:C.gray900,marginBottom:4}}>Data Management</div>
         <Btn v="primary" onClick={()=>{onClose();setShowImport(true);}}>⬆️ Import Contacts</Btn>
@@ -354,7 +354,7 @@ function SettingsModal({open,onClose,settings,onSave,saving}) {
         <Btn v="ghost" onClick={()=>{onClose();setShowSheets(true);}}>🔗 Google Sheets Sync</Btn>
         <div style={{height:1,background:C.gray200,margin:"4px 0"}}/>
         <Btn v="danger" onClick={()=>{onClose();setSelectMode(true);}}>🗑️ Bulk Delete Contacts</Btn>
-      </div>)}}
+      </div>)}
 
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}}>
         <Btn v="ghost" onClick={onClose}>Cancel</Btn>
