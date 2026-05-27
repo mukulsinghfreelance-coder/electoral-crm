@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
+import { PLANS } from '../config'
 import { supabase } from '../lib/supabase'
 import {
   adminFetchAllCustomers,
@@ -8,124 +9,417 @@ import {
   adminUpdateCustomerPlan,
   adminDeleteWorkspace,
   adminPurgeCustomer,
-  adminGetPurgeSummary,
   adminGiftCustomer,
   adminRevokeGift,
+  adminGetPurgeSummary,
+  adminFetchCoupons,
+  adminCreateCoupon,
+  adminToggleCoupon,
 } from '../lib/supabase'
 
 const C = {
-  bg:'#F9FAFB',white:'#FFFFFF',gray50:'#F9FAFB',gray100:'#F3F4F6',gray200:'#E5E7EB',
-  gray400:'#9CA3AF',gray600:'#4B5563',gray900:'#111827',
-  primary:'#6C63FF',primaryLight:'#EDE9FE',primaryDark:'#5B21B6',
-  success:'#059669',successLight:'#D1FAE5',amber:'#D97706',amberLight:'#FEF3C7',
-  red:'#DC2626',redLight:'#FEE2E2',teal:'#0D9488',tealLight:'#CCFBF1',border:'#E5E7EB',
-}
-const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"
-
-const PLANS = {
-  free:         { label:'Free',         color:C.gray400 },
-  premium:      { label:'Premium',      color:C.primary },
-  free_forever: { label:'Free Forever', color:C.success },
-}
-const PLAN_DESC = {
-  free:         '1 VS · Limited contacts',
-  premium:      'Paid plan · Unlimited contacts & VS',
-  free_forever: 'Gifted · Unlimited access',
+  primary:'#4F46E5', primaryDark:'#3730A3', primaryLight:'#EEF2FF',
+  success:'#059669', successLight:'#D1FAE5',
+  red:'#DC2626', redLight:'#FEE2E2',
+  amber:'#D97706', amberLight:'#FEF3C7', gold:'#F59E0B',
+  gray100:'#F3F4F6', gray200:'#E5E7EB', gray400:'#9CA3AF',
+  gray600:'#4B5563', gray900:'#111827', white:'#FFFFFF',
 }
 
-const PlanBadge = ({ plan }) => {
-  const styles = {
-    free:         { bg:C.gray100,       color:C.gray600  },
-    premium:      { bg:C.primaryLight,  color:C.primary  },
-    free_forever: { bg:C.successLight,  color:C.success  },
-  }
-  const s = styles[plan] || styles.free
-  return <span style={{ background:s.bg, color:s.color, padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>{PLANS[plan]?.label || plan}</span>
+const PLAN_COLORS = {
+  free:         { bg:'#F3F4F6', cl:'#4B5563' },
+  premium:      { bg:'#EEF2FF', cl:'#3730A3' },
+  free_forever: { bg:'#FEF3C7', cl:'#92400E' },
 }
 
-// ─── PRICING PANEL ────────────────────────────────────────────────────────────
-const PRICING_KEYS = [
-  { key:'free_contact_limit',     label:'Free Plan — Contact Limit',       unit:'contacts', type:'number' },
-  { key:'premium_base_price',     label:'Premium — Base Price (first VS)', unit:'₹',        type:'number' },
-  { key:'premium_extra_vs',       label:'Premium — Extra VS Price',        unit:'₹',        type:'number' },
-  { key:'premium_extra_pct',      label:'Premium — Extra VS Discount',     unit:'%',        type:'number' },
-  { key:'gst_rate',               label:'GST Rate',                        unit:'%',        type:'number' },
-  { key:'free_forever_vs_limit',  label:'Free Forever — VS Limit',         unit:'VS',       type:'number' },
-  { key:'annual_billing_enabled', label:'Annual Billing Enabled',          unit:'',         type:'toggle' },
-  { key:'annual_discount_pct',    label:'Annual Discount',                 unit:'%',        type:'number' },
-]
+// ─── CONFIRM DIALOG ───────────────────────────────────────────────────────────
+function ConfirmDialog({ message, subtext, onConfirm, onCancel, danger }) {
+  return createPortal(
+    <div onClick={onCancel} style={{
+      position:'fixed', inset:0, background:'rgba(17,24,39,.7)',
+      display:'flex', alignItems:'center', justifyContent:'center',
+      zIndex:99999, padding:20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background:C.white, borderRadius:16, padding:'28px 24px',
+        maxWidth:380, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.25)',
+        textAlign:'center',
+      }}>
+        <div style={{ fontSize:40, marginBottom:12 }}>{danger ? '⚠️' : '❓'}</div>
+        <div style={{ fontSize:16, fontWeight:800, color:C.gray900, marginBottom:8 }}>{message}</div>
+        {subtext && <div style={{ fontSize:13, color:C.gray600, marginBottom:20, lineHeight:1.6 }}>{subtext}</div>}
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onCancel} style={{
+            flex:1, padding:'11px', fontSize:14, fontWeight:600,
+            background:C.gray100, border:'none', borderRadius:10,
+            cursor:'pointer', fontFamily:'inherit', color:C.gray600,
+          }}>Cancel</button>
+          <button onClick={onConfirm} style={{
+            flex:1, padding:'11px', fontSize:14, fontWeight:700,
+            background: danger ? C.red : C.primary,
+            color:C.white, border:'none', borderRadius:10,
+            cursor:'pointer', fontFamily:'inherit',
+          }}>{danger ? 'Yes, Delete' : 'Confirm'}</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
 
-function PricingPanel() {
-  const [config,  setConfig]  = useState({})
-  const [saving,  setSaving]  = useState(null)
-  const [loading, setLoading] = useState(true)
+
+// ─── CUSTOMER ROW (expanded detail) ──────────────────────────────────────────
+function CustomerDetail({ customer, onPlanChanged, onWSDeleted, onPurged, me }) {
+  const [workspaces, setWorkspaces] = useState(null)
+  const [loading,    setLoading]    = useState(false)
+  const [confirm,    setConfirm]    = useState(null)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
-    supabase.from('pricing_config').select('key,value').then(({ data }) => {
-      const map = {}
-      ;(data||[]).forEach(r => { map[r.key] = r.value })
-      setConfig(map)
-      setLoading(false)
+    setLoading(true)
+    adminFetchCustomerWorkspaces(customer.id)
+      .then(ws => setWorkspaces(ws || []))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [customer.id])
+
+  const [giftNote, setGiftNote] = useState('')
+  const [showGiftNote, setShowGiftNote] = useState(false)
+
+  const handleGift = async () => {
+    if (customer.plan === 'free_forever') {
+      // Revoke gift
+      setConfirm({
+        message: `Revoke Free Forever for ${customer.name || customer.email}?`,
+        subtext: 'Their plan will drop back to Free.',
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await adminRevokeGift(customer.id)
+            onPlanChanged(customer.id, 'free')
+            customer.plan = 'free'
+            customer.gifted_forever = false
+          } catch(e) { setDeleteError(e.message) }
+          setConfirm(null)
+        }
+      })
+    } else {
+      setShowGiftNote(true)
+    }
+  }
+
+  const confirmGift = async () => {
+    try {
+      await adminGiftCustomer(customer.id, giftNote, me?.email)
+      onPlanChanged(customer.id, 'free_forever')
+      customer.plan = 'free_forever'
+      customer.gifted_forever = true
+      setShowGiftNote(false)
+      setGiftNote('')
+    } catch(e) { setDeleteError(e.message) }
+  }
+
+  const handleDeleteWS = (ws) => {
+    setConfirm({
+      type: 'ws',
+      message: `Remove ${ws.vs}?`,
+      subtext: `This will permanently delete all contacts, booths and settings for ${ws.vs}. This cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await adminDeleteWorkspace(ws.id)
+          setWorkspaces(prev => prev.filter(w => w.id !== ws.id))
+          onWSDeleted(customer.id, ws.id)
+          setConfirm(null)
+          // Reload workspaces from DB to ensure fresh data
+          const fresh = await adminFetchCustomerWorkspaces(customer.id)
+          setWorkspaces(fresh || [])
+        } catch(e) {
+          console.error('Delete WS error:', e)
+          setConfirm(null)
+          let msg = e?.message || 'Failed to delete'
+          if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
+            msg = '🌐 Network error — please check your internet connection.'
+          }
+          setDeleteError(msg)
+        }
+      }
     })
+  }
+
+  const handlePurge = async () => {
+    try {
+      const s = await adminGetPurgeSummary(customer.id)
+      const vsNames  = s.workspaces.map(w => w.vs || w.name).join(', ')
+      const volLines = s.volunteers.length > 0
+        ? `\n🙋 Volunteers (${s.volunteers.length}):\n  • ${s.volunteers.map(v => `${v.name} (${v.email})`).join('\n  • ')}`
+        : ''
+      setConfirm({
+        type: 'purge',
+        message: `Purge ${customer.name || customer.email}?`,
+        subtext: `⚠️ This will PERMANENTLY DELETE:\n\n👤 Customer: ${customer.name || customer.email}\n🗺️ Constituencies (${s.workspaces.length}): ${vsNames || 'none'}\n👥 Contacts: ${s.contactCount}\n📍 Booths: ${s.boothCount}${volLines}\n\nAll volunteers will lose access immediately.\nThis CANNOT be undone.`,
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await adminPurgeCustomer(customer.id)
+            onPurged(customer.id)
+          } catch(e) {
+            let msg = e?.message || 'Purge failed'
+            if (msg.includes('Failed to fetch') || msg.includes('network')) msg = '🌐 Network error'
+            setDeleteError(msg)
+          }
+        }
+      })
+    } catch(e) {
+      // Fallback if summary fetch fails
+      setConfirm({
+        type: 'purge',
+        message: `Purge ${customer.name || customer.email}?`,
+        subtext: `This will permanently delete the customer and ALL their data — every constituency, contact, booth and volunteer. Cannot be undone.`,
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await adminPurgeCustomer(customer.id)
+            onPurged(customer.id)
+          } catch(err) {
+            setDeleteError(err?.message || 'Purge failed')
+          }
+        }
+      })
+    }
+  }
+
+  const pc = PLAN_COLORS[customer.plan] || PLAN_COLORS.free
+
+  return (
+    <div style={{ borderTop:`1px solid ${C.gray100}`, padding:'16px 20px', background:'#FAFAFA' }}>
+
+      {/* Plan + actions row */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ background:pc.bg, color:pc.cl, padding:'4px 12px', borderRadius:20, fontSize:12, fontWeight:700 }}>
+            {PLANS[customer.plan]?.label || customer.plan}
+          </span>
+          <span style={{ fontSize:12, color:C.gray400 }}>
+            Joined {new Date(customer.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
+          </span>
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+
+          {/* Gift Forever only for Free accounts */}
+          {(customer.plan === 'free' || customer.plan === 'free_forever') && (
+            <button onClick={handleGift} style={{
+              padding:'6px 14px', fontSize:12, fontWeight:700,
+              background: customer.plan === 'free_forever' ? C.amberLight : C.successLight,
+              color: customer.plan === 'free_forever' ? C.amber : C.success,
+              border:`1px solid ${customer.plan === 'free_forever' ? C.amber : C.success}33`,
+              borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+            }}>
+              {customer.plan === 'free_forever' ? '🎁 Revoke Gift' : '🎁 Gift Forever'}
+            </button>
+          )}
+          {/* Don't show Purge for gifted/free_forever accounts */}
+          {customer.plan !== 'free_forever' && (
+            <button onClick={handlePurge} style={{
+              padding:'6px 14px', fontSize:12, fontWeight:700,
+              background:C.redLight, color:C.red,
+              border:`1px solid ${C.red}33`, borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+            }}>
+              🗑️ Purge User
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Workspaces */}
+      {deleteError && (
+        <div style={{ background:'#FEE2E2', borderRadius:8, padding:'10px 12px', marginBottom:12, fontSize:12, color:'#991B1B', fontWeight:500 }}>
+          ⚠ {deleteError}
+          <button onClick={() => setDeleteError('')} style={{ float:'right', background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:14 }}>✕</button>
+        </div>
+      )}
+      <div style={{ fontSize:11, fontWeight:700, color:C.gray400, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>
+        Constituencies ({workspaces?.length || 0})
+      </div>
+
+      {loading ? (
+        <div style={{ fontSize:12, color:C.gray400, padding:'8px 0' }}>⏳ Loading…</div>
+      ) : workspaces?.length === 0 ? (
+        <div style={{ fontSize:12, color:C.gray400, padding:'8px 0' }}>No constituencies added yet</div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {workspaces?.map(ws => (
+            <div key={ws.id} style={{
+              display:'flex', alignItems:'center', justifyContent:'space-between',
+              background:C.white, border:`1px solid ${C.gray200}`, borderRadius:10,
+              padding:'10px 14px',
+            }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:C.gray900 }}>🏛️ {ws.vs}</div>
+                <div style={{ fontSize:11, color:C.gray400, marginTop:2 }}>{ws.ls} · {ws.state}</div>
+              </div>
+              <button onClick={() => handleDeleteWS(ws)} style={{
+                padding:'5px 12px', fontSize:11, fontWeight:700,
+                background:C.redLight, color:C.red,
+                border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+              }}>
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showGiftNote && createPortal(
+        <div onClick={() => setShowGiftNote(false)} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:'#fff', borderRadius:16, padding:28, maxWidth:380, width:'100%' }}>
+            <div style={{ fontSize:16, fontWeight:800, color:'#111', marginBottom:6 }}>🎁 Gift Forever</div>
+            <div style={{ fontSize:13, color:'#6B7280', marginBottom:16 }}>
+              Gifting <strong>{customer.name || customer.email}</strong> unlimited Multiple plan access permanently.
+            </div>
+            <input
+              placeholder="Note (e.g. Campaign partner - 6 months)"
+              value={giftNote} onChange={e => setGiftNote(e.target.value)}
+              style={{ width:'100%', padding:'10px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, fontFamily:'inherit', boxSizing:'border-box', marginBottom:16 }}
+            />
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => setShowGiftNote(false)} style={{ flex:1, padding:10, background:'#F3F4F6', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:13 }}>Cancel</button>
+              <button onClick={confirmGift} style={{ flex:1, padding:10, background:'#10B981', border:'none', borderRadius:8, color:'#fff', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:700 }}>Confirm Gift</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {confirm && (
+        <ConfirmDialog
+          message={confirm.message}
+          subtext={confirm.subtext}
+          danger={confirm.danger}
+          onConfirm={confirm.onConfirm}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+
+
+    </div>
+  )
+}
+
+
+// ─── PRICING PANEL ────────────────────────────────────────────────────────────
+function PricingPanel() {
+  const [pricing, setPricing] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(null)
+  const [saved,   setSaved]   = useState(null)
+
+  const LABELS = {
+    free_contact_limit:    { label:'Free Plan — Contact Limit',      unit:'contacts',     desc:'Max contacts for Free users',                  type:'number' },
+    premium_base_price:    { label:'Premium — First VS Price',       unit:'₹/month',      desc:'Price for first paid constituency',             type:'number' },
+    premium_extra_vs:      { label:'Premium — Extra VS Price',       unit:'₹/month',      desc:'Price per additional constituency',             type:'number' },
+    premium_extra_pct:     { label:'Premium — Extra VS Discount',    unit:'%',            desc:'Discount % shown to customers (display only)', type:'number' },
+    gst_rate:              { label:'GST Rate',                       unit:'%',            desc:'GST on all paid plans',                        type:'number' },
+    free_forever_vs_limit: { label:'Free Forever — Max VS',          unit:'Vidhan Sabha', desc:'Max constituencies for gifted accounts',       type:'number' },
+    annual_billing_enabled:{ label:'Annual Billing — Enable',        unit:'toggle',       desc:'Show annual billing toggle to customers',      type:'toggle' },
+    annual_discount_pct:   { label:'Annual Billing — Discount',      unit:'%',            desc:'Discount for annual billing',                  type:'number' },
+  }
+
+  useEffect(() => {
+    supabase.from('pricing_config').select('*').order('key')
+      .then(({ data }) => { setPricing(data || []); setLoading(false) })
   }, [])
 
-  const save = async (key, value) => {
-    setSaving(key)
-    await supabase.from('pricing_config').upsert({ key, value:String(value) }, { onConflict:'key' })
-    setConfig(p => ({ ...p, [key]:String(value) }))
+  const handleSave = async (key, value) => {
+    setSaving(key); setSaved(null)
+    const { error } = await supabase
+      .from('pricing_config')
+      .update({ value: Number(value), updated_at: new Date().toISOString() })
+      .eq('key', key)
+    if (!error) {
+      // Update local state so toggle re-renders immediately
+      setPricing(prev => prev.map(p => p.key === key ? { ...p, value: Number(value) } : p))
+      setSaved(key)
+      setTimeout(() => setSaved(null), 2000)
+    }
     setSaving(null)
   }
 
-  if (loading) return <div style={{ padding:40, textAlign:'center', color:C.gray400 }}>Loading…</div>
+  if (loading) return <div style={{ textAlign:'center', color:'#9CA3AF', padding:30 }}>⏳ Loading...</div>
 
   return (
-    <div style={{ padding:'20px 24px' }}>
-      <div style={{ fontSize:16, fontWeight:700, color:C.gray900, marginBottom:4 }}>Pricing Configuration</div>
-      <div style={{ fontSize:12, color:C.gray400, marginBottom:20 }}>Changes take effect immediately for new payments.</div>
-      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {PRICING_KEYS.map(({ key, label, unit, type }) => {
-          const val = config[key] ?? ''
-          return (
-            <div key={key} style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:12, padding:'14px 16px', display:'flex', alignItems:'center', gap:16 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      {pricing.map(p => {
+        const meta = LABELS[p.key] || { label:p.key, unit:'', desc:'' }
+        return (
+          <div key={p.key} style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, padding:'16px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:13, fontWeight:600, color:C.gray900 }}>{label}</div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:2 }}>{meta.label}</div>
+                <div style={{ fontSize:12, color:'#6B7280' }}>{meta.desc}</div>
               </div>
-              {type === 'toggle' ? (
-                <div onClick={() => save(key, val==='1'?'0':'1')} style={{ width:44, height:24, borderRadius:12, cursor:'pointer', background:val==='1'?C.primary:C.gray200, position:'relative', transition:'background .2s', flexShrink:0 }}>
-                  <div style={{ width:18, height:18, borderRadius:'50%', background:C.white, position:'absolute', top:3, left:val==='1'?23:3, transition:'left .2s', boxShadow:'0 1px 4px rgba(0,0,0,.2)' }}/>
-                </div>
-              ) : (
-                <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                  {unit==='₹' && <span style={{ fontSize:13, color:C.gray400 }}>₹</span>}
-                  <input type="number" defaultValue={val} onBlur={e=>save(key,e.target.value)}
-                    style={{ width:90, padding:'6px 10px', fontSize:13, border:`1.5px solid ${C.border}`, borderRadius:8, outline:'none', fontFamily:font, textAlign:'right' }}/>
-                  {unit && unit!=='₹' && <span style={{ fontSize:12, color:C.gray400 }}>{unit}</span>}
-                  {saving===key && <span style={{ fontSize:11, color:C.success }}>✓</span>}
-                </div>
-              )}
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                {meta.type === 'toggle' ? (
+                  <div
+                    onClick={() => handleSave(p.key, p.value === 1 ? 0 : 1)}
+                    style={{ width:48, height:26, borderRadius:13, background: p.value === 1 ? '#4F46E5' : '#E5E7EB', cursor:'pointer', position:'relative', transition:'background .2s', flexShrink:0 }}
+                  >
+                    <div style={{ width:20, height:20, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: p.value === 1 ? 25 : 3, transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
+                  </div>
+                ) : (
+                  <input
+                    type="number"
+                    defaultValue={p.value}
+                    onBlur={e => handleSave(p.key, e.target.value)}
+                    style={{ width:90, padding:'7px 10px', fontSize:14, fontWeight:600, border:'1px solid #E5E7EB', borderRadius:8, textAlign:'right', fontFamily:'inherit', outline:'none' }}
+                  />
+                )}
+                {meta.unit !== 'toggle' && (
+                  <span style={{ fontSize:12, color:'#6B7280', minWidth:50 }}>{meta.unit}</span>
+                )}
+                {saving === p.key && <span style={{ fontSize:12, color:'#6B7280' }}>⏳</span>}
+                {saved  === p.key && <span style={{ fontSize:12, color:'#10B981' }}>✓ Saved</span>}
+              </div>
             </div>
-          )
-        })}
+          </div>
+        )
+      })}
+      <div style={{ fontSize:12, color:'#6B7280', textAlign:'center', marginTop:8 }}>
+        Changes take effect immediately for new payments. Existing subscriptions are not affected.
       </div>
     </div>
   )
 }
 
-// ─── VOLUNTEERS PANEL ─────────────────────────────────────────────────────────
+// ─── MAIN SUPER ADMIN PAGE ────────────────────────────────────────────────────
+
 function VolunteersPanel() {
   const [volunteers, setVolunteers] = useState([])
   const [loading,    setLoading]    = useState(true)
   const [search,     setSearch]     = useState('')
+  const [err,        setErr]        = useState('')
 
-  useEffect(() => {
-    supabase.from('volunteers').select('*, workspaces(name,vs,state)').order('created_at',{ascending:false})
-      .then(({ data }) => { setVolunteers(data||[]); setLoading(false) })
-  }, [])
+  useEffect(() => { load() }, [])
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('volunteers')
+        .select(`*, workspaces(name, vs, state)`)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setVolunteers(data || [])
+    } catch(e) { setErr(e.message) }
+    setLoading(false)
+  }
 
   const remove = async (id, email) => {
-    if (!confirm(`Remove volunteer ${email}?\nThey will lose access immediately.`)) return
-    await supabase.from('volunteers').delete().eq('id', id)
-    setVolunteers(v => v.filter(x => x.id !== id))
+    if (!confirm(`Remove volunteer ${email}?\nThey will lose access to their constituency.`)) return
+    try {
+      const { error } = await supabase.from('volunteers').delete().eq('id', id)
+      if (error) throw error
+      await load()
+    } catch(e) { alert('Error: ' + e.message) }
   }
 
   const filtered = volunteers.filter(v =>
@@ -138,417 +432,309 @@ function VolunteersPanel() {
     <div style={{ padding:'20px 24px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
         <div>
-          <div style={{ fontSize:16, fontWeight:700, color:C.gray900 }}>All Volunteers</div>
-          <div style={{ fontSize:12, color:C.gray400 }}>{volunteers.length} total across all constituencies</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'#111827' }}>All Volunteers</div>
+          <div style={{ fontSize:12, color:'#6B7280' }}>{volunteers.length} total across all constituencies</div>
         </div>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…"
-          style={{ padding:'8px 12px', fontSize:13, border:`1px solid ${C.border}`, borderRadius:8, outline:'none', width:200, fontFamily:font }}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="Search name, email, VS…"
+          style={{ padding:'8px 12px', fontSize:13, border:'1px solid #E5E7EB', borderRadius:8, outline:'none', width:220 }}
+        />
       </div>
-      {loading ? <div style={{ textAlign:'center', padding:40, color:C.gray400 }}>Loading…</div> :
-       filtered.length===0 ? <div style={{ textAlign:'center', padding:40, color:C.gray400 }}>No volunteers found</div> :
-      <div style={{ border:`1px solid ${C.border}`, borderRadius:12, overflow:'hidden' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
-          <thead>
-            <tr style={{ background:C.gray50 }}>
-              {['Name','Email','Phone','Constituency','State','Added','Action'].map(h=>(
-                <th key={h} style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:C.gray400, textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:`1px solid ${C.border}` }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((v,i) => (
-              <tr key={v.id} style={{ background:i%2===0?C.white:C.gray50, borderBottom:`1px solid ${C.gray100}` }}>
-                <td style={{ padding:'10px 12px' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div style={{ width:28, height:28, borderRadius:'50%', background:'#F97316', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12, flexShrink:0 }}>
-                      {(v.name||'?').charAt(0).toUpperCase()}
-                    </div>
-                    <span style={{ fontSize:13, fontWeight:600, color:C.gray900 }}>{v.name}</span>
-                  </div>
-                </td>
-                <td style={{ padding:'10px 12px', fontSize:12, color:C.gray600 }}>{v.email}</td>
-                <td style={{ padding:'10px 12px', fontSize:12, color:C.gray600 }}>{v.phone||'—'}</td>
-                <td style={{ padding:'10px 12px' }}>
-                  <span style={{ background:C.primaryLight, color:C.primary, padding:'2px 8px', borderRadius:6, fontWeight:600, fontSize:11 }}>
-                    {v.workspaces?.vs||v.workspaces?.name||'—'}
-                  </span>
-                </td>
-                <td style={{ padding:'10px 12px', fontSize:12, color:C.gray600 }}>{v.workspaces?.state||'—'}</td>
-                <td style={{ padding:'10px 12px', fontSize:11, color:C.gray400 }}>{v.created_at?new Date(v.created_at).toLocaleDateString('en-IN'):'—'}</td>
-                <td style={{ padding:'10px 12px' }}>
-                  <button onClick={()=>remove(v.id,v.email)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:C.redLight, color:C.red, border:'none', borderRadius:6, cursor:'pointer', fontFamily:font }}>
-                    Remove
-                  </button>
-                </td>
+
+      {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:8, marginBottom:12, fontSize:12 }}>{err}</div>}
+
+      {loading ? (
+        <div style={{ textAlign:'center', padding:40, color:'#6B7280' }}>Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign:'center', padding:40, color:'#6B7280' }}>No volunteers found</div>
+      ) : (
+        <div style={{ border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead>
+              <tr style={{ background:'#F9FAFB' }}>
+                {['Name','Email','Phone','Constituency (VS)','State','Added On','Action'].map(h => (
+                  <th key={h} style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#6B7280', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:'1px solid #E5E7EB' }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>}
+            </thead>
+            <tbody>
+              {filtered.map((v, i) => (
+                <tr key={v.id} style={{ background: i%2===0?'#fff':'#F9FAFB', borderBottom:'1px solid #F3F4F6' }}>
+                  <td style={{ padding:'10px 12px', fontSize:13, fontWeight:600, color:'#111827' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:'#F97316', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12, flexShrink:0 }}>
+                        {(v.name||'?').charAt(0).toUpperCase()}
+                      </div>
+                      {v.name}
+                    </div>
+                  </td>
+                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.email}</td>
+                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.phone||'—'}</td>
+                  <td style={{ padding:'10px 12px', fontSize:12 }}>
+                    <span style={{ background:'#EDE9FE', color:'#5B21B6', padding:'2px 8px', borderRadius:6, fontWeight:600, fontSize:11 }}>
+                      {v.workspaces?.vs||v.workspaces?.name||'—'}
+                    </span>
+                  </td>
+                  <td style={{ padding:'10px 12px', fontSize:12, color:'#374151' }}>{v.workspaces?.state||'—'}</td>
+                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6B7280' }}>
+                    {v.created_at ? new Date(v.created_at).toLocaleDateString('en-IN') : '—'}
+                  </td>
+                  <td style={{ padding:'10px 12px' }}>
+                    <button onClick={()=>remove(v.id, v.email)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, cursor:'pointer' }}>
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── PLAN MODAL ───────────────────────────────────────────────────────────────
-function PlanModal({ customer, onClose, onSaved }) {
-  const [plan, setPlan]     = useState(customer.plan)
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState('')
+export default function SuperAdminPage({ onBack }) {
+  const { customer: me } = useAuth()
+  const [customers,   setCustomers]   = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState('')
+  const [search,      setSearch]      = useState('')
+  const [expanded,    setExpanded]    = useState(null)
+  const [filterPlan,  setFilterPlan]  = useState('all')
+  const [activeTab,   setActiveTab]   = useState('customers')  // customers | pricing | coupons
 
-  const handleSave = async () => {
-    setSaving(true); setError('')
-    try { await adminUpdateCustomerPlan(customer.id, plan); onSaved(plan) }
-    catch(e) { setError(e?.message||'Failed') }
-    setSaving(false)
-  }
+  useEffect(() => { loadCustomers() }, [])
 
-  return createPortal(
-    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:24, maxWidth:360, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.25)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <div style={{ fontSize:16, fontWeight:800, color:C.gray900 }}>Change Plan</div>
-          <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:30, height:30, cursor:'pointer' }}>✕</button>
-        </div>
-        <div style={{ background:C.gray100, borderRadius:8, padding:'8px 12px', marginBottom:16, fontSize:13, color:C.gray600 }}>
-          👤 <strong style={{ color:C.gray900 }}>{customer.name||customer.email}</strong>
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
-          {Object.entries(PLANS).map(([key,p]) => {
-            const isCurrent=customer.plan===key, isSelected=plan===key
-            return (
-              <div key={key} onClick={()=>setPlan(key)} style={{ border:`2px solid ${isSelected?C.primary:C.border}`, borderRadius:10, padding:'12px 14px', cursor:'pointer', background:isSelected?C.primaryLight:C.white, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span style={{ fontSize:14, fontWeight:700, color:C.gray900 }}>{p.label}</span>
-                    {isCurrent && <span style={{ fontSize:10, background:C.successLight, color:C.success, padding:'2px 8px', borderRadius:20, fontWeight:700 }}>CURRENT</span>}
-                  </div>
-                  <div style={{ fontSize:12, color:C.gray400, marginTop:2 }}>{PLAN_DESC[key]}</div>
-                </div>
-                <div style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${isSelected?C.primary:C.border}`, background:isSelected?C.primary:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  {isSelected && <div style={{ width:7, height:7, borderRadius:'50%', background:C.white }}/>}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        {error && <div style={{ color:C.red, fontSize:12, marginBottom:10 }}>⚠ {error}</div>}
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={onClose} style={{ flex:1, padding:'10px', fontSize:13, fontWeight:600, background:C.gray100, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font, color:C.gray600 }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving||plan===customer.plan} style={{ flex:2, padding:'10px', fontSize:13, fontWeight:700, background:(saving||plan===customer.plan)?C.gray200:`linear-gradient(135deg,${C.primary},${C.primaryDark})`, color:(saving||plan===customer.plan)?C.gray400:C.white, border:'none', borderRadius:8, cursor:(saving||plan===customer.plan)?'not-allowed':'pointer', fontFamily:font }}>
-            {saving?'⏳ Saving…':plan===customer.plan?'No change':`Switch to ${PLANS[plan]?.label}`}
-          </button>
-        </div>
-      </div>
-    </div>, document.body
-  )
-}
-
-// ─── GIFT MODAL ───────────────────────────────────────────────────────────────
-function GiftModal({ customer, onClose, onSaved }) {
-  const [gNote,    setGNote]    = useState('')
-  const [gSaving,  setGSaving]  = useState(false)
-  const [gError,   setGError]   = useState('')
-  const isGifted = customer.gifted_forever || customer.plan === 'free_forever'
-
-  const handleGift = async () => {
-    setGSaving(true); setGError('')
-    try { await adminGiftCustomer(customer.id, gNote); onSaved() }
-    catch(e) { setGError(e?.message||'Failed') }
-    setGSaving(false)
-  }
-
-  const handleRevoke = async () => {
-    if (!confirm('Revoke free_forever access?')) return
-    setGSaving(true)
-    try { await adminRevokeGift(customer.id); onSaved() }
-    catch(e) { setGError(e?.message||'Failed') }
-    setGSaving(false)
-  }
-
-  return createPortal(
-    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:24, maxWidth:380, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.25)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <div style={{ fontSize:16, fontWeight:800, color:C.gray900 }}>🎁 Gift Free Forever</div>
-          <button onClick={onClose} style={{ background:C.gray100, border:'none', borderRadius:'50%', width:30, height:30, cursor:'pointer' }}>✕</button>
-        </div>
-        <div style={{ background:C.gray100, borderRadius:8, padding:'8px 12px', marginBottom:16, fontSize:13, color:C.gray600 }}>
-          👤 <strong style={{ color:C.gray900 }}>{customer.name||customer.email}</strong>
-        </div>
-        {isGifted ? (
-          <>
-            <div style={{ background:C.successLight, color:C.success, borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:13 }}>
-              ✅ Already has Free Forever access
-              {customer.gifted_note && <div style={{ marginTop:4, fontStyle:'italic' }}>Note: {customer.gifted_note}</div>}
-            </div>
-            {gError && <div style={{ color:C.red, fontSize:12, marginBottom:10 }}>{gError}</div>}
-            <div style={{ display:'flex', gap:8 }}>
-              <button onClick={onClose} style={{ flex:1, padding:'10px', fontSize:13, background:C.gray100, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font }}>Close</button>
-              <button onClick={handleRevoke} disabled={gSaving} style={{ flex:1, padding:'10px', fontSize:13, fontWeight:700, background:C.redLight, color:C.red, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font }}>
-                {gSaving?'⏳…':'Revoke Gift'}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:12, fontWeight:600, color:C.gray600, display:'block', marginBottom:4 }}>Note (optional)</label>
-              <input value={gNote} onChange={e=>setGNote(e.target.value)} placeholder="Reason for gifting…" style={{ width:'100%', padding:'8px 12px', fontSize:13, border:`1.5px solid ${C.border}`, borderRadius:8, outline:'none', fontFamily:font, boxSizing:'border-box' }}/>
-            </div>
-            {gError && <div style={{ color:C.red, fontSize:12, marginBottom:10 }}>{gError}</div>}
-            <div style={{ display:'flex', gap:8 }}>
-              <button onClick={onClose} style={{ flex:1, padding:'10px', fontSize:13, background:C.gray100, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font }}>Cancel</button>
-              <button onClick={handleGift} disabled={gSaving} style={{ flex:2, padding:'10px', fontSize:13, fontWeight:700, background:`linear-gradient(135deg,${C.success},#047857)`, color:C.white, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font }}>
-                {gSaving?'⏳ Gifting…':'🎁 Gift Free Forever'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>, document.body
-  )
-}
-
-// ─── CONFIRM DIALOG ───────────────────────────────────────────────────────────
-function ConfirmDialog({ confirm, onClose }) {
-  const [running, setRunning] = useState(false)
-  if (!confirm) return null
-
-  const handleConfirm = async () => {
-    setRunning(true)
-    try { await confirm.onConfirm() } catch(e) {}
-    setRunning(false)
-    onClose()
-  }
-
-  return createPortal(
-    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.75)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99999, padding:20 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:C.white, borderRadius:20, padding:28, maxWidth:480, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.3)' }}>
-        <div style={{ fontSize:18, fontWeight:800, color:confirm.danger?C.red:C.gray900, marginBottom:8 }}>{confirm.message}</div>
-        <div style={{ fontSize:13, color:C.gray600, marginBottom:24, whiteSpace:'pre-wrap', lineHeight:1.6 }}>{confirm.subtext}</div>
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:'11px', fontSize:14, fontWeight:600, background:C.gray100, border:'none', borderRadius:10, cursor:'pointer', fontFamily:font }}>Cancel</button>
-          <button onClick={handleConfirm} disabled={running} style={{ flex:2, padding:'11px', fontSize:14, fontWeight:700, background:confirm.danger?C.red:`linear-gradient(135deg,${C.primary},${C.primaryDark})`, color:C.white, border:'none', borderRadius:10, cursor:running?'not-allowed':'pointer', fontFamily:font, opacity:running?0.7:1 }}>
-            {running?'⏳ Processing…':confirm.danger?'⚠️ Confirm Delete':'Confirm'}
-          </button>
-        </div>
-      </div>
-    </div>, document.body
-  )
-}
-
-// ─── CUSTOMER ROW ─────────────────────────────────────────────────────────────
-function CustomerRow({ customer:initial, onPurged }) {
-  const [customer,    setCustomer]    = useState(initial)
-  const [expanded,    setExpanded]    = useState(false)
-  const [workspaces,  setWorkspaces]  = useState([])
-  const [loadingWs,   setLoadingWs]   = useState(false)
-  const [showPlan,    setShowPlan]    = useState(false)
-  const [showGift,    setShowGift]    = useState(false)
-  const [confirm,     setConfirm]     = useState(null)
-  const [deleteError, setDeleteError] = useState('')
-
-  const loadWorkspaces = async () => {
-    if (workspaces.length > 0) return
-    setLoadingWs(true)
-    try { const data = await adminFetchCustomerWorkspaces(customer.id); setWorkspaces(data||[]) }
-    catch(e) {}
-    setLoadingWs(false)
-  }
-
-  const handleExpand = () => { const n=!expanded; setExpanded(n); if(n) loadWorkspaces() }
-
-  const handleDeleteWs = (ws) => setConfirm({
-    message: `Delete "${ws.vs||ws.name}"?`,
-    subtext: 'All contacts, booths, settings and volunteers in this constituency will be permanently deleted.',
-    danger: true,
-    onConfirm: async () => {
-      await adminDeleteWorkspace(ws.id)
-      setWorkspaces(p => p.filter(w => w.id !== ws.id))
-    }
-  })
-
-  const handlePurge = async () => {
+  const loadCustomers = async () => {
+    setLoading(true)
+    setError('')
     try {
-      const s = await adminGetPurgeSummary(customer.id)
-      const vsNames  = s.workspaces.map(w=>w.vs||w.name).join(', ')
-      const volLines = s.volunteers.length>0 ? `\n🙋 Volunteers (${s.volunteers.length}):\n  • ${s.volunteers.map(v=>`${v.name} (${v.email})`).join('\n  • ')}` : ''
-      setConfirm({
-        message: `Purge ${customer.name||customer.email}?`,
-        subtext: `⚠️ This will PERMANENTLY DELETE:\n\n👤 Customer: ${customer.name||customer.email}\n🗺️ Constituencies (${s.workspaces.length}): ${vsNames||'none'}\n👥 Contacts: ${s.contactCount}\n📍 Booths: ${s.boothCount}${volLines}\n\nAll volunteers will lose access immediately.\nThis CANNOT be undone.`,
-        danger: true,
-        onConfirm: async () => {
-          try { await adminPurgeCustomer(customer.id); onPurged(customer.id) }
-          catch(e) { setDeleteError(e?.message||'Error') }
-        }
-      })
+      const data = await adminFetchAllCustomers()
+      setCustomers(data || [])
     } catch(e) {
-      setConfirm({
-        message: `Purge ${customer.name||customer.email}?`,
-        subtext: 'This will permanently delete the customer and ALL their data. Cannot be undone.',
-        danger: true,
-        onConfirm: async () => { await adminPurgeCustomer(customer.id); onPurged(customer.id) }
-      })
+      console.error('Admin load error:', e)
+      setError(e.message || 'Failed to load customers')
     }
-  }
-
-  return (
-    <>
-      <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:12, padding:'14px 18px', marginBottom:8 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:38, height:38, borderRadius:'50%', background:`linear-gradient(135deg,${PLANS[customer.plan]?.color||C.gray400},${PLANS[customer.plan]?.color||C.gray400}88)`, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:15, flexShrink:0 }}>
-            {(customer.name||customer.email||'?').charAt(0).toUpperCase()}
-          </div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-              <span style={{ fontSize:14, fontWeight:700, color:C.gray900 }}>{customer.name||'—'}</span>
-              <PlanBadge plan={customer.plan}/>
-              {customer.gifted_forever && <span style={{ fontSize:10, background:C.amberLight, color:C.amber, padding:'2px 8px', borderRadius:20, fontWeight:700 }}>GIFTED</span>}
-            </div>
-            <div style={{ fontSize:12, color:C.gray400, marginTop:2 }}>{customer.email}</div>
-          </div>
-          <div style={{ fontSize:12, color:C.gray400, textAlign:'center', flexShrink:0 }}>
-            <div style={{ fontWeight:700, color:C.gray900, fontSize:15 }}>{customer.paid_vs_count||0}</div>
-            <div>VS</div>
-          </div>
-          <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-            <button onClick={handleExpand} style={{ padding:'6px 12px', fontSize:12, fontWeight:600, background:expanded?C.primaryLight:C.gray100, color:expanded?C.primary:C.gray600, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font }}>
-              {expanded?'▲':'▼'} VS
-            </button>
-            <button onClick={()=>setShowPlan(true)} style={{ padding:'6px 12px', fontSize:12, fontWeight:600, background:C.primaryLight, color:C.primary, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font }}>Plan</button>
-            <button onClick={()=>setShowGift(true)} style={{ padding:'6px 12px', fontSize:12, fontWeight:600, background:C.amberLight, color:C.amber, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font }}>🎁</button>
-            <button onClick={handlePurge} style={{ padding:'6px 12px', fontSize:12, fontWeight:600, background:C.redLight, color:C.red, border:'none', borderRadius:8, cursor:'pointer', fontFamily:font }}>Purge</button>
-          </div>
-        </div>
-
-        {deleteError && <div style={{ marginTop:8, fontSize:12, color:C.red, background:C.redLight, borderRadius:6, padding:'6px 10px' }}>⚠ {deleteError}</div>}
-
-        {expanded && (
-          <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.gray100}` }}>
-            {loadingWs ? <div style={{ fontSize:12, color:C.gray400 }}>Loading…</div> :
-             workspaces.length===0 ? <div style={{ fontSize:12, color:C.gray400 }}>No constituencies</div> :
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {workspaces.map(ws => (
-                <div key={ws.id} style={{ display:'flex', alignItems:'center', gap:10, background:C.gray50, borderRadius:8, padding:'8px 12px' }}>
-                  <div style={{ flex:1 }}>
-                    <span style={{ fontSize:13, fontWeight:600, color:C.gray900 }}>{ws.vs||ws.name}</span>
-                    <span style={{ fontSize:11, color:C.gray400, marginLeft:8 }}>{ws.state} · {ws.ls}</span>
-                  </div>
-                  <button onClick={()=>handleDeleteWs(ws)} style={{ padding:'4px 10px', fontSize:11, fontWeight:600, background:C.redLight, color:C.red, border:'none', borderRadius:6, cursor:'pointer', fontFamily:font }}>Delete</button>
-                </div>
-              ))}
-            </div>}
-          </div>
-        )}
-      </div>
-
-      {showPlan && <PlanModal customer={customer} onClose={()=>setShowPlan(false)} onSaved={p=>{setCustomer(c=>({...c,plan:p}));setShowPlan(false)}}/>}
-      {showGift && <GiftModal customer={customer} onClose={()=>setShowGift(false)} onSaved={()=>{setCustomer(c=>({...c,plan:'free_forever',gifted_forever:true}));setShowGift(false)}}/>}
-      <ConfirmDialog confirm={confirm} onClose={()=>setConfirm(null)}/>
-    </>
-  )
-}
-
-// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
-export default function SuperAdminPage() {
-  const { isSuperAdmin, customer:adminUser } = useAuth()
-  const [customers,  setCustomers]  = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState('')
-  const [search,     setSearch]     = useState('')
-  const [filterPlan, setFilterPlan] = useState('')
-  const [activeTab,  setActiveTab]  = useState('customers')
-
-  useEffect(() => { load() }, [])
-
-  const load = async () => {
-    setLoading(true); setError('')
-    try { setCustomers(await adminFetchAllCustomers() || []) }
-    catch(e) { setError(e.message) }
     setLoading(false)
   }
 
-  if (!isSuperAdmin) return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:font }}>
-      <div style={{ textAlign:'center', color:C.gray400 }}>
-        <div style={{ fontSize:40, marginBottom:12 }}>🔒</div>
-        <div style={{ fontSize:18, fontWeight:700 }}>Super Admin Only</div>
-      </div>
-    </div>
-  )
+  const handlePlanChanged = (customerId, newPlan) => {
+    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, plan: newPlan } : c))
+  }
 
+  const handleWSDeleted = (customerId, wsId) => {
+    // Just refresh — workspace count will update on next expand
+  }
+
+  const handlePurged = (customerId) => {
+    setCustomers(prev => prev.filter(c => c.id !== customerId))
+    setExpanded(null)
+  }
+
+  // Filter
   const filtered = customers.filter(c => {
-    const s = !search || (c.name||'').toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase())
-    const p = !filterPlan || c.plan === filterPlan
-    return s && p
+    const matchSearch = !search ||
+      c.email?.toLowerCase().includes(search.toLowerCase()) ||
+      c.name?.toLowerCase().includes(search.toLowerCase())
+    const matchPlan = filterPlan === 'all' || c.plan === filterPlan
+    return matchSearch && matchPlan
   })
 
-  const TABS = [
-    { key:'customers',  label:'👥 Customers'  },
-    { key:'pricing',    label:'💰 Pricing'    },
-    { key:'volunteers', label:'🙋 Volunteers' },
-  ]
+  // Stats
+  const stats = {
+    total:        customers.length,
+    free:         customers.filter(c => c?.plan === 'free').length,
+    premium:      customers.filter(c => c?.plan === 'premium').length,
+    free_forever: customers.filter(c => c?.plan === 'free_forever').length,
+  }
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0F0E1A', fontFamily:font }}>
-      {/* Header */}
-      <div style={{ background:'linear-gradient(135deg,#1E1B4B,#312E81)', padding:'20px 32px', borderBottom:'1px solid rgba(255,255,255,.1)' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div>
-            <div style={{ fontSize:22, fontWeight:800, color:'#fff' }}>Sampark<span style={{ color:'#A78BFA' }}>.AI</span> <span style={{ fontSize:14, color:'#A5B4FC', fontWeight:500 }}>Super Admin</span></div>
-            <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>Logged in as {adminUser?.email}</div>
-          </div>
-          <div style={{ background:'rgba(255,255,255,.08)', borderRadius:10, padding:'6px 14px', fontSize:13, color:'#C7D2FE', fontWeight:600 }}>
-            {customers.length} customers
-          </div>
-        </div>
-      </div>
+    <div style={{
+      minHeight:'100vh',
+      background:'linear-gradient(135deg,#1E1B4B 0%,#312E81 50%,#4F46E5 100%)',
+      fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+      padding:'0 0 60px',
+    }}>
 
-      {/* Tabs */}
-      <div style={{ background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.08)', padding:'0 32px' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', gap:4 }}>
-          {TABS.map(tab => (
-            <button key={tab.key} onClick={()=>setActiveTab(tab.key)} style={{ padding:'12px 20px', fontSize:13, fontWeight:600, border:'none', cursor:'pointer', fontFamily:font, background:'transparent', color:activeTab===tab.key?'#fff':'#6B7280', borderBottom:activeTab===tab.key?'2px solid #A78BFA':'2px solid transparent', transition:'all .15s' }}>
-              {tab.label}
-            </button>
+      {/* ── HEADER ── */}
+      <div style={{ padding:'20px 20px 0', maxWidth:900, margin:'0 auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:42, height:42, borderRadius:11, background:'rgba(255,255,255,.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🛡️</div>
+            <div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#fff' }}>Super Admin</div>
+              <div style={{ fontSize:11, color:'#A5B4FC' }}>ContactBook Control Panel</div>
+            </div>
+          </div>
+          <button onClick={onBack} style={{
+            padding:'8px 16px', fontSize:12, fontWeight:600,
+            background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)',
+            borderRadius:8, color:'#C7D2FE', cursor:'pointer', fontFamily:'inherit',
+          }}>
+            ← Back to Dashboard
+          </button>
+        </div>
+
+        {/* ── STATS CARDS ── */}
+        <div style={{
+          display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24,
+        }}>
+          {[
+            ['Total',        stats.total,        '#818CF8', '👥'],
+            ['Free',         stats.free,         '#9CA3AF', '🆓'],
+            ['Premium',      stats.premium,      '#A78BFA', '⭐'],
+            ['Free Forever', stats.free_forever, '#F59E0B', '🎁'],
+          ].map(([label, val, color, icon]) => (
+            <div key={label} style={{
+              background:'rgba(255,255,255,.1)', backdropFilter:'blur(10px)',
+              border:'1px solid rgba(255,255,255,.2)', borderRadius:14,
+              padding:'16px', textAlign:'center',
+            }}>
+              <div style={{ fontSize:10, color:'#A5B4FC', fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>{icon} {label}</div>
+              <div style={{ fontSize:28, fontWeight:800, color:'#fff' }}>{loading ? '…' : val}</div>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 32px' }}>
+      {/* ── TABS ── */}
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'0 20px', marginBottom:0 }}>
+        <div style={{ display:'flex', gap:4, background:'rgba(255,255,255,0.06)', borderRadius:12, padding:4, marginBottom:20 }}>
+          {[
+            { key:'customers', label:'👥 Customers' },
+            { key:'pricing',   label:'💰 Pricing'   },
+            { key:'volunteers', label:'👥 Volunteers' },
+          ].map(tab => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+              flex:1, padding:'9px', fontSize:13, fontWeight:600, border:'none', borderRadius:9,
+              background: activeTab===tab.key ? '#fff' : 'transparent',
+              color: activeTab===tab.key ? '#111827' : '#A5B4FC',
+              cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
+            }}>{tab.label}</button>
+          ))}
+        </div>
 
-        {activeTab==='pricing' && (
-          <div style={{ background:C.white, borderRadius:16, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,.08)' }}>
-            <PricingPanel/>
+        {/* Pricing tab */}
+        {activeTab === 'pricing' && <PricingPanel/>}
+      {activeTab === 'volunteers' && <VolunteersPanel/>}
+      </div>
+
+      {/* ── CUSTOMER LIST ── */}
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'0 20px', display: activeTab==='customers' ? 'block' : 'none' }}>
+
+        {/* Search + filter */}
+        <div style={{ display:'flex', gap:10, marginBottom:14 }}>
+          <input
+            placeholder="🔍 Search by name or email…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              flex:1, padding:'10px 14px', fontSize:13,
+              border:'none', borderRadius:10, outline:'none',
+              fontFamily:'inherit', color:C.gray900,
+            }}
+          />
+          <select
+            value={filterPlan}
+            onChange={e => setFilterPlan(e.target.value)}
+            style={{
+              padding:'10px 14px', fontSize:13, border:'none',
+              borderRadius:10, outline:'none', fontFamily:'inherit',
+              color:C.gray900, cursor:'pointer', background:C.white,
+            }}
+          >
+            <option value="all">All Plans</option>
+            <option value="free">Free</option>
+            <option value="single">Single</option>
+            <option value="multiple">Multiple</option>
+          </select>
+        </div>
+
+        {/* Customer cards */}
+        {error ? (
+          <div style={{ background:'#FEE2E2', borderRadius:12, padding:24, textAlign:'center' }}>
+            <div style={{ fontSize:20, marginBottom:8 }}>⚠️</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#991B1B', marginBottom:4 }}>Failed to load customers</div>
+            <div style={{ fontSize:12, color:'#DC2626', marginBottom:16 }}>{error}</div>
+            <button onClick={loadCustomers} style={{ padding:'8px 20px', fontSize:13, fontWeight:600, background:'#DC2626', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
+          <div style={{ textAlign:'center', color:'#A5B4FC', padding:60 }}>⏳ Loading customers…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign:'center', color:'#A5B4FC', padding:60 }}>No customers found</div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {filtered.map(c => {
+              const isMe = c.email === me?.email
+              const isExpanded = expanded === c.id
+              const pc = PLAN_COLORS[c?.plan] || PLAN_COLORS.free
+              return (
+                <div key={c.id} style={{
+                  background:C.white, borderRadius:16,
+                  boxShadow:'0 2px 12px rgba(0,0,0,.08)', overflow:'hidden',
+                }}>
+                  {/* Row */}
+                  <div
+                    onClick={() => setExpanded(isExpanded ? null : c.id)}
+                    style={{
+                      padding:'14px 20px', display:'flex', alignItems:'center',
+                      justifyContent:'space-between', cursor:'pointer',
+                      background: isMe ? '#FFFBEB' : C.white,
+                      gap:12,
+                    }}
+                  >
+                    <div style={{ display:'flex', alignItems:'center', gap:12, flex:1, minWidth:0 }}>
+                      {/* Avatar */}
+                      <div style={{
+                        width:40, height:40, borderRadius:'50%', flexShrink:0,
+                        background:`linear-gradient(135deg,${C.primary},${C.primaryDark})`,
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        fontSize:16, color:'#fff', fontWeight:700,
+                      }}>
+                        {((c.name || c.email || '?')[0] || '?').toUpperCase()}
+                      </div>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <div style={{ fontSize:14, fontWeight:700, color:C.gray900, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {c.name || '—'}
+                          </div>
+                          {isMe && <span style={{ fontSize:10, background:'#FEF3C7', color:'#92400E', padding:'2px 8px', borderRadius:20, fontWeight:700, flexShrink:0 }}>YOU</span>}
+                        </div>
+                        <div style={{ fontSize:12, color:C.gray400, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.email}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+                      <span style={{ background:pc.bg, color:pc.cl, padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
+                        {PLANS[c.plan]?.label || c.plan}
+                      </span>
+                      {c.plan === 'free_forever' && (
+                        <span style={{ background:'rgba(245,158,11,0.15)', color:'#F59E0B', padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
+                          🎁 Free Forever
+                        </span>
+                      )}
+                      <span style={{ fontSize:18, color:C.gray400, transition:'transform .2s', transform: isExpanded ? 'rotate(90deg)' : 'none' }}>›</span>
+                    </div>
+                  </div>
+
+                  {/* Expanded detail */}
+                  {isExpanded && (
+                    <CustomerDetail
+                      customer={c}
+                      onPlanChanged={handlePlanChanged}
+                      onWSDeleted={handleWSDeleted}
+                      onPurged={handlePurged}
+                      me={me}
+                    />
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
-
-        {activeTab==='volunteers' && (
-          <div style={{ background:C.white, borderRadius:16, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,.08)' }}>
-            <VolunteersPanel/>
-          </div>
-        )}
-
-        {activeTab==='customers' && <>
-          <div style={{ display:'flex', gap:10, marginBottom:16 }}>
-            <input placeholder="🔍 Search by name or email…" value={search} onChange={e=>setSearch(e.target.value)}
-              style={{ flex:1, padding:'10px 14px', fontSize:13, border:'none', borderRadius:10, outline:'none', fontFamily:font, background:'rgba(255,255,255,.08)', color:'#fff' }}/>
-            <select value={filterPlan} onChange={e=>setFilterPlan(e.target.value)}
-              style={{ padding:'10px 14px', fontSize:13, border:'none', borderRadius:10, outline:'none', fontFamily:font, background:'rgba(255,255,255,.08)', color:filterPlan?'#fff':'#6B7280', cursor:'pointer' }}>
-              <option value="">All Plans</option>
-              {Object.entries(PLANS).map(([k,p])=><option key={k} value={k}>{p.label}</option>)}
-            </select>
-            <button onClick={load} style={{ padding:'10px 16px', fontSize:13, fontWeight:600, background:'rgba(108,99,255,.3)', color:'#A78BFA', border:'1px solid rgba(108,99,255,.4)', borderRadius:10, cursor:'pointer', fontFamily:font }}>↺ Refresh</button>
-          </div>
-
-          {error && <div style={{ background:C.redLight, color:C.red, borderRadius:10, padding:'10px 14px', marginBottom:12, fontSize:13 }}>{error}</div>}
-
-          {loading ? <div style={{ textAlign:'center', padding:60, color:'#6B7280' }}>Loading…</div> :
-           filtered.length===0 ? <div style={{ textAlign:'center', padding:60, color:'#6B7280' }}>No customers found</div> :
-           filtered.map(c => <CustomerRow key={c.id} customer={c} onPurged={id=>setCustomers(p=>p.filter(x=>x.id!==id))}/>)
-          }
-        </>}
       </div>
     </div>
   )
