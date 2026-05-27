@@ -56,13 +56,12 @@ export function AuthProvider({ children }) {
         console.log('Setting volunteerWorkspace:', ws)
         if (ws) {
               setVolunteerWorkspace(ws)
-              // Fetch the admin who owns this workspace
-              const { data: owner } = await supabase
-                .from('customers')
-                .select('id, name, email')
-                .eq('id', ws.customer_id)
-                .maybeSingle()
-              if (owner) setOwnerCustomer(owner)
+              // Fetch the admin who owns this workspace via SECURITY DEFINER function
+              const { data: ownerRows } = await supabase
+                .rpc('get_workspace_owner_email', { ws_id: ws.id })
+              if (ownerRows && ownerRows.length > 0) {
+                setOwnerCustomer({ name: ownerRows[0].owner_name, email: ownerRows[0].owner_email })
+              }
             } else {
               console.error('Volunteer workspace not found:', vol.workspace_id)
             }
