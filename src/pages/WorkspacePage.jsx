@@ -5,6 +5,8 @@ import {
   supabase,
   fetchWorkspaces, fetchWorkspaceStats, createWorkspace,
   fetchStates, fetchLokSabhas, fetchVidhanSabhas,
+  adminPurgeCustomer,
+  adminGetPurgeSummary,
 } from '../lib/supabase'
 import { PLANS as PLANS_DEFAULT, getPlanLimits } from '../config'
 import UpgradeModalFull from '../components/UpgradeModal'
@@ -297,6 +299,11 @@ export default function WorkspacePage() {
   const [loading,     setLoading]     = useState(true)
   const [totalStats,  setTotalStats]  = useState({ contacts:0, booths:0, vsCount:0 })
   const [showAdd,     setShowAdd]     = useState(false)
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('')
+  const [deleteSummary, setDeleteSummary] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError,   setDeleteError]   = useState('')
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [upgradeReason, setUpgradeReason] = useState('')
   const [showAdmin,   setShowAdmin]   = useState(false)
@@ -346,6 +353,35 @@ export default function WorkspacePage() {
   }
 
   const handleWorkspaceAdded = () => { setShowAdd(false); loadWorkspaces() }
+
+  const handleDeleteAccountStart = async () => {
+    setDeleteError('')
+    setDeleteLoading(true)
+    try {
+      const summary = await adminGetPurgeSummary(customer.id)
+      setDeleteSummary(summary)
+      setShowDeleteAccount(true)
+    } catch(e) {
+      setDeleteSummary(null)
+      setShowDeleteAccount(true)
+    }
+    setDeleteLoading(false)
+  }
+
+  const handleDeleteAccountConfirm = async () => {
+    if (deleteConfirmEmail.trim().toLowerCase() !== customer.email.toLowerCase()) {
+      setDeleteError('Email does not match. Please type your email exactly.')
+      return
+    }
+    setDeleteLoading(true)
+    try {
+      await adminPurgeCustomer(customer.id)
+      logout()
+    } catch(e) {
+      setDeleteError('Failed to delete account: ' + e.message)
+      setDeleteLoading(false)
+    }
+  }
 
   const vsLimit    = planLimits?.vs ?? 1
   const canAddMore = isSuperAdmin || (vsLimit === Infinity ? true : workspaces.length < vsLimit)
@@ -578,6 +614,75 @@ export default function WorkspacePage() {
           currentVSCount={workspaces.length}
           triggerReason={upgradeReason}
         />
+      )}
+
+      {/* ── DELETE ACCOUNT ── */}
+      <div style={{ maxWidth:600, margin:'40px auto 0', padding:'0 20px 40px' }}>
+        <div style={{ border:'1.5px solid #FCA5A5', borderRadius:12, padding:'16px 20px', background:'#FFF5F5' }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'#991B1B', marginBottom:4 }}>⚠️ Danger Zone</div>
+          <div style={{ fontSize:12, color:'#6B7280', marginBottom:12 }}>
+            Permanently delete your account and all data — constituencies, contacts, booths and volunteers. This cannot be undone.
+          </div>
+          <button
+            onClick={handleDeleteAccountStart}
+            disabled={deleteLoading}
+            style={{ padding:'8px 18px', fontSize:13, fontWeight:700, background:'#DC2626', color:'#fff', border:'none', borderRadius:8, cursor:'pointer' }}
+          >
+            {deleteLoading ? '⏳ Loading…' : '🗑️ Delete My Account'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── DELETE ACCOUNT MODAL ── */}
+      {showDeleteAccount && createPortal(
+        <div onClick={e=>e.target===e.currentTarget&&setShowDeleteAccount(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(17,24,39,.75)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
+          <div style={{ background:'#fff', borderRadius:20, padding:28, maxWidth:460, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.25)' }}>
+            <div style={{ fontSize:20, fontWeight:800, color:'#DC2626', marginBottom:8 }}>🗑️ Delete Account</div>
+
+            {deleteSummary && (
+              <div style={{ background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:10, padding:'12px 14px', marginBottom:16, fontSize:12, lineHeight:1.8 }}>
+                <div style={{ fontWeight:700, color:'#991B1B', marginBottom:4 }}>This will permanently delete:</div>
+                <div>🗺️ <b>{deleteSummary.workspaces.length}</b> Constituency/Constituencies: {deleteSummary.workspaces.map(w=>w.vs||w.name).join(', ')}</div>
+                <div>👥 <b>{deleteSummary.contactCount}</b> Contacts</div>
+                <div>📍 <b>{deleteSummary.boothCount}</b> Booths</div>
+                {deleteSummary.volunteers.length > 0 && (
+                  <div>🙋 <b>{deleteSummary.volunteers.length}</b> Volunteers — they will lose access immediately</div>
+                )}
+              </div>
+            )}
+
+            <div style={{ fontSize:13, color:'#374151', marginBottom:16, lineHeight:1.6 }}>
+              Type your email <strong style={{ color:'#DC2626' }}>{customer?.email}</strong> to confirm:
+            </div>
+
+            <input
+              value={deleteConfirmEmail}
+              onChange={e => { setDeleteConfirmEmail(e.target.value); setDeleteError('') }}
+              placeholder={customer?.email}
+              type="email"
+              style={{ width:'100%', padding:'10px 12px', fontSize:13, border:'2px solid #FCA5A5', borderRadius:9, outline:'none', marginBottom:10, boxSizing:'border-box' }}
+            />
+
+            {deleteError && (
+              <div style={{ color:'#DC2626', fontSize:12, marginBottom:10, background:'#FEF2F2', padding:'8px 10px', borderRadius:7 }}>{deleteError}</div>
+            )}
+
+            <div style={{ display:'flex', gap:10, marginTop:4 }}>
+              <button onClick={() => { setShowDeleteAccount(false); setDeleteConfirmEmail(''); setDeleteError('') }}
+                style={{ flex:1, padding:'11px', fontSize:13, fontWeight:600, background:'#F3F4F6', border:'none', borderRadius:9, cursor:'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccountConfirm}
+                disabled={deleteLoading || !deleteConfirmEmail}
+                style={{ flex:2, padding:'11px', fontSize:13, fontWeight:700, background:(deleteLoading||!deleteConfirmEmail)?'#F3F4F6':'#DC2626', color:(deleteLoading||!deleteConfirmEmail)?'#9CA3AF':'#fff', border:'none', borderRadius:9, cursor:(deleteLoading||!deleteConfirmEmail)?'not-allowed':'pointer' }}>
+                {deleteLoading ? '⏳ Deleting…' : '🗑️ Permanently Delete Everything'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )
